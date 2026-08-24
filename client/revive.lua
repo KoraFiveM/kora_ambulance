@@ -47,11 +47,22 @@ local function performCPR(entity)
     QB.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
 end
 
-exports.qbtarget:addGlobalType('player', {
-    {
-        label = 'Perform CPR',
-        icon = 'heart-pulse',
-        canInteract = function(entity) return isDowned(entity) end,
-        onSelect = function(entity) performCPR(entity) end,
-    },
-}, 2.0)
+local function registerTargets()
+    exports.qbtarget:addGlobalType('player', {
+        {
+            label = 'Perform CPR',
+            icon = 'heart-pulse',
+            canInteract = function(entity) return isDowned(entity) end,
+            onSelect = function(entity) performCPR(entity) end,
+        },
+    }, 2.0)
+end
+
+registerTargets()
+
+-- qbtarget restarting mid-session wipes its own global-type registry, so the
+-- CPR option added above is gone from qbtarget's side even though this file
+-- never stopped. Re-add it the moment qbtarget comes back up.
+AddEventHandler('onClientResourceStart', function(resourceName)
+    if resourceName == 'qbtarget' then registerTargets() end
+end)

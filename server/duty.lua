@@ -14,32 +14,45 @@ local QBCore = exports.qbcore
 local currentVehicle = {}      -- src -> plate of the duty vehicle currently checked out to them
 local currentVehicleNetId = {} -- src -> its network id, so storeDutyVehicle can delete the live entity server-side
 
--- Pharmacy shop + EMS stash per hospital, registered at boot. Safe to call
--- unconditionally at load time (unlike qbcore's own Core.consumables, which
--- has to defer to onResourceStart) -- qbambulance declares `dependency
--- 'qbinventory'`, so FXServer already guarantees qbinventory is running
--- before this resource's own scripts start.
-for _, hospital in ipairs(Config.hospitals) do
-    exports.qbinventory:registerShop(('ambulance_pharmacy_%s'):format(hospital.name), {
-        label = hospital.label .. ' Pharmacy',
-        slots = 4,
-        coords = hospital.pharmacy,
-        distance = 3.0,
-        inventory = {
-            { slot = 1, name = 'bandage', amount = 200, price = 15 },
-            { slot = 2, name = 'ifak', amount = 100, price = 60 },
-            { slot = 3, name = 'painkillers', amount = 150, price = 25 },
-            { slot = 4, name = 'defibrillator', amount = 20, price = 350 },
-        },
-    })
+-- Pharmacy shop + EMS stash per hospital. Safe to call unconditionally at
+-- load time (unlike qbcore's own Core.consumables, which has to defer to
+-- onResourceStart) -- qbambulance declares `dependency 'qbinventory'`, so
+-- FXServer already guarantees qbinventory is running before this resource's
+-- own scripts start. THAT guarantee only covers ordering on a fresh boot,
+-- though -- a `dependency` declaration says nothing about a qbinventory
+-- RESTART mid-session, which wipes qbinventory's own shop/stash tables
+-- without touching qbambulance at all. So this is wrapped in a function,
+-- called once at load (per the load-time guarantee above) AND again on
+-- every qbinventory onResourceStart, to survive that case too.
+local function registerHospitals()
+    for _, hospital in ipairs(Config.hospitals) do
+        exports.qbinventory:registerShop(('ambulance_pharmacy_%s'):format(hospital.name), {
+            label = hospital.label .. ' Pharmacy',
+            slots = 4,
+            coords = hospital.pharmacy,
+            distance = 3.0,
+            inventory = {
+                { slot = 1, name = 'bandage', amount = 200, price = 15 },
+                { slot = 2, name = 'ifak', amount = 100, price = 60 },
+                { slot = 3, name = 'painkillers', amount = 150, price = 25 },
+                { slot = 4, name = 'defibrillator', amount = 20, price = 350 },
+            },
+        })
 
-    exports.qbinventory:registerStash(
-        ('ambulance_stash_%s'):format(hospital.name),
-        hospital.label .. ' EMS Stash',
-        hospital.stash.slots, hospital.stash.maxWeight,
-        false, { [Config.job.name] = 0 }, hospital.stash.coords
-    )
+        exports.qbinventory:registerStash(
+            ('ambulance_stash_%s'):format(hospital.name),
+            hospital.label .. ' EMS Stash',
+            hospital.stash.slots, hospital.stash.maxWeight,
+            false, { [Config.job.name] = 0 }, hospital.stash.coords
+        )
+    end
 end
+
+registerHospitals()
+
+AddEventHandler('onResourceStart', function(resourceName)
+    if resourceName == 'qbinventory' then registerHospitals() end
+end)
 
 local PLATE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 

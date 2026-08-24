@@ -181,7 +181,30 @@ function M.install()
     function qbcore:getShared(_name, _key) return nil end
     function qbcore:registerShared(_name, _key, _record) end
 
-    _G.exports = setmetatable({ qbcore = qbcore, qbinventory = setmetatable({}, { __index = function() return function() end end }) }, {
+    -- Fake exports.qbtarget -- just records addGlobalType calls so provider-
+    -- restart re-registration tests can assert it was called again, rather
+    -- than actually doing anything with the option lists passed in.
+    local qbtarget
+    qbtarget = {
+        calls = {},
+        addGlobalType = function(self, kind, options, distance)
+            table.insert(qbtarget.calls, { kind = kind, options = options, distance = distance })
+        end,
+    }
+
+    -- Fake exports.qbinventory -- records registerShop/registerStash calls
+    -- (server/duty.lua's hospital-fixture registration) so provider-restart
+    -- re-registration tests can assert on call counts. Any other method
+    -- falls through to a harmless stub via __index, same as before.
+    local qbinventory
+    qbinventory = {
+        calls = {},
+        registerShop = function(self, ...) table.insert(qbinventory.calls, { fn = 'registerShop', args = { ... } }) end,
+        registerStash = function(self, ...) table.insert(qbinventory.calls, { fn = 'registerStash', args = { ... } }) end,
+    }
+    setmetatable(qbinventory, { __index = function() return function() end end })
+
+    _G.exports = setmetatable({ qbcore = qbcore, qbtarget = qbtarget, qbinventory = qbinventory }, {
         __index = function() return setmetatable({}, { __index = function() return function() end end }) end,
     })
 
@@ -197,6 +220,8 @@ function M.install()
         resourceStates = resourceStates,
         QB = QB,
         qbcore = qbcore,
+        qbtarget = qbtarget,
+        qbinventory = qbinventory,
         step = function() for _, co in ipairs(threads) do coroutine.resume(co) end end,
         fireEvent = function(name, src, ...)
             local prev = _G.source

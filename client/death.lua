@@ -37,7 +37,7 @@ end
 local function suppressVanillaWasted(coords)
     local ped = PlayerPedId()
     local heading = GetEntityHeading(ped)
-    NetworkResurrectPlayer(coords.x, coords.y, coords.z, heading, true, false)
+    NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, heading, true, false)
     SetEntityHealth(ped, 50)
     SetPedToRagdoll(ped, 5000, 5000, 0, false, false, false)
 end
@@ -113,7 +113,7 @@ RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
     DoScreenFadeOut(500)
     Wait(600)
 
-    NetworkResurrectPlayer(coords.x, coords.y, coords.z, coords.w or 0.0, true, false)
+    NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, coords.w or 0.0, true, false)
     SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false)
     SetEntityHeading(ped, coords.w or 0.0)
     SetEntityHealth(ped, GetEntityMaxHealth(ped))

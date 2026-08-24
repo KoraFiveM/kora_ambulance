@@ -121,20 +121,31 @@ RegisterNetEvent('qbambulance:client:stretcherEnd', function()
     stopBeingDragged()
 end)
 
-exports.qbtarget:addGlobalType('player', {
-    {
-        label = 'Pick Up Patient',
-        icon = 'move',
-        canInteract = function(entity) return isOnDutyEMS() and isDowned(entity) and not dragging end,
-        onSelect = function(entity)
-            local targetSrc = targetServerId(entity)
-            if targetSrc then QB.events.trigger('qbambulance:server:stretcherPickup', targetSrc) end
-        end,
-    },
-    {
-        label = 'Release Patient',
-        icon = 'x',
-        canInteract = function(entity) return dragging ~= nil and targetServerId(entity) == dragging.targetSrc end,
-        onSelect = function() QB.events.trigger('qbambulance:server:stretcherRelease') end,
-    },
-}, 2.5)
+local function registerTargets()
+    exports.qbtarget:addGlobalType('player', {
+        {
+            label = 'Pick Up Patient',
+            icon = 'move',
+            canInteract = function(entity) return isOnDutyEMS() and isDowned(entity) and not dragging end,
+            onSelect = function(entity)
+                local targetSrc = targetServerId(entity)
+                if targetSrc then QB.events.trigger('qbambulance:server:stretcherPickup', targetSrc) end
+            end,
+        },
+        {
+            label = 'Release Patient',
+            icon = 'x',
+            canInteract = function(entity) return dragging ~= nil and targetServerId(entity) == dragging.targetSrc end,
+            onSelect = function() QB.events.trigger('qbambulance:server:stretcherRelease') end,
+        },
+    }, 2.5)
+end
+
+registerTargets()
+
+-- qbtarget restarting mid-session wipes its own global-type registry, so the
+-- options added above are gone from qbtarget's side even though this file
+-- never stopped. Re-add them the moment qbtarget comes back up.
+AddEventHandler('onClientResourceStart', function(resourceName)
+    if resourceName == 'qbtarget' then registerTargets() end
+end)
