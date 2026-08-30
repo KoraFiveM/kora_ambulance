@@ -149,12 +149,14 @@ h.test('clearWound / clearAllWounds remove the QB.status effects once no wound r
 end)
 
 ------------------------------------------------------------------------------
--- baseevents wiring + bleed-out timeout
+-- Cache death report + bleed-out timeout
 ------------------------------------------------------------------------------
 
-h.test('baseevents:onPlayerDied server-side transitions the reporting player into laststand', function()
+h.test('qbambulance:server:reportDeath transitions the authenticated reporting player into laststand', function()
     handle.ensurePlayer(11)
-    handle.fireEvent('baseevents:onPlayerDied', 11, 1, { 0, 0, 0 })
+    local reportDeath = handle.QB.events.registry['qbambulance:server:reportDeath']
+    h.assertTrue(reportDeath ~= nil)
+    reportDeath(11, 'died')
     h.assertTrue(Death.isLaststand(11))
 end)
 

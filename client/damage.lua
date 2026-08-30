@@ -1,5 +1,5 @@
 -- Damage (client realm) -- per-body-part wound LOCATION while alive.
--- baseevents only reports the alive->dead transition (see client/death.lua's
+-- QB.cache reports the alive->dead transition (see client/death.lua's
 -- header); this is the separate, lightweight damage-source listener the
 -- plan calls for, feeding Wounds' pure roll functions to decide whether a
 -- hit becomes a tracked wound, then reporting it to the server (server/
@@ -43,7 +43,7 @@ AddEventHandler('gameEventTriggered', function(name, args)
         return args[1], args[2], args[3] == 1, args[4]
     end)
     if not ok or victim ~= QB.cache.ped() then return end
-    if victimDied then return end -- baseevents/client/death.lua owns the death transition itself
+    if victimDied then return end -- QB.cache/client/death.lua owns the death transition itself
 
     -- Coarse client-side rate limit -- a shotgun/explosive can fire several
     -- CEventNetworkEntityDamage entries for one visual hit; without this a

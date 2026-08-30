@@ -1,13 +1,12 @@
 -- Death (client realm) -- reacts to the server-authoritative ALIVE/
--- LASTSTAND/DEAD transitions (server/death.lua) and to baseevents' own
--- client-side events directly, for an immediate local reaction that doesn't
--- wait on the network round-trip.
+-- LASTSTAND/DEAD transitions (server/death.lua) and qblib cache's fatal-
+-- injury edge, for an immediate local reaction that doesn't wait on the
+-- network round-trip.
 --
--- baseevents (already installed, see deathevents.lua) is what detects the
--- alive->dead transition; this file's job is entirely about PRESENTATION
--- once that transition happens (suppressing the vanilla wasted screen,
--- laststand crawl/ragdoll, the death fade, respawn) -- it does not
--- reimplement death DETECTION.
+-- QB.cache owns the shared 200ms IsPedFatallyInjured poll. This file presents
+-- the transition (suppresses the vanilla wasted screen, then handles
+-- laststand crawl/ragdoll, death fade, and respawn) and reports it securely
+-- to the server; it does not start another detection loop.
 
 State = State or {}
 State.inLaststand = false
@@ -31,7 +30,7 @@ local function setDownState(value)
 end
 
 -- Immediately keeps the ped from actually going through the native wasted
--- flow the instant baseevents reports a death, ahead of the server's own
+-- flow the instant the cache reports a death, ahead of the server's own
 -- qbambulance:client:enterLaststand push landing a moment later -- without
 -- this, the vanilla wasted screen can flash on screen first.
 local function suppressVanillaWasted(coords)
@@ -42,16 +41,18 @@ local function suppressVanillaWasted(coords)
     SetPedToRagdoll(ped, 5000, 5000, 0, false, false, false)
 end
 
-RegisterNetEvent('baseevents:onPlayerDied', function(_killertype, coords)
-    if not State.inLaststand and not State.isDead then
-        suppressVanillaWasted({ x = coords[1], y = coords[2], z = coords[3] })
-    end
-end)
+QB.cache.onChange('isDead', function(isDead, wasDead)
+    if not isDead or wasDead or State.inLaststand or State.isDead then return end
 
-RegisterNetEvent('baseevents:onPlayerKilled', function(_killerid, payload)
-    if not State.inLaststand and not State.isDead and payload and payload.killerpos then
-        suppressVanillaWasted({ x = payload.killerpos[1], y = payload.killerpos[2], z = payload.killerpos[3] })
-    end
+    suppressVanillaWasted(QB.cache.coords())
+
+    -- The secure-event handshake can still be in flight while a resource is
+    -- starting. Keep that wait out of qblib's shared cache refresh thread;
+    -- presentation remains immediate and the server transition follows as
+    -- soon as its handshake is available.
+    CreateThread(function()
+        QB.events.trigger('qbambulance:server:reportDeath', 'died')
+    end)
 end)
 
 RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)

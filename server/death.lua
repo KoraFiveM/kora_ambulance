@@ -6,12 +6,11 @@
 -- resets on relog/death, not a durable record (mirrors real qb-ambulancejob/
 -- qbx_medical, neither of which persists wounds across sessions either).
 --
--- Death detection is baseevents' job (see client/death.lua's header) -- this
--- file only reacts to the SERVER-side mirror of those events
--- (baseevents:onPlayerDied/onPlayerKilled/onPlayerWasted are fired via BOTH
--- TriggerEvent and TriggerServerEvent by deathevents.lua) plus the client's
--- own explicit lifecycle calls (enterLaststand/markDead can also be invoked
--- directly, e.g. by the legacy compat layer's KillPlayer/SetDeathStatus).
+-- qblib cache detects fatal injury on the client (see client/death.lua) and
+-- reports its edge through the authenticated QB.events gateway. This file
+-- remains the server-authoritative state machine; its lifecycle functions can
+-- also be invoked directly by the legacy compat layer's
+-- KillPlayer/SetDeathStatus.
 
 Death = Death or {}
 
@@ -255,30 +254,16 @@ function Death.laststandElapsed(src)
 end
 
 ------------------------------------------------------------------------------
--- baseevents wiring
+-- Client reports from qblib cache
 ------------------------------------------------------------------------------
 
-local function onDied(_killertype, _coords)
-    Death.enterLaststand(source, 'died')
-end
-
-local function onKilled(_killerid, _payload)
-    Death.enterLaststand(source, 'killed')
-end
-
-RegisterNetEvent('baseevents:onPlayerDied', onDied)
-RegisterNetEvent('baseevents:onPlayerKilled', onKilled)
--- baseevents:onPlayerWasted fires once the vanilla wasted UI would have
--- appeared -- client/death.lua suppresses that UI itself (see its header),
--- so server-side this is only a backstop in case a client somehow reaches
--- laststand -> wasted without this module's own laststand timeout catching
--- it first (e.g. a resource restart mid-laststand).
-RegisterNetEvent('baseevents:onPlayerWasted', function(_coords)
-    if Death.isLaststand(source) then Death.markDead(source) end
+QB.events.register('qbambulance:server:reportDeath', function(src, cause)
+    if type(cause) ~= 'string' then cause = 'died' end
+    Death.enterLaststand(src, cause)
 end)
 
 -- Per-body-part wound location while ALIVE, reported by client/damage.lua's
--- gameEventTriggered listener (baseevents only tells us about the death
+-- gameEventTriggered listener (the cache only tells us about the death
 -- transition, not where a still-living player got hit -- see that file's
 -- header). Client-reported and therefore not fully trustable, but the worst
 -- a forged report can do is apply a cosmetic bleed/limp status to the
