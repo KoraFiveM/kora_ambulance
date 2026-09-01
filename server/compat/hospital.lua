@@ -33,13 +33,56 @@ end)
 -- (which only fires hospital:client:ambulanceAlert outbound, see qbcore's
 -- modules/dispatch/server.lua) -- this is the inbound leg, for a legacy
 -- script that fires the OLD server event name directly instead of going
--- through Core.dispatch.alert or our own /911e command.
-RegisterNetEvent('hospital:server:ambulanceAlert', function(message, coords)
-    QBCore:alert({ jobs = { Config.job.name }, title = 'Ambulance Alert', message = message, coords = coords })
+-- through our own /911e command.
+--
+-- Raised through qbdispatch, so a legacy caller produces a real call with a
+-- feed entry, a map marker and a response state -- not a notification that
+-- vanishes. qbdispatch can register these same names itself
+-- (Config.compat.legacyInbound), but ships with that OFF precisely so this
+-- handler -- which knows the job, the wording and the coordinates -- owns them.
+--
+-- The legacy signature is not stable across the ecosystem: real qb-policejob
+-- fires its equivalent as (coords, text) while qbcore's compat table fires
+-- (message, coords). Both orders are sniffed rather than assumed, since getting
+-- it wrong silently swaps a call's description with its location.
+local function sniff(a, b)
+    if type(a) == 'string' then return a, b end
+    if type(a) == 'table' then return type(b) == 'string' and b or nil, a end
+    return nil, nil
+end
+
+RegisterNetEvent('hospital:server:ambulanceAlert', function(a, b)
+    local src = source
+    local message, coords = sniff(a, b)
+
+    if not coords then
+        local ped = GetPlayerPed(src)
+        if ped and ped ~= 0 then
+            local position = GetEntityCoords(ped)
+            coords = { x = position.x, y = position.y, z = position.z }
+        end
+    end
+
+    Ambulance.dispatch.call({
+        code = '10-52',
+        title = 'Ambulance Alert',
+        message = message or 'A medical emergency was reported.',
+        priority = 1,
+        coords = coords,
+        icon = 'heart-pulse',
+        data = { legacy = 'hospital:server:ambulanceAlert', requester = src },
+    })
 end)
 
 RegisterNetEvent('hospital:server:SendDoctorAlert', function()
-    QBCore:alert({ jobs = { Config.job.name }, title = 'EMS', message = 'A doctor is needed.' })
+    Ambulance.dispatch.call({
+        code = '10-51',
+        title = 'Doctor Requested',
+        message = 'A doctor is needed at the hospital.',
+        priority = 3,
+        icon = 'stethoscope',
+        data = { legacy = 'hospital:server:SendDoctorAlert' },
+    })
 end)
 
 RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospitalName)

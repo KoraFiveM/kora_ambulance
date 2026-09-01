@@ -172,9 +172,24 @@ function M.install()
     function qbcore:deleteVehicle(_plate) return true end
     function qbcore:storeVehicle(_plate, _snapshot) return true end
     function qbcore:reset(src) local p = ensure(src); p.metadata.hunger = 100; p.metadata.thirst = 100; p.metadata.stress = 0 end
+    -- Job types mirror qbcore/shared/jobs.lua. Dispatch calls target the TYPE,
+    -- so a fire department registered with type='ems' answers the same radio.
+    local JOB_TYPES = { police = 'leo', sheriff = 'leo', ambulance = 'ems', tow = 'recovery' }
+    function qbcore:getPlayersByJobType(jobType, onDutyOnly)
+        local out = {}
+        for src, p in pairs(players) do
+            if p.job and JOB_TYPES[p.job.name] == jobType and (not onDutyOnly or p.job.onduty) then
+                out[#out + 1] = src
+            end
+        end
+        table.sort(out)
+        return out
+    end
+    function qbcore:getDutyCountByType(jobType) return #qbcore:getPlayersByJobType(jobType, true) end
     function qbcore:alert(payload)
         local count = 0
-        for _, jobName in ipairs(payload.jobs) do count = count + #qbcore:getPlayersByJob(jobName, true) end
+        for _, jobName in ipairs(payload.jobs or {}) do count = count + #qbcore:getPlayersByJob(jobName, true) end
+        for _, jobType in ipairs(payload.jobTypes or {}) do count = count + #qbcore:getPlayersByJobType(jobType, true) end
         return count
     end
     function qbcore:addCommand(_name, _help, _args, _argsRequired, _handler, _permission) end
@@ -204,7 +219,45 @@ function M.install()
     }
     setmetatable(qbinventory, { __index = function() return function() end end })
 
-    _G.exports = setmetatable({ qbcore = qbcore, qbtarget = qbtarget, qbinventory = qbinventory }, {
+    -- qbdispatch owns the call lifecycle; qbambulance only raises calls through
+    -- it. Recorded rather than simulated -- what these tests care about is the
+    -- payload this resource builds, not qbdispatch's storage (which has its own
+    -- suite).
+    local dispatchCalls = {}
+    local dispatchClosed = {}
+    local nextCallId = 0
+    local qbdispatch = {}
+    function qbdispatch:createCall(payload)
+        nextCallId = nextCallId + 1
+        payload.id = nextCallId
+        dispatchCalls[#dispatchCalls + 1] = payload
+
+        local recipients = {}
+        for _, jobName in ipairs(payload.jobs or {}) do
+            for _, src in ipairs(qbcore:getPlayersByJob(jobName, true)) do recipients[src] = true end
+        end
+        for _, jobType in ipairs(payload.jobTypes or {}) do
+            for _, src in ipairs(qbcore:getPlayersByJobType(jobType, true)) do recipients[src] = true end
+        end
+        local count = 0
+        for _ in pairs(recipients) do count = count + 1 end
+        return nextCallId, count
+    end
+    function qbdispatch:getCalls(filter)
+        local out = {}
+        for _, call in ipairs(dispatchCalls) do
+            if not dispatchClosed[call.id] and (not filter or not filter.service
+                or (call.jobTypes and call.jobTypes[1] == filter.service)) then
+                out[#out + 1] = call
+            end
+        end
+        return out
+    end
+    function qbdispatch:closeCall(id, reason) dispatchClosed[id] = reason or true; return true end
+    function qbdispatch:setTheme() return true end
+
+    _G.exports = setmetatable({ qbcore = qbcore, qbtarget = qbtarget, qbinventory = qbinventory,
+                                qbdispatch = qbdispatch }, {
         __index = function() return setmetatable({}, { __index = function() return function() end end }) end,
     })
 
@@ -220,6 +273,9 @@ function M.install()
         resourceStates = resourceStates,
         QB = QB,
         qbcore = qbcore,
+        qbdispatch = qbdispatch,
+        dispatchCalls = dispatchCalls,
+        lastDispatchCall = function() return dispatchCalls[#dispatchCalls] end,
         qbtarget = qbtarget,
         qbinventory = qbinventory,
         step = function() for _, co in ipairs(threads) do coroutine.resume(co) end end,

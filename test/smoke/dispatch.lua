@@ -1,0 +1,100 @@
+-- EMS calls raised automatically off the death lifecycle, and the wording each
+-- one carries. The call lifecycle itself belongs to qbdispatch and has its own
+-- suite; this asserts what qbambulance decides is an EMS matter.
+local h = dofile('test/harness.lua')
+local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
+dofile('config.lua')
+dofile('shared/wounds.lua')
+dofile('server/death.lua')
+dofile('server/dispatch.lua')
+dofile('server/billing.lua')
+
+local PATIENT, MEDIC = 5, 1
+
+handle.ensurePlayer(MEDIC)
+handle.players[MEDIC].job = { name = Config.job.name, onduty = true, grade = { level = 1 } }
+
+handle.ensurePlayer(PATIENT)
+handle.players[PATIENT].data = handle.players[PATIENT].data or {}
+handle.players[PATIENT].charinfo = { firstname = 'Alex', lastname = 'Stone' }
+
+local function callsBefore() return #handle.dispatchCalls end
+
+h.test('going into laststand raises a critical EMS call', function()
+    local before = callsBefore()
+    Death.enterLaststand(PATIENT, 'gunshot')
+
+    h.assertEqual(#handle.dispatchCalls, before + 1, 'exactly one call for one casualty')
+
+    local call = handle.lastDispatchCall()
+    h.assertEqual(call.jobTypes[1], Config.job.type, 'targets the EMS service, not a job name')
+    h.assertEqual(call.code, '10-52', 'person down')
+    h.assertEqual(call.priority, 1, 'a savable patient is the highest priority there is')
+    h.assertEqual(call.data.source, PATIENT, 'the patient is identified so the call can be closed on revive')
+end)
+
+h.test('the same casualty does not spam the feed', function()
+    -- Death and laststand both fire on the way down, and a revive-then-die cycle
+    -- can repeat in seconds. One firefight must not fill the EMS feed with the
+    -- same patient over and over.
+    local before = callsBefore()
+    Death.reviveInField(PATIENT, 30)
+    Death.enterLaststand(PATIENT, 'gunshot')
+
+    h.assertEqual(#handle.dispatchCalls, before, 'the cooldown suppressed the repeat call')
+end)
+
+h.test('bleeding out raises a lower-priority call than going down did', function()
+    local before = callsBefore()
+    Death.markDead(PATIENT)
+
+    h.assertEqual(#handle.dispatchCalls, before + 1, 'a death is still worth reporting')
+
+    local call = handle.lastDispatchCall()
+    h.assertEqual(call.code, '10-54', 'possible fatality')
+    -- Nobody is being saved now, so it must not outrank a patient who still can
+    -- be -- a feed that ranks the dead above the dying is worse than no feed.
+    h.assertEqual(call.priority, 2, 'below the person-down call')
+end)
+
+h.test('a treated patient stops being an open incident', function()
+    handle.ensurePlayer(6)
+    handle.players[6].charinfo = { firstname = 'Robin', lastname = 'Vale' }
+
+    Death.enterLaststand(6, 'crash')
+    local call = handle.lastDispatchCall()
+    h.assertTrue(call ~= nil, 'sanity: the call was raised')
+
+    Death.reviveInField(6, 30)
+
+    -- A feed still listing people who were treated ten minutes ago stops being
+    -- read at all.
+    local open = handle.qbdispatch:getCalls({ service = Config.job.type, activeOnly = true })
+    for _, entry in ipairs(open) do
+        h.assertTrue(not entry.data or entry.data.source ~= 6, 'the treated patient has no open call left')
+    end
+end)
+
+h.test('automatic calls can be turned off entirely', function()
+    Config.dispatch.autoCall = false
+    handle.ensurePlayer(7)
+
+    local before = callsBefore()
+    Death.enterLaststand(7, 'gunshot')
+    h.assertEqual(#handle.dispatchCalls, before, 'no call raised when the feature is disabled')
+
+    Config.dispatch.autoCall = true
+end)
+
+h.test('a call names the patient rather than exposing a source id', function()
+    handle.ensurePlayer(8)
+    handle.players[8].charinfo = { firstname = 'Casey', lastname = 'Nolan' }
+
+    Death.enterLaststand(8, 'fall')
+
+    local call = handle.lastDispatchCall()
+    h.assertTrue(call.message:find('Casey Nolan', 1, true) ~= nil,
+        'dispatch reads out a name: ' .. tostring(call.message))
+end)
+
+h.report('dispatch')

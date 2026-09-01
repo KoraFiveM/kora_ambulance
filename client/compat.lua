@@ -7,15 +7,15 @@
 
 local lastKnownDoctorCount = 0
 
-RegisterNetEvent('hospital:client:ambulanceAlert', function(message, coords)
-    QB.notify.send({ title = 'Ambulance Alert', message = message, type = 'error' })
-    if coords then
-        local blip = QB.blips.create(coords, { sprite = 61, color = 1, scale = 1.0, label = 'Ambulance Alert' })
-        if blip then
-            CreateThread(function() Wait(60000); QB.blips.remove(blip) end)
-        end
-    end
-end)
+-- Registered but inert. qbdispatch renders every EMS call now, including the
+-- ones raised from the legacy hospital:server:ambulanceAlert path -- it
+-- registers that server event itself and turns it into a real call. Rendering
+-- here as well would show the same incident twice, once as a proper dispatch
+-- card and once as a stray toast with a blip that outlives it.
+--
+-- The registration is kept so a third-party resource firing this client event
+-- directly still finds a listener rather than an error.
+RegisterNetEvent('hospital:client:ambulanceAlert', function() end)
 
 RegisterNetEvent('hospital:client:Revive', function()
     TriggerServerEvent('hospital:server:RevivePlayer')

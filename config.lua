@@ -6,6 +6,12 @@ Config = Config or {}
 Config.job = {
     name = 'ambulance',              -- must match the job record qbcore's shared/jobs.lua already seeds
     onDutyDoctorGrade = 1,            -- minimum grade (1-based) counted as an "on-duty doctor" for Core.doctors' self-heal gate
+
+    -- The qbcore job TYPE this resource dispatches to. Calls target the type,
+    -- not the job name, so a server adding a fire department or a second
+    -- hospital with `type = 'ems'` gets them on the same radio with no change
+    -- here.
+    type = 'ems',
 }
 
 Config.death = {
@@ -36,6 +42,14 @@ Config.painkillers = {
 Config.dispatch = {
     alertCooldown = 30000,            -- ms cooldown per player on the /911e emergency alert command
     housecallCooldown = 60000,        -- ms cooldown per player on submitting a new house-call request
+
+    accent = '#EF4444',               -- EMS red, applied to this player's dispatch UI
+
+    -- Automatic calls when a player goes down or dies. Real qb-ambulancejob had
+    -- these; the rewrite dropped all three, leaving a bleeding-out player with
+    -- no way to reach EMS except typing a command.
+    autoCall = true,
+    autoCallCooldown = 45000,         -- ms per player, so one messy firefight is one call, not ten
 }
 
 -- Multiple check-in/bed hospitals. `beds` are local offsets from `coords`

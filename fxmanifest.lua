@@ -9,6 +9,7 @@ description 'EMS/ambulance job -- wounds, revive, dispatch, billing, duty vehicl
 
 dependency 'qblib'
 dependency 'qbcore'
+dependency 'qbdispatch'
 dependency 'qbinventory'
 dependency 'qbtarget'
 
@@ -36,6 +37,9 @@ shared_scripts {
 -- server-side functions above it directly.
 server_scripts {
     'server/death.lua',
+    -- dispatch.lua after death.lua: it listens for the death lifecycle events
+    -- that file emits, and before housecall.lua, which raises calls through it.
+    'server/dispatch.lua',
     'server/billing.lua',
     'server/doctors.lua',
     'server/revive.lua',

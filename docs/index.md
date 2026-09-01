@@ -55,8 +55,14 @@ end
 ```
 /911e stabbed outside the Yellow Jack
 ```
-This broadcasts a `QBCore:alert` to every on-duty medic with the caller's live
-coords attached — no separate dispatch resource required.
+This raises a priority-1 dispatch call to the whole **EMS service** — every job
+registered with `type = 'ems'`, not just this resource's own job name — with the
+caller's live coords read server-side. Medics see it in the qbdispatch feed and
+on the map, and respond with the dispatch keybinds.
+
+The caller is told whether anybody actually heard them: `createCall` returns a
+recipient count, and "no paramedics are currently on duty" is very different news
+to "your emergency has been reported".
 
 ### Queue and accept a non-emergency house-call
 ```
@@ -135,13 +141,40 @@ qbambulance:server:onPlayerRespawned(src, hospitalName) -- hook
 
 ### Dispatch / house-calls
 ```
-/911e [message]              -- command: one-shot alert to every on-duty EMS
+/911e [message]              -- command: priority-1 EMS call
 /housecall [note]            -- command: queue a non-emergency request
 /housecalls                  -- command: EMS, lists the open queue
 /accepthousecall <id>        -- command: EMS, accepts a queued request
-qbambulance:client:housecallList(list)      -- client event
-qbambulance:client:housecallAccepted(request) -- client event
+qbambulance:client:housecallList(list)         -- client event
+qbambulance:client:housecallAccepted(request)  -- client event
 ```
+
+Presentation belongs to **qbdispatch**: the feed, the map, history and the
+response state machine. This resource decides only what counts as an EMS matter
+and how each call is worded.
+
+**Automatic calls** (`Config.dispatch.autoCall`) restore behaviour the rewrite had
+dropped — real qb-ambulancejob alerted on laststand, on death and on the help
+key, and none of that survived. Now:
+
+| Event | Call | Priority |
+| --- | --- | --- |
+| Enters laststand | `10-52 Person Down` | 1 |
+| Bleeds out | `10-54 Possible Fatality` | 2 |
+| Revived | the patient's open call is **closed** | — |
+
+The fatality is deliberately below the person-down call: nobody is being saved
+now, so it must not outrank a patient who still can be. Repeat calls for the same
+casualty are suppressed for `Config.dispatch.autoCallCooldown`, so one messy
+firefight is one call rather than ten — and the cooldown is *not* reset by a
+revive, because a patient put straight back down is the same incident to the
+paramedic already standing over them.
+
+**The house-call queue** is published as a priority-3 dispatch call carrying an
+`onAccept` hook. Accepting it in the dispatch UI and `/accepthousecall` go through
+one implementation, so a request can never be handed out twice because two doors
+disagreed about whether it was still open. qbdispatch knows nothing about house
+calls — it just fires the event name it was handed.
 
 ### Billing
 ```
@@ -178,7 +211,7 @@ exports.qbambulance:CanHelp()     -- always true; no client-side item check is w
 grade counted toward the self-heal gate); `Config.death.deathTime/minimumRevive/
 reviveRange/reviveInterval`; `Config.doctors.minimalDoctors/selfHealDelay/
 docCooldown` (AI self-heal when too few medics are on duty); `Config.billing.
-baseCost/perWoundCost/account/fallbackAccount`; `Config.dispatch.alertCooldown/
+baseCost/perWoundCost/account/fallbackAccount`; `Config.dispatch.autoCall/autoCallCooldown/accent/alertCooldown/
 housecallCooldown`; `Config.hospitals` (multiple check-in points, each with its
 own beds/pharmacy/stash/duty/garage coords); `Config.dutyVehicles`;
 `Config.bodyParts` (15 parts with hit-weight and `vital` flag) and

@@ -15,14 +15,32 @@ h.test('cooldownElapsed: nil lastAt is always eligible; otherwise gated by coold
     h.assertTrue(HouseCall.cooldownElapsed(now, now + 61, 60000))
 end)
 
-h.test('buildAlertPayload targets the ambulance job and defaults a message', function()
+h.test('buildAlertPayload targets the EMS job TYPE and defaults a message', function()
     local payload = HouseCall.buildAlertPayload(42, { x = 1, y = 2, z = 3 }, nil)
-    h.assertEqual(payload.jobs[1], Config.job.name)
-    h.assertTrue(payload.message:find('42') ~= nil)
+
+    -- The TYPE, not this resource's job name: a server with a fire department
+    -- or a second hospital registered as type='ems' is reached by the same call.
+    h.assertEqual(payload.jobTypes[1], Config.job.type)
+    h.assertEqual(payload.jobs, nil, 'no hard-coded job name')
+    h.assertTrue(payload.message:find('42') ~= nil, 'the caller is identified')
     h.assertEqual(payload.code, '911e')
+    h.assertEqual(payload.priority, 1, 'a 911 call is critical')
 
     local withMessage = HouseCall.buildAlertPayload(42, nil, 'custom text')
     h.assertEqual(withMessage.message, 'custom text')
+end)
+
+h.test('buildQueuePayload is a low-priority call carrying the accept hook', function()
+    local payload = HouseCall.buildQueuePayload({ id = 7, src = 42, coords = { x = 1, y = 2, z = 3 }, note = 'sore arm' })
+
+    h.assertEqual(payload.priority, 3,
+        'a house call must not outrank a patient who is actually bleeding out')
+    h.assertEqual(payload.message, 'sore arm', 'the caller note becomes the message')
+    -- qbdispatch knows nothing about house calls: it fires whatever event name
+    -- it was handed when a paramedic first attaches. That is what keeps
+    -- job-specific behaviour out of the dispatch resource.
+    h.assertEqual(payload.onAccept, 'qbambulance:server:housecallAccepted', 'the generic accept hook')
+    h.assertEqual(payload.data.requestId, 7, 'and enough data to find the request again')
 end)
 
 h.test('submitToQueue appends without mutating the original array', function()
@@ -55,14 +73,16 @@ h.test('acceptFromQueue returns nil for an id that is not queued', function()
     h.assertEqual(#newQueue, 1)
 end)
 
-h.test('/911e respects Core.dispatch.alert routing and reports how many EMS were reached', function()
+h.test('a 911 call reaches on-duty EMS and reports how many heard it', function()
     handle.ensurePlayer(1); handle.players[1].job = { name = Config.job.name, onduty = true, grade = { level = 1 } }
     handle.ensurePlayer(2) -- civilian caller
+    handle.ensurePlayer(3); handle.players[3].job = { name = Config.job.name, onduty = false, grade = { level = 1 } }
 
-    -- alert() in the mock counts on-duty players by job, mirroring
-    -- Core.dispatch.alert's own O(1) getPlayersByJob-based fan-out.
-    local count = handle.qbcore:alert(HouseCall.buildAlertPayload(2, nil, 'help'))
-    h.assertEqual(count, 1)
+    local _, count = handle.qbdispatch:createCall(HouseCall.buildAlertPayload(2, nil, 'help'))
+
+    -- The count is what /911e uses to tell the caller "help is coming" versus
+    -- "nobody is on duty" -- two very different things to hear while bleeding.
+    h.assertEqual(count, 1, 'the on-duty paramedic only, never the off-duty one')
 end)
 
 h.report('housecall')

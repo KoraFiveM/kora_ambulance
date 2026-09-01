@@ -81,3 +81,12 @@ for _, hospital in ipairs(Config.hospitals) do
         },
     }, false)
 end
+
+
+-- EMS red for this player's dispatch UI. Client-side because it is per-player:
+-- a paramedic and an officer on the same server see different accents at the
+-- same moment, so it can never be a server setting.
+CreateThread(function()
+    Wait(1500) -- let qbdispatch's own frame mount before pushing tokens at it
+    exports.qbdispatch:setTheme(Config.dispatch.accent)
+end)
