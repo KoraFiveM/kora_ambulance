@@ -8,6 +8,18 @@ dofile('shared/wounds.lua')
 dofile('server/death.lua')
 dofile('server/billing.lua') -- Death.respawnAtHospital calls Billing.chargeForRespawn
 
+-- Death's respawn gate is measured in os.time() SECONDS, so the only way to
+-- test "after the wait" without actually sleeping a minute is to own the clock.
+local now = 1000
+os.time = function() return now end
+
+local respawnWaitSeconds = math.floor(Config.death.respawnTime / 1000)
+
+---Skips past Config.death.respawnTime so a respawn is no longer gated.
+local function waitOutRespawn()
+    now = now + respawnWaitSeconds
+end
+
 ------------------------------------------------------------------------------
 -- Pure FSM
 ------------------------------------------------------------------------------
@@ -91,6 +103,7 @@ h.test('respawnAtHospital only works from dead, charges a bill, and fully clears
 
     Death.markDead(6)
     Death.recordWound(6, 'chest', 2)
+    waitOutRespawn()
 
     local ok = Death.respawnAtHospital(6, Config.hospitals[1].name)
     h.assertTrue(ok)
@@ -105,7 +118,79 @@ end)
 h.test('respawnAtHospital defaults to the first configured hospital for an unknown name', function()
     handle.ensurePlayer(7)
     Death.markDead(7)
+    waitOutRespawn()
     h.assertTrue(Death.respawnAtHospital(7, 'not-a-real-hospital'))
+end)
+
+------------------------------------------------------------------------------
+-- Server-enforced respawn wait. The client countdown is display only, so
+-- everything a bypassing player could skip has to be refused here.
+------------------------------------------------------------------------------
+
+h.test('respawnAtHospital refuses a freshly dead player and says how long is left', function()
+    handle.ensurePlayer(20)
+    handle.players[20].money.cash = 1000
+    Death.markDead(20)
+
+    local ok, reason = Death.respawnAtHospital(20)
+    h.assertFalse(ok)
+    h.assertEqual(reason, ('You cannot respawn for another %ds.'):format(respawnWaitSeconds))
+
+    -- Refused BEFORE any of the respawn's side effects run -- a rejected
+    -- attempt must not bill the player or quietly bring them back to life.
+    h.assertTrue(Death.isDead(20))
+    h.assertEqual(handle.players[20].money.cash, 1000)
+end)
+
+h.test('respawnAtHospital counts the wait down as the clock advances', function()
+    handle.ensurePlayer(21)
+    Death.markDead(21)
+    h.assertEqual(Death.respawnWaitRemaining(21), respawnWaitSeconds)
+
+    now = now + 10
+    h.assertEqual(Death.respawnWaitRemaining(21), respawnWaitSeconds - 10)
+
+    local _, reason = Death.respawnAtHospital(21)
+    h.assertEqual(reason, ('You cannot respawn for another %ds.'):format(respawnWaitSeconds - 10))
+end)
+
+h.test('respawnAtHospital allows the respawn once the wait has elapsed', function()
+    handle.ensurePlayer(22)
+    Death.markDead(22)
+    waitOutRespawn()
+
+    h.assertEqual(Death.respawnWaitRemaining(22), 0)
+    h.assertTrue((Death.respawnAtHospital(22)))
+    h.assertTrue(Death.isAlive(22))
+end)
+
+h.test('respawnAtHospital refuses a laststand player outright -- the wait never even applies', function()
+    handle.ensurePlayer(23)
+    Death.enterLaststand(23)
+    waitOutRespawn() -- plenty of time passes; still not a respawn candidate
+
+    local ok, reason = Death.respawnAtHospital(23)
+    h.assertFalse(ok)
+    h.assertEqual(reason, 'You are not dead.')
+    h.assertTrue(Death.isLaststand(23))
+end)
+
+h.test('respawnWaitRemaining is 0 with no death timestamp -- a dead player who relogged is not stranded', function()
+    handle.ensurePlayer(24)
+    handle.players[24].metadata.isdead = true -- rejoined dead; the in-memory timestamp did not survive
+
+    h.assertEqual(Death.respawnWaitRemaining(24), 0)
+    h.assertTrue((Death.respawnAtHospital(24)))
+end)
+
+h.test('a revive clears the death timestamp so a later death starts a fresh wait', function()
+    handle.ensurePlayer(25)
+    Death.markDead(25)
+    Death.reviveInField(25)
+    h.assertEqual(Death.respawnWaitRemaining(25), 0)
+
+    Death.markDead(25)
+    h.assertEqual(Death.respawnWaitRemaining(25), respawnWaitSeconds)
 end)
 
 ------------------------------------------------------------------------------

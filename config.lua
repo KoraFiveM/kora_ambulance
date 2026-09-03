@@ -16,6 +16,7 @@ Config.job = {
 
 Config.death = {
     deathTime = 300000,               -- ms a player can stay in laststand before bleeding out to full death
+    respawnTime = 60000,              -- ms a fully dead player waits before /respawn is accepted (enforced in Death.respawnAtHospital, not just counted down on screen)
     minimumRevive = 20,               -- % of max health a successful revive restores the patient to
     reviveInterval = 5000,            -- ms cooldown between CPR attempts on the same patient (prevents minigame-spam revives)
     reviveRange = 3.0,                -- metres the reviver must stay within the patient to keep the CPR session valid

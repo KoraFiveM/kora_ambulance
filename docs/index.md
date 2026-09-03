@@ -129,15 +129,39 @@ qbambulance:server:onPlayerRevived(src)                               -- hook
 
 ### Death state machine
 ```
-/respawn                                        -- command: client, only while dead
-qbambulance:client:enterLaststand(deathTimeMs)   -- client event
-qbambulance:client:markDead()                    -- client event
-qbambulance:client:revived(healthPct)            -- client event
-qbambulance:client:respawnedAtHospital(coords)   -- client event
-qbambulance:server:onPlayerDied(src, cause)      -- hook
-qbambulance:server:onPlayerDead(src)             -- hook
+/respawn                                          -- command: client, only while dead and only after Config.death.respawnTime
+qbambulance:client:enterLaststand(deathTimeMs)    -- client event
+qbambulance:client:markDead(respawnTimeMs)        -- client event
+qbambulance:client:revived(healthPct)             -- client event
+qbambulance:client:respawnedAtHospital(coords)    -- client event
+qbambulance:server:onPlayerDied(src, cause)       -- hook
+qbambulance:server:onPlayerDead(src)              -- hook
 qbambulance:server:onPlayerRespawned(src, hospitalName) -- hook
 ```
+
+**Two visible timers.** A downed player sees a `QB.textui` clock counting the
+bleed-out down (`Config.death.deathTime`), and once they die a second clock
+counting down to their respawn (`Config.death.respawnTime`), replaced by a
+`Type /respawn to wake up at a hospital` prompt as soon as that expires. Both
+tick once a second on their own thread — the laststand loop that disables
+controls has to run every frame, and a clock does not.
+
+**The respawn wait is enforced server-side**, in `Death.respawnAtHospital`,
+against the timestamp the server took when it marked the player dead:
+```lua
+-- server, any resource
+local remaining = Death.respawnWaitRemaining(src) -- seconds, 0 once respawn is allowed
+local ok, reason = Death.respawnAtHospital(src, 'pillbox')
+-- ok = false, reason = 'You cannot respawn for another 42s.'
+```
+The client-side check on `/respawn` only saves a round-trip; a player who fires
+`hospital:server:RespawnAtHospital` by hand is refused with the same reason,
+notified back to them rather than failing silently. Refusal happens before any
+side effect, so a rejected attempt is never billed.
+
+A dead player who reconnects has no in-memory death timestamp and is allowed to
+respawn immediately — being stranded with no way back into the world is worse
+than skipping a wait that has almost certainly already passed.
 
 ### Dispatch / house-calls
 ```
@@ -208,8 +232,8 @@ exports.qbambulance:CanHelp()     -- always true; no client-side item check is w
 ## Config highlights (`config.lua`)
 
 `Config.job.name` (`'ambulance'`) and `Config.job.onDutyDoctorGrade` (minimum
-grade counted toward the self-heal gate); `Config.death.deathTime/minimumRevive/
-reviveRange/reviveInterval`; `Config.doctors.minimalDoctors/selfHealDelay/
+grade counted toward the self-heal gate); `Config.death.deathTime/respawnTime/
+minimumRevive/reviveRange/reviveInterval`; `Config.doctors.minimalDoctors/selfHealDelay/
 docCooldown` (AI self-heal when too few medics are on duty); `Config.billing.
 baseCost/perWoundCost/account/fallbackAccount`; `Config.dispatch.autoCall/autoCallCooldown/accent/alertCooldown/
 housecallCooldown`; `Config.hospitals` (multiple check-in points, each with its

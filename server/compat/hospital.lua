@@ -85,8 +85,16 @@ RegisterNetEvent('hospital:server:SendDoctorAlert', function()
     })
 end)
 
+-- Still the ONE code route into a respawn, our own /respawn command included.
+-- Since Config.death.respawnTime is enforced server-side, the refusal has to
+-- be spoken: a player who fires this event by hand would otherwise see the
+-- respawn silently do nothing and read it as a broken script.
 RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospitalName)
-    Death.respawnAtHospital(source, hospitalName)
+    local src = source
+    local ok, reason = Death.respawnAtHospital(src, hospitalName)
+    if not ok and reason then
+        QB.notify.send(src, { title = 'EMS', message = reason, type = 'error' })
+    end
 end)
 
 RegisterNetEvent('hospital:server:SendToBed', function(bedIndex)

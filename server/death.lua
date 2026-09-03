@@ -21,6 +21,7 @@ local QBCore = exports.qbcore
 
 local woundData = {}     -- src -> { [bodyPart] = tier }
 local laststandAt = {}   -- src -> os.time() the player entered laststand
+local deadAt = {}        -- src -> os.time() the player went fully dead (gates the respawn wait)
 
 ------------------------------------------------------------------------------
 -- Pure state machine -- no side effects, fully covered by
@@ -154,6 +155,7 @@ function Death.enterLaststand(src, cause)
     QBCore:setMetaData(src, 'inlaststand', true)
     QBCore:setMetaData(src, 'isdead', false)
     laststandAt[src] = os.time()
+    deadAt[src] = nil
 
     TriggerClientEvent('qbambulance:client:enterLaststand', src, Config.death.deathTime)
     TriggerEvent('qbambulance:server:onPlayerDied', src, cause)
@@ -182,8 +184,9 @@ function Death.markDead(src)
     QBCore:setMetaData(src, 'isdead', true)
     QBCore:setMetaData(src, 'inlaststand', false)
     laststandAt[src] = nil
+    deadAt[src] = os.time()
 
-    TriggerClientEvent('qbambulance:client:markDead', src)
+    TriggerClientEvent('qbambulance:client:markDead', src, Config.death.respawnTime)
     TriggerEvent('qbambulance:server:onPlayerDead', src)
 
     return true
@@ -206,6 +209,7 @@ function Death.reviveInField(src, healthPct)
     QBCore:setMetaData(src, 'isdead', false)
     QBCore:setMetaData(src, 'inlaststand', false)
     laststandAt[src] = nil
+    deadAt[src] = nil
 
     QB.status.remove(src, 'bleeding')
 
@@ -215,12 +219,36 @@ function Death.reviveInField(src, healthPct)
     return true
 end
 
+---Seconds a dead player still has to wait before a hospital respawn is
+---allowed. Also 0 when the server holds no death timestamp at all: `deadAt`
+---is in-memory and does not survive the player's OWN reconnect, and a dead
+---player who relogs must not be stranded with no way back into the world.
+---@param src integer
+---@return integer seconds
+function Death.respawnWaitRemaining(src)
+    local diedAt = deadAt[src]
+    if not diedAt then return 0 end
+    return math.max(0, math.floor(Config.death.respawnTime / 1000) - (os.time() - diedAt))
+end
+
+---Refusal reasons are player-facing: the legacy
+---hospital:server:RespawnAtHospital handler notifies them straight back to the
+---caller (see server/compat/hospital.lua).
 ---@param src integer
 ---@param hospitalName? string Defaults to Config.hospitals[1].
 ---@return boolean, string|nil
 function Death.respawnAtHospital(src, hospitalName)
     local state = Death.getState(src)
-    if state ~= 'dead' then return false, 'player is not dead' end
+    if state ~= 'dead' then return false, 'You are not dead.' end
+
+    -- Server-authoritative respawn wait. client/death.lua counts the same wait
+    -- down on screen, but that display can simply be skipped -- a player who
+    -- fires the legacy event by hand has to be refused here or the timer is
+    -- decoration.
+    local remaining = Death.respawnWaitRemaining(src)
+    if remaining > 0 then
+        return false, ('You cannot respawn for another %ds.'):format(remaining)
+    end
 
     local hospital
     for _, h in ipairs(Config.hospitals) do
@@ -236,6 +264,7 @@ function Death.respawnAtHospital(src, hospitalName)
     QBCore:setMetaData(src, 'isdead', false)
     QBCore:setMetaData(src, 'inlaststand', false)
     laststandAt[src] = nil
+    deadAt[src] = nil
     Death.clearAllWounds(src)
     QBCore:reset(src) -- mirrors legacy hospital:server:resetHungerThirst
 
@@ -299,4 +328,5 @@ AddEventHandler('playerDropped', function()
     local src = source
     woundData[src] = nil
     laststandAt[src] = nil
+    deadAt[src] = nil
 end)

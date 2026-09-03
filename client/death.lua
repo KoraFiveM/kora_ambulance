@@ -12,7 +12,12 @@ State = State or {}
 State.inLaststand = false
 State.isDead = false
 
-local laststandGeneration = 0
+-- Bumped by every down-state transition below. Threads that outlive their
+-- transition (the control-disable loop, the countdown clock) fence themselves
+-- on the value they were started with, so a revive mid-bleed-out retires them
+-- instead of leaving a stale timer ticking on screen.
+local downGeneration = 0
+local respawnAvailableAt = 0
 
 ---@return boolean
 function State.isAlive()
@@ -41,6 +46,61 @@ local function suppressVanillaWasted(coords)
     SetPedToRagdoll(ped, 5000, 5000, 0, false, false, false)
 end
 
+-- Bleed-out / respawn countdown. Its own once-a-second thread rather than a
+-- line inside the laststand loop below: that loop has to run at Wait(0) to
+-- keep controls disabled every frame, and formatting a clock string sixty
+-- times a second to change it once a second is pure waste.
+--
+-- One reused textui handle across both states -- laststand hands the clock
+-- straight over to death, and a second handle would stack a dead timer
+-- underneath the live one.
+local countdown
+
+local function stopCountdown()
+    if not countdown then return end
+    QB.textui.hide(countdown)
+    countdown = nil
+end
+
+---@param text string
+---@param icon string
+local function showCountdown(text, icon)
+    if countdown and QB.textui.update(countdown, text, { icon = icon }) then return end
+    countdown = QB.textui.show(text, { icon = icon })
+end
+
+---@param ms number
+---@return string mmss
+local function clockText(ms)
+    local seconds = math.max(0, math.ceil(ms / 1000))
+    return ('%02d:%02d'):format(math.floor(seconds / 60), seconds % 60)
+end
+
+---Ticks `label mm:ss` down to `endsAt`, then leaves `finalText` on screen (or
+---clears the prompt when there is nothing left to say). Display only -- the
+---server owns both the bleed-out sweep and the respawn gate.
+---@param generation integer The downGeneration this clock belongs to; it retires the moment that moves on.
+---@param endsAt integer GetGameTimer() value the clock runs out at.
+---@param label string Prefixed to the clock, e.g. 'Bleeding out in'.
+---@param finalText? string Replaces the clock once it hits zero.
+local function runCountdown(generation, endsAt, label, finalText)
+    CreateThread(function()
+        while downGeneration == generation and GetGameTimer() < endsAt do
+            showCountdown(('%s %s'):format(label, clockText(endsAt - GetGameTimer())), 'Clock')
+            Wait(1000)
+        end
+
+        -- Another transition already owns the prompt -- leave its text alone.
+        if downGeneration ~= generation then return end
+
+        if finalText then
+            showCountdown(finalText, 'Heart')
+        else
+            stopCountdown()
+        end
+    end)
+end
+
 QB.cache.onChange('isDead', function(isDead, wasDead)
     if not isDead or wasDead or State.inLaststand or State.isDead then return end
 
@@ -60,16 +120,21 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
     State.isDead = false
     setDownState('laststand')
 
-    laststandGeneration = laststandGeneration + 1
-    local myGeneration = laststandGeneration
+    downGeneration = downGeneration + 1
+    local myGeneration = downGeneration
 
     QB.notify.send({ title = 'EMS', message = 'You are critically injured. Wait for help or you will bleed out.', type = 'error' })
+
+    -- No final text: the server's bleed-out sweep is coarse (5s), so rather
+    -- than assert a death it hasn't confirmed yet, the clock just clears and
+    -- the markDead handler below puts its own prompt up.
+    runCountdown(myGeneration, GetGameTimer() + deathTimeMs, 'Bleeding out in')
 
     CreateThread(function()
         local ped = PlayerPedId()
         local endsAt = GetGameTimer() + deathTimeMs
 
-        while State.inLaststand and laststandGeneration == myGeneration and GetGameTimer() < endsAt do
+        while State.inLaststand and downGeneration == myGeneration and GetGameTimer() < endsAt do
             DisableControlAction(0, 24, true)  -- attack
             DisableControlAction(0, 25, true)  -- aim
             DisableControlAction(0, 47, true)  -- weapon wheel
@@ -81,14 +146,18 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
     end)
 end)
 
-RegisterNetEvent('qbambulance:client:markDead', function()
+RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
     State.inLaststand = false
     State.isDead = true
     setDownState('dead')
-    laststandGeneration = laststandGeneration + 1
+    downGeneration = downGeneration + 1
 
     QB.fx.screenEffect('DeathFailOut', 0, true)
-    QB.notify.send({ title = 'EMS', message = 'You have died. Use /respawn to wake up at a hospital.', type = 'error' })
+    QB.notify.send({ title = 'EMS', message = 'You have died. Wait for the coroner or a medic.', type = 'error' })
+
+    respawnAvailableAt = GetGameTimer() + (tonumber(respawnTimeMs) or 0)
+    runCountdown(downGeneration, respawnAvailableAt, 'You can respawn in',
+        'Type /respawn to wake up at a hospital')
 end)
 
 RegisterNetEvent('qbambulance:client:revived', function(healthPct)
@@ -96,7 +165,8 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
     State.inLaststand = false
     State.isDead = false
     setDownState(false)
-    laststandGeneration = laststandGeneration + 1
+    downGeneration = downGeneration + 1
+    stopCountdown()
 
     local ped = PlayerPedId()
     ClearPedTasksImmediately(ped)
@@ -124,6 +194,8 @@ RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
     State.isDead = false
     State.inLaststand = false
     setDownState(false)
+    downGeneration = downGeneration + 1
+    stopCountdown()
     QB.fx.stopScreenEffect({ name = 'DeathFailOut' })
 
     Wait(200)
@@ -132,7 +204,18 @@ end)
 
 -- /respawn re-triggers the exact legacy RespawnAtHospital path (compat/
 -- hospital.lua) even for our own new system -- one code path either way.
+--
+-- The wait check here only saves a pointless round-trip and gives a straight
+-- answer; Death.respawnAtHospital re-checks it against its own death
+-- timestamp, so editing this out buys nothing but a refusal from the server.
 RegisterCommand('respawn', function()
     if not State.isDead then return end
+
+    local remaining = respawnAvailableAt - GetGameTimer()
+    if remaining > 0 then
+        QB.notify.send({ title = 'EMS', message = ('You cannot respawn for another %s.'):format(clockText(remaining)), type = 'error' })
+        return
+    end
+
     TriggerServerEvent('hospital:server:RespawnAtHospital')
 end, false)
