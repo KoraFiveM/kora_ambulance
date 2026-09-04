@@ -111,9 +111,20 @@ end)
 RegisterNetEvent('hospital:server:SyncInjuries', function(injuries)
     if type(injuries) ~= 'table' then return end
     local src = source
+
+    -- qb-ambulancejob's legacy payload is `{ limbs = ..., isBleeding = n }`.
+    -- `isBleeding` is a bleed-tick counter, not a 1..4 wound tier; treating it
+    -- as one was the source of invalid QB.status severities.  That payload's
+    -- limb keys also do not match this resource's body-part names, so leave it
+    -- to the legacy resource and only consume the documented bodyPart -> tier
+    -- compatibility shape below.
+    if injuries.limbs ~= nil or injuries.isBleeding ~= nil then return end
+
     for bodyPart, tier in pairs(injuries) do
-        if type(bodyPart) == 'string' and type(tier) == 'number' then
-            Death.recordWound(src, bodyPart, math.floor(tier))
+        tier = math.floor(tonumber(tier) or 0)
+        if type(bodyPart) == 'string' and Wounds.bodyPartDef(bodyPart)
+            and tier >= 1 and tier <= Wounds.MAX_TIER then
+            Death.recordWound(src, bodyPart, tier)
         end
     end
 end)

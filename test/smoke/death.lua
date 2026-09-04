@@ -207,6 +207,14 @@ h.test('recordWound never downgrades an existing wound on the same body part', f
     h.assertEqual(Death.getWoundData(8).chest, 4)
 end)
 
+h.test('recordWound rejects invalid compatibility input before status sync', function()
+    handle.ensurePlayer(13)
+    Death.recordWound(13, 'chest', 99)
+    Death.recordWound(13, 'not_a_real_part', 2)
+    h.assertEqual(next(Death.getWoundData(13)), nil)
+    h.assertFalse(handle.QB.status.isActive(13, 'bleeding'))
+end)
+
 h.test('_syncStatus applies bleeding at the worst tier and limping only when that tier cannot walk', function()
     handle.ensurePlayer(9)
     Death.recordWound(9, 'left_hand', 1) -- tier 1: canWalk = true

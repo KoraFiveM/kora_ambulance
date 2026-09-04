@@ -93,6 +93,13 @@ end
 ---@param bodyPart string
 ---@param tier integer
 function Death.recordWound(src, bodyPart, tier)
+    -- This is also called by legacy hospital compatibility events.  Keep the
+    -- ledger trustworthy here, at its narrowest shared entry point, so an
+    -- unexpected external payload cannot later be passed to QB.status.
+    if type(bodyPart) ~= 'string' or not Wounds.bodyPartDef(bodyPart) then return end
+    tier = math.floor(tonumber(tier) or 0)
+    if tier < 1 or tier > Wounds.MAX_TIER then return end
+
     local bucket = Death.getWoundData(src)
     local existing = bucket[bodyPart]
     if existing and existing >= tier then return end -- never downgrade an existing wound
