@@ -31,7 +31,7 @@ local function performCPR(entity)
     local targetSrc = targetServerId(entity)
     if not targetSrc then return end
 
-    local token, beginErr = QB.callback.trigger('qbambulance:server:beginRevive', targetSrc)
+    local token, beginErr, authorization = QB.callback.trigger('qbambulance:server:beginRevive', targetSrc)
     if not token then
         QB.notify.send({ title = 'EMS', message = beginErr or 'Unable to begin CPR.', type = 'error' })
         return
@@ -40,7 +40,7 @@ local function performCPR(entity)
     local ped = PlayerPedId()
     QB.anim.play(ped, CPR_ANIM.dict, CPR_ANIM.clip, { flag = 1 })
 
-    local ok, result = pcall(QB.minigames.play, 'mash', { requiredPresses = 15, timeLimit = 8000 })
+    local ok, result = pcall(QB.minigames.play, 'mash', nil, authorization)
     QB.anim.stop(ped)
 
     local proof = ok and type(result) == 'table' and result.success == true and result.proof or nil

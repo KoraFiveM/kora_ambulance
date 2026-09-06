@@ -7,10 +7,9 @@
 -- ped throughout (never transferred), and every frame recomputes its own
 -- position LOCALLY as "the dragger's live ped coords/heading (already
 -- streamed/networked to this client by ordinary FiveM entity sync) plus a
--- relative offset". The offset itself is small, constant while dragging, and
--- only re-broadcast at a low tick rate (every 2s, as a self-correction
--- heartbeat) via the server -- there is no per-frame network traffic for
--- position, which is what makes this cheap regardless of server population.
+-- relative offset". The offset is a local constant; only a payload-free
+-- relationship heartbeat crosses the network every two seconds. There is no
+-- per-frame network traffic or client-authoritative position payload.
 
 -- Client-realm Stretcher table (distinct from the server-realm Stretcher in
 -- server/stretcher.lua -- same name, different Lua VM, no collision) so
@@ -19,7 +18,7 @@
 Stretcher = Stretcher or {}
 
 local dragging = nil -- { targetSrc } when I am the dragger
-local dragged = nil  -- { draggerSrc, offset } when I am being dragged
+local dragged = nil  -- { draggerSrc } when I am being dragged
 
 ---@return boolean
 function Stretcher.isBeingDragged()
@@ -57,7 +56,7 @@ local function startDraggerThread(targetSrc)
 
     CreateThread(function()
         while dragging and dragging.targetSrc == targetSrc do
-            QB.events.trigger('qbambulance:server:stretcherOffset', DRAG_OFFSET)
+            QB.events.trigger('qbambulance:server:stretcherHeartbeat')
             Wait(2000)
         end
     end)
@@ -69,8 +68,8 @@ local function stopDragging()
     QB.anim.stop(PlayerPedId())
 end
 
-local function startDraggedThread(draggerSrc, offset)
-    dragged = { draggerSrc = draggerSrc, offset = offset or DRAG_OFFSET }
+local function startDraggedThread(draggerSrc)
+    dragged = { draggerSrc = draggerSrc }
 
     local ped = PlayerPedId()
     SetPedCanRagdoll(ped, false)
@@ -83,7 +82,7 @@ local function startDraggedThread(draggerSrc, offset)
             if draggerPlayer ~= -1 then
                 local draggerPed = GetPlayerPed(draggerPlayer)
                 if draggerPed and draggerPed ~= 0 and DoesEntityExist(draggerPed) then
-                    local pos = GetOffsetFromEntityInWorldCoords(draggerPed, dragged.offset.x, dragged.offset.y, dragged.offset.z)
+                    local pos = GetOffsetFromEntityInWorldCoords(draggerPed, DRAG_OFFSET.x, DRAG_OFFSET.y, DRAG_OFFSET.z)
                     SetEntityCoordsNoOffset(PlayerPedId(), pos.x, pos.y, pos.z, false, false, false)
                     SetEntityHeading(PlayerPedId(), GetEntityHeading(draggerPed))
                 end
@@ -110,10 +109,6 @@ RegisterNetEvent('qbambulance:client:stretcherBegin', function(otherSrc, iAmDrag
         startDraggedThread(otherSrc)
         QB.notify.send({ title = 'EMS', message = 'You are being carried.', type = 'info' })
     end
-end)
-
-RegisterNetEvent('qbambulance:client:stretcherOffset', function(draggerSrc, offset)
-    if dragged and dragged.draggerSrc == draggerSrc then dragged.offset = offset end
 end)
 
 RegisterNetEvent('qbambulance:client:stretcherEnd', function()

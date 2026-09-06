@@ -6,11 +6,10 @@
 -- resets on relog/death, not a durable record (mirrors real qb-ambulancejob/
 -- qbx_medical, neither of which persists wounds across sessions either).
 --
--- qblib cache detects fatal injury on the client (see client/death.lua) and
--- reports its edge through the authenticated QB.events gateway. This file
--- remains the server-authoritative state machine; its lifecycle functions can
--- also be invoked directly by the legacy compat layer's
--- KillPlayer/SetDeathStatus.
+-- qblib cache detects fatal injury on the client (see client/death.lua), but
+-- the server corroborates the report against its networked ped before moving
+-- the state machine. Its lifecycle functions can also be invoked directly by
+-- the legacy compat layer's KillPlayer/SetDeathStatus.
 
 Death = Death or {}
 
@@ -293,10 +292,14 @@ end
 -- Client reports from qblib cache
 ------------------------------------------------------------------------------
 
-QB.events.register('qbambulance:server:reportDeath', function(src, cause)
+QB.callback.register('qbambulance:server:reportDeath', function(src, cause)
+    if not QBCore:getPlayerData(src) then return false end
+    if Death.isLaststand(src) then return true end
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 or GetEntityHealth(ped) > 0 then return false end
     if type(cause) ~= 'string' then cause = 'died' end
-    Death.enterLaststand(src, cause)
-end)
+    return Death.enterLaststand(src, cause:sub(1, 64))
+end, { rateLimit = { max = Config.death.reportRetryAttempts, window = 2000 } })
 
 -- Per-body-part wound location while ALIVE, reported by client/damage.lua's
 -- gameEventTriggered listener (the cache only tells us about the death

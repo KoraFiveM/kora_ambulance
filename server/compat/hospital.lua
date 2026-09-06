@@ -35,54 +35,49 @@ end)
 -- script that fires the OLD server event name directly instead of going
 -- through our own /911e command.
 --
--- Raised through qbdispatch, so a legacy caller produces a real call with a
--- feed entry, a map marker and a response state -- not a notification that
--- vanishes. qbdispatch can register these same names itself
--- (Config.compat.legacyInbound), but ships with that OFF precisely so this
--- handler -- which knows the job, the wording and the coordinates -- owns them.
---
--- The legacy signature is not stable across the ecosystem: real qb-policejob
--- fires its equivalent as (coords, text) while qbcore's compat table fires
--- (message, coords). Both orders are sniffed rather than assumed, since getting
--- it wrong silently swaps a call's description with its location.
-local function sniff(a, b)
-    if type(a) == 'string' then return a, b end
-    if type(a) == 'table' then return type(b) == 'string' and b or nil, a end
-    return nil, nil
+-- The old payload is deliberately ignored. A compatibility event is still a
+-- public client boundary, so it may select only one registered incident; its
+-- wording and location come from the server.
+local playerAlerts = {
+    ['qbambulance:emergency'] = {
+        jobTypes = { Config.job.type }, code = '10-52', title = 'Medical Emergency',
+        message = 'A patient requires medical assistance.', priority = 1, icon = 'heart-pulse',
+        cooldown = Config.dispatch.autoCallCooldown,
+    },
+    ['qbambulance:doctor'] = {
+        jobTypes = { Config.job.type }, code = '10-51', title = 'Doctor Requested',
+        message = 'A doctor is needed at the hospital.', priority = 3, icon = 'stethoscope',
+        cooldown = Config.dispatch.autoCallCooldown,
+    },
+}
+
+for key, definition in pairs(playerAlerts) do
+    local ok, err = exports.qbdispatch:registerPlayerAlert(key, definition)
+    if not ok then print(('^3[qbambulance]^7 could not register dispatch alert %s: %s'):format(key, err)) end
 end
 
-RegisterNetEvent('hospital:server:ambulanceAlert', function(a, b)
-    local src = source
-    local message, coords = sniff(a, b)
+local function nearHospital(src)
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 then return false end
+    local coords = GetEntityCoords(ped)
 
-    if not coords then
-        local ped = GetPlayerPed(src)
-        if ped and ped ~= 0 then
-            local position = GetEntityCoords(ped)
-            coords = { x = position.x, y = position.y, z = position.z }
-        end
+    for _, hospital in ipairs(Config.hospitals) do
+        local dx, dy, dz = coords.x - hospital.coords.x, coords.y - hospital.coords.y, coords.z - hospital.coords.z
+        if (dx * dx + dy * dy + dz * dz) <= 225.0 then return true end
     end
+    return false
+end
 
-    Ambulance.dispatch.call({
-        code = '10-52',
-        title = 'Ambulance Alert',
-        message = message or 'A medical emergency was reported.',
-        priority = 1,
-        coords = coords,
-        icon = 'heart-pulse',
-        data = { legacy = 'hospital:server:ambulanceAlert', requester = src },
-    })
+RegisterNetEvent('hospital:server:ambulanceAlert', function()
+    local src = source
+    if Death.isAlive(src) then return end
+    exports.qbdispatch:createPlayerCall(src, 'qbambulance:emergency')
 end)
 
 RegisterNetEvent('hospital:server:SendDoctorAlert', function()
-    Ambulance.dispatch.call({
-        code = '10-51',
-        title = 'Doctor Requested',
-        message = 'A doctor is needed at the hospital.',
-        priority = 3,
-        icon = 'stethoscope',
-        data = { legacy = 'hospital:server:SendDoctorAlert' },
-    })
+    local src = source
+    if not nearHospital(src) then return end
+    exports.qbdispatch:createPlayerCall(src, 'qbambulance:doctor')
 end)
 
 -- Still the ONE code route into a respawn, our own /respawn command included.
@@ -147,15 +142,17 @@ RegisterNetEvent('hospital:server:SetArmor', function(armor)
 end)
 
 RegisterNetEvent('hospital:server:resetHungerThirst', function()
-    QBCore:reset(source)
+    -- Kept as an inert compatibility endpoint. Native hospital respawn resets
+    -- needs inside Death.respawnAtHospital; no public event should grant a
+    -- free refill independently of that server-authoritative transition.
 end)
 
 RegisterNetEvent('hospital:server:AddDoctor', function()
-    QBCore:setJobDuty(source, true)
+    Duty.setDuty(source, true)
 end)
 
 RegisterNetEvent('hospital:server:RemoveDoctor', function()
-    QBCore:setJobDuty(source, false)
+    Duty.setDuty(source, false)
 end)
 
 -- Trusted-caller revive/treat: unlike Revive.complete (which gates on the

@@ -18,6 +18,10 @@ function M.install()
     local serverEvents = {}   -- recorded TriggerServerEvent
     local resourceStates = {}
     local players = {}        -- src -> { job, metadata, money, items }
+    local entities = {}
+    local nextEntity = 1000
+    local minigameAuthorizations, minigameProofs = {}, {}
+    local nextMinigameToken = 0
 
     _G.source = nil
 
@@ -53,10 +57,14 @@ function M.install()
     ---@param src integer
     local function ensure(src)
         players[src] = players[src] or {
+            citizenid = ('CID%04d'):format(src),
             job = { name = 'unemployed', label = 'Civilian', onduty = false, grade = { name = 'Freelancer', level = 1 } },
             metadata = {},
             money = { cash = 0, bank = 0 },
             items = {},
+            health = 200,
+            armour = 0,
+            coords = vector(0, 0, 0),
         }
         return players[src]
     end
@@ -116,7 +124,29 @@ function M.install()
         end,
     }
 
-    QB.commands = { add = function() end, remove = function() end, refresh = function() end, list = function() return {} end }
+    QB.minigames = {
+        authorizeProof = function(src, gameType, opts)
+            nextMinigameToken = nextMinigameToken + 1
+            local token = ('authorization:%d'):format(nextMinigameToken)
+            minigameAuthorizations[token] = { src = src, gameType = gameType, opts = opts }
+            return token
+        end,
+        consumeProof = function(src, proofToken, gameType, authorizationToken)
+            local proof = minigameProofs[proofToken]
+            if not proof or proof.src ~= src or proof.gameType ~= gameType
+                or proof.authorization ~= authorizationToken then return false end
+            minigameProofs[proofToken] = nil
+            return true
+        end,
+    }
+
+    QB.commands = {
+        registry = {},
+        add = function(name, _, _, _, handler) QB.commands.registry[name] = handler end,
+        remove = function(name) QB.commands.registry[name] = nil end,
+        refresh = function() end,
+        list = function() return {} end,
+    }
 
     _G.QB = QB
 
@@ -225,6 +255,7 @@ function M.install()
     -- suite).
     local dispatchCalls = {}
     local dispatchClosed = {}
+    local playerAlertDefinitions = {}
     local nextCallId = 0
     local qbdispatch = {}
     function qbdispatch:createCall(payload)
@@ -242,6 +273,20 @@ function M.install()
         local count = 0
         for _ in pairs(recipients) do count = count + 1 end
         return nextCallId, count
+    end
+    function qbdispatch:registerPlayerAlert(key, definition)
+        playerAlertDefinitions[key] = definition
+        return true
+    end
+    function qbdispatch:createPlayerCall(src, key)
+        local definition = playerAlertDefinitions[key]
+        if not definition then return false, 'unknown player alert type' end
+
+        local payload = {}
+        for field, value in pairs(definition) do payload[field] = value end
+        payload.coords = players[src] and players[src].coords or nil
+        payload.data = { incident = key, reporter = src }
+        return self:createCall(payload)
     end
     function qbdispatch:getCalls(filter)
         local out = {}
@@ -261,12 +306,30 @@ function M.install()
         __index = function() return setmetatable({}, { __index = function() return function() end end }) end,
     })
 
+    function _G.CreateVehicle(model, x, y, z, heading)
+        nextEntity = nextEntity + 1
+        entities[nextEntity] = { model = model, coords = vector(x, y, z), heading = heading, bucket = 0 }
+        return nextEntity
+    end
+    function _G.DoesEntityExist(entity) return entities[entity] ~= nil or players[entity] ~= nil end
+    function _G.DeleteEntity(entity) entities[entity] = nil end
+    function _G.NetworkGetNetworkIdFromEntity(entity) return entities[entity] and entity or 0 end
+    function _G.NetworkGetEntityFromNetworkId(networkId) return entities[networkId] and networkId or 0 end
+    function _G.SetEntityRoutingBucket(entity, bucket) if entities[entity] then entities[entity].bucket = bucket end end
+    function _G.SetVehicleNumberPlateText(entity, plate) if entities[entity] then entities[entity].plate = plate end end
     function _G.GetPlayerRoutingBucket(_) return 0 end
     function _G.GetPlayerPed(src) return players[src] and src or 0 end
-    function _G.GetEntityCoords(_) return vector(0, 0, 0) end
+    function _G.GetEntityCoords(entity)
+        if players[entity] then return players[entity].coords end
+        return entities[entity] and entities[entity].coords or vector(0, 0, 0)
+    end
+    function _G.GetEntityHealth(ped) return players[ped] and players[ped].health or 0 end
+    function _G.GetPedArmour(ped) return players[ped] and players[ped].armour or 0 end
+    function _G.SetPedArmour(ped, value) if players[ped] then players[ped].armour = value end end
 
     return {
         players = players,
+        entities = entities,
         ensurePlayer = ensure,
         clientEvents = clientEvents,
         serverEvents = serverEvents,
@@ -275,9 +338,19 @@ function M.install()
         qbcore = qbcore,
         qbdispatch = qbdispatch,
         dispatchCalls = dispatchCalls,
+        playerAlertDefinitions = playerAlertDefinitions,
         lastDispatchCall = function() return dispatchCalls[#dispatchCalls] end,
         qbtarget = qbtarget,
         qbinventory = qbinventory,
+        setHealth = function(src, health) ensure(src).health = health end,
+        setCoords = function(src, x, y, z) ensure(src).coords = vector(x, y, z) end,
+        advanceTime = function(ms) clock = clock + ms end,
+        issueMinigameProof = function(src, gameType, authorization)
+            nextMinigameToken = nextMinigameToken + 1
+            local token = ('proof:%d'):format(nextMinigameToken)
+            minigameProofs[token] = { src = src, gameType = gameType, authorization = authorization }
+            return token
+        end,
         step = function() for _, co in ipairs(threads) do coroutine.resume(co) end end,
         fireEvent = function(name, src, ...)
             local prev = _G.source

@@ -105,4 +105,17 @@ h.test('a playerDropped for the dragger also releases their patient', function()
     h.assertEqual(Stretcher.draggedBy(11), nil)
 end)
 
+h.test('heartbeat releases a relationship that is no longer nearby', function()
+    makeMedic(12)
+    handle.ensurePlayer(13)
+    Death.enterLaststand(13)
+    handle.QB.events.registry['qbambulance:server:stretcherPickup'](12, 13)
+    handle.setCoords(13, 100, 0, 0)
+
+    handle.QB.events.registry['qbambulance:server:stretcherHeartbeat'](12)
+
+    h.assertEqual(Stretcher.draggingTarget(12), nil)
+    h.assertEqual(Stretcher.draggedBy(13), nil)
+end)
+
 h.report('stretcher')

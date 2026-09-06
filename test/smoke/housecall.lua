@@ -73,6 +73,21 @@ h.test('acceptFromQueue returns nil for an id that is not queued', function()
     h.assertEqual(#newQueue, 1)
 end)
 
+h.test('prune removes expired calls and pending is keyed to stable citizen identity', function()
+    local now = 1000
+    local queue = {
+        { id = 1, citizenid = 'CID0001', createdAt = now - 901 },
+        { id = 2, citizenid = 'CID0002', createdAt = now - 10 },
+    }
+
+    local active, expired = HouseCall.prune(queue, now, 900)
+    h.assertEqual(#active, 1)
+    h.assertEqual(active[1].id, 2)
+    h.assertEqual(#expired, 1)
+    h.assertTrue(HouseCall.hasPending(active, 'CID0002'))
+    h.assertFalse(HouseCall.hasPending(active, 'CID0001'))
+end)
+
 h.test('a 911 call reaches on-duty EMS and reports how many heard it', function()
     handle.ensurePlayer(1); handle.players[1].job = { name = Config.job.name, onduty = true, grade = { level = 1 } }
     handle.ensurePlayer(2) -- civilian caller

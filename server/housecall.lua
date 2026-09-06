@@ -19,8 +19,8 @@ HouseCall = HouseCall or {}
 local QBCore = exports.qbcore
 
 local lastAlertAt = {}     -- src -> os.time()
-local lastRequestAt = {}   -- src -> os.time()
-local queue = {}           -- array of {id, src, coords, note, createdAt}
+local lastRequestAt = {}   -- citizenid -> os.time()
+local queue = {}           -- array of {id, citizenid, src, coords, note, createdAt}
 local nextRequestId = 0
 
 ---@param lastAt integer|nil
@@ -104,8 +104,41 @@ function HouseCall.acceptFromQueue(q, requestId)
     return newQueue, accepted
 end
 
+---@param q table[]
+---@param now integer os.time()
+---@param ttlSeconds integer
+---@return table[] active
+---@return table[] expired
+function HouseCall.prune(q, now, ttlSeconds)
+    local active, expired = {}, {}
+    for _, entry in ipairs(q) do
+        local destination = now - entry.createdAt < ttlSeconds and active or expired
+        destination[#destination + 1] = entry
+    end
+    return active, expired
+end
+
+---@param q table[]
+---@param citizenid string
+---@return boolean
+function HouseCall.hasPending(q, citizenid)
+    for _, entry in ipairs(q) do
+        if entry.citizenid == citizenid then return true end
+    end
+    return false
+end
+
+local function pruneQueue()
+    local expired
+    queue, expired = HouseCall.prune(queue, os.time(), math.floor(Config.dispatch.housecallTtl / 1000))
+    for _, request in ipairs(expired) do
+        if request.callId then exports.qbdispatch:closeCall(request.callId, 'house call expired') end
+    end
+end
+
 ---@return table[] A shallow copy, safe for a caller to read/serialise.
 function HouseCall.list()
+    pruneQueue()
     local copy = {}
     for i, entry in ipairs(queue) do copy[i] = entry end
     return copy
@@ -149,17 +182,30 @@ end)
 ---@param note string|nil
 local function submitHousecall(src, note)
     local now = os.time()
-    if not HouseCall.cooldownElapsed(lastRequestAt[src], now, Config.dispatch.housecallCooldown) then
+    local citizenid = QBCore:getPlayerData(src, { 'citizenid' })
+    if type(citizenid) ~= 'string' or citizenid == '' then return end
+
+    pruneQueue()
+    if HouseCall.hasPending(queue, citizenid) then
         TriggerClientEvent('QBCore:Notify', src, 'You already have a pending request.', 'error')
         return
     end
+    if not HouseCall.cooldownElapsed(lastRequestAt[citizenid], now, Config.dispatch.housecallCooldown) then
+        TriggerClientEvent('QBCore:Notify', src, 'Please wait before requesting another visit.', 'error')
+        return
+    end
+    if #queue >= Config.dispatch.maxHousecalls then
+        TriggerClientEvent('QBCore:Notify', src, 'The house-call queue is currently full.', 'error')
+        return
+    end
 
-    lastRequestAt[src] = now
+    lastRequestAt[citizenid] = now
     nextRequestId = nextRequestId + 1
 
     local coords = GetEntityCoords(GetPlayerPed(src))
     local request = {
         id = nextRequestId,
+        citizenid = citizenid,
         src = src,
         coords = { x = coords.x, y = coords.y, z = coords.z },
         note = note and note:sub(1, 120) or nil,
@@ -207,6 +253,7 @@ end)
 ---@param requestId integer
 ---@return boolean claimed
 local function claimHousecall(src, requestId)
+    pruneQueue()
     local newQueue, accepted = HouseCall.acceptFromQueue(queue, requestId)
     if not accepted then return false end
 
@@ -261,5 +308,4 @@ end)
 AddEventHandler('playerDropped', function()
     local src = source
     lastAlertAt[src] = nil
-    lastRequestAt[src] = nil
 end)

@@ -104,14 +104,21 @@ end
 QB.cache.onChange('isDead', function(isDead, wasDead)
     if not isDead or wasDead or State.inLaststand or State.isDead then return end
 
-    suppressVanillaWasted(QB.cache.coords())
+    local coords = QB.cache.coords()
 
-    -- The secure-event handshake can still be in flight while a resource is
-    -- starting. Keep that wait out of qblib's shared cache refresh thread;
-    -- presentation remains immediate and the server transition follows as
-    -- soon as its handshake is available.
+    -- Keep the ped fatally injured until the server has observed that state.
+    -- OneSync health can trail the client's cache edge briefly, so retry the
+    -- authenticated callback for a bounded window. Only after acceptance
+    -- do we resurrect locally to suppress GTA's wasted flow; otherwise a
+    -- forged report can no longer manufacture laststand from a healthy ped.
     CreateThread(function()
-        QB.events.trigger('qbambulance:server:reportDeath', 'died')
+        for attempt = 1, Config.death.reportRetryAttempts do
+            if QB.callback.trigger('qbambulance:server:reportDeath', 'died') then
+                suppressVanillaWasted(coords)
+                return
+            end
+            if attempt < Config.death.reportRetryAttempts then Wait(Config.death.reportRetryInterval) end
+        end
     end)
 end)
 

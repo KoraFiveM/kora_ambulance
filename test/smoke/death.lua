@@ -7,6 +7,8 @@ dofile('config.lua')
 dofile('shared/wounds.lua')
 dofile('server/death.lua')
 dofile('server/billing.lua') -- Death.respawnAtHospital calls Billing.chargeForRespawn
+dofile('server/duty.lua') -- compatibility duty aliases share its location policy
+dofile('server/compat/hospital.lua')
 
 -- Death's respawn gate is measured in os.time() SECONDS, so the only way to
 -- test "after the wait" without actually sleeping a minute is to own the clock.
@@ -98,6 +100,8 @@ end)
 h.test('respawnAtHospital only works from dead, charges a bill, and fully clears wounds', function()
     handle.ensurePlayer(6)
     handle.players[6].money.cash = 1000
+    handle.players[6].metadata.hunger = 10
+    handle.players[6].metadata.thirst = 20
 
     h.assertFalse((Death.respawnAtHospital(6))) -- alive -- refused
 
@@ -110,6 +114,8 @@ h.test('respawnAtHospital only works from dead, charges a bill, and fully clears
     h.assertTrue(Death.isAlive(6))
     h.assertEqual(next(Death.getWoundData(6)), nil) -- wounds fully cleared
     h.assertTrue(handle.players[6].money.cash < 1000) -- billed
+    h.assertEqual(handle.players[6].metadata.hunger, 100)
+    h.assertEqual(handle.players[6].metadata.thirst, 100)
 
     local push = handle.lastClient('qbambulance:client:respawnedAtHospital')
     h.assertTrue(push ~= nil and push.target == 6)
@@ -245,12 +251,83 @@ end)
 -- Cache death report + bleed-out timeout
 ------------------------------------------------------------------------------
 
-h.test('qbambulance:server:reportDeath transitions the authenticated reporting player into laststand', function()
+h.test('qbambulance:server:reportDeath rejects an alive server ped', function()
     handle.ensurePlayer(11)
-    local reportDeath = handle.QB.events.registry['qbambulance:server:reportDeath']
+    local reportDeath = handle.QB.callback.registry['qbambulance:server:reportDeath']
     h.assertTrue(reportDeath ~= nil)
-    reportDeath(11, 'died')
-    h.assertTrue(Death.isLaststand(11))
+    h.assertFalse(reportDeath(11, 'died'))
+    h.assertTrue(Death.isAlive(11))
+end)
+
+h.test('qbambulance:server:reportDeath transitions a corroborated dead ped into laststand', function()
+    handle.ensurePlayer(14)
+    handle.setHealth(14, 0)
+    local reportDeath = handle.QB.callback.registry['qbambulance:server:reportDeath']
+    h.assertTrue(reportDeath(14, 'died'))
+    h.assertTrue(Death.isLaststand(14))
+    handle.setHealth(14, 200)
+    h.assertTrue(reportDeath(14, 'duplicate')) -- acknowledgement is idempotent once accepted
+end)
+
+h.test('public resetHungerThirst compatibility event cannot refill needs', function()
+    handle.ensurePlayer(15)
+    handle.players[15].metadata.hunger = 17
+    handle.players[15].metadata.thirst = 23
+
+    handle.fireEvent('hospital:server:resetHungerThirst', 15)
+
+    h.assertEqual(handle.players[15].metadata.hunger, 17)
+    h.assertEqual(handle.players[15].metadata.thirst, 23)
+end)
+
+h.test('legacy doctor duty aliases require the EMS job and a hospital duty point', function()
+    local src = 18
+    handle.ensurePlayer(src)
+    local duty = Config.hospitals[1].duty
+    handle.setCoords(src, duty.x, duty.y, duty.z)
+    handle.fireEvent('hospital:server:AddDoctor', src)
+    h.assertFalse(handle.players[src].job.onduty, 'a civilian cannot use the doctor alias')
+
+    handle.players[src].job = { name = Config.job.name, onduty = false, grade = { level = 1 } }
+    handle.setCoords(src, 0, 0, 0)
+    handle.fireEvent('hospital:server:AddDoctor', src)
+    h.assertFalse(handle.players[src].job.onduty, 'remote EMS cannot use the doctor alias')
+
+    handle.setCoords(src, duty.x, duty.y, duty.z)
+    handle.fireEvent('hospital:server:AddDoctor', src)
+    h.assertTrue(handle.players[src].job.onduty)
+
+    handle.setCoords(src, 0, 0, 0)
+    handle.fireEvent('hospital:server:RemoveDoctor', src)
+    h.assertTrue(handle.players[src].job.onduty, 'remote off-duty requests are denied too')
+end)
+
+h.test('legacy ambulance alert requires a downed reporter and ignores its payload', function()
+    handle.ensurePlayer(16)
+    local before = #handle.dispatchCalls
+    handle.fireEvent('hospital:server:ambulanceAlert', 16, 'forged emergency', { x = 9999, y = 9999, z = 0 })
+    h.assertEqual(#handle.dispatchCalls, before, 'an alive player cannot create the call')
+
+    Death.markDead(16)
+    handle.setCoords(16, 123.0, 456.0, 20.0)
+    handle.fireEvent('hospital:server:ambulanceAlert', 16, 'forged emergency', { x = 9999, y = 9999, z = 0 })
+
+    local call = handle.lastDispatchCall()
+    h.assertEqual(call.title, 'Medical Emergency', 'registered presentation wins')
+    h.assertEqual(call.coords.x, 123.0, 'coordinates come from the reporter ped')
+end)
+
+h.test('legacy doctor alert is accepted only at a configured hospital', function()
+    handle.ensurePlayer(17)
+    handle.setCoords(17, 0.0, 0.0, 0.0)
+    local before = #handle.dispatchCalls
+    handle.fireEvent('hospital:server:SendDoctorAlert', 17)
+    h.assertEqual(#handle.dispatchCalls, before, 'a remote caller is refused')
+
+    local hospital = Config.hospitals[1]
+    handle.setCoords(17, hospital.coords.x, hospital.coords.y, hospital.coords.z)
+    handle.fireEvent('hospital:server:SendDoctorAlert', 17)
+    h.assertEqual(handle.lastDispatchCall().title, 'Doctor Requested', 'a nearby caller raises the fixed alert')
 end)
 
 h.test('qbambulance:server:reportWound validates body part/tier before recording', function()

@@ -107,9 +107,21 @@ QB.callback.register('qbambulance:server:beginRevive', function(src, targetSrc)
     if not eligible then return nil, reason end
 
     local token = ('%s:%s:%s:%s'):format(src, targetSrc, GetGameTimer(), math.random(100000, 999999))
-    actionsBySrc[src] = { token = token, target = targetSrc, expiresAt = GetGameTimer() + Config.death.reviveActionTtl }
+    local authorization = QB.minigames.authorizeProof(src, 'mash', {
+        requiredPresses = 15,
+        timeLimit = 8000,
+        attempts = 1,
+    })
+    if not authorization then return nil, 'could not authorize CPR' end
+
+    actionsBySrc[src] = {
+        token = token,
+        target = targetSrc,
+        authorization = authorization,
+        expiresAt = GetGameTimer() + Config.death.reviveActionTtl,
+    }
     actionOwnerByTarget[targetSrc] = src
-    return token
+    return token, nil, authorization
 end)
 
 QB.events.register('qbambulance:server:completeRevive', function(src, targetSrc, token, proof)
@@ -118,7 +130,7 @@ QB.events.register('qbambulance:server:completeRevive', function(src, targetSrc,
     if not action or action.target ~= targetSrc or action.token ~= token then return end
     clearAction(src)
     if action.expiresAt < GetGameTimer() then return end
-    if not QB.minigames.consumeProof(src, proof, 'mash') then
+    if not QB.minigames.consumeProof(src, proof, 'mash', action.authorization) then
         lastAttemptAt[targetSrc] = os.time()
         return
     end

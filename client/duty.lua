@@ -1,6 +1,6 @@
 -- Duty (client realm) -- duty toggle prompt and duty-fleet vehicle
--- spawn/store at each hospital's garage point. Actual persistence goes
--- through Core.garage server-side (server/duty.lua) -- this file only
+-- spawn/store at each hospital's garage point. The server owns the ephemeral
+-- duty vehicle lifecycle; this file only
 -- resolves the spawned network id into a real local entity handle and warps
 -- the player into it.
 
@@ -35,15 +35,9 @@ local function storeVehicle()
         return
     end
 
-    local snapshot = {
-        fuel = math.floor(GetVehicleFuelLevel(veh)),
-        engineHealth = math.floor(GetVehicleEngineHealth(veh)),
-        bodyHealth = math.floor(GetVehicleBodyHealth(veh)),
-    }
-
     TaskLeaveVehicle(QB.cache.ped(), veh, 0)
     Wait(1500)
-    QB.events.trigger('qbambulance:server:storeDutyVehicle', snapshot)
+    QB.events.trigger('qbambulance:server:storeDutyVehicle')
 end
 
 for _, hospital in ipairs(Config.hospitals) do

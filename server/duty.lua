@@ -1,8 +1,8 @@
--- Duty (server realm) -- EMS duty toggle and duty-fleet vehicles via
--- Core.garage. Uses the RAW CreateVehicle path (QBCore:spawnVehicle),
--- never QB.entities -- a duty ambulance must be a real networked entity
--- visible to every player, not a local-only prop (see Core.garage's own
--- header for why).
+-- Duty (server realm) -- EMS duty toggle and ephemeral duty-fleet vehicles.
+-- Shared vehicles are created by the server so they remain compatible with
+-- strict entity lockdown. They are deliberately not inserted into the owned
+-- vehicle table: returning, disconnecting, or stopping this resource deletes
+-- them instead of leaking one persistent row per checkout.
 
 Duty = Duty or {}
 
@@ -11,8 +11,9 @@ Duty = Duty or {}
 -- exports boundary as a flat exports.qbcore:<fn>(...) call instead.
 local QBCore = exports.qbcore
 
-local currentVehicle = {}      -- src -> plate of the duty vehicle currently checked out to them
-local currentVehicleNetId = {} -- src -> its network id, so storeDutyVehicle can delete the live entity server-side
+local currentVehicle = {}  -- src -> { plate, networkId }
+local lastVehicleAction = {}
+local lastDutyChange = {}
 
 -- Pharmacy shop + EMS stash per hospital. Safe to call unconditionally at
 -- load time (unlike qbcore's own Core.consumables, which has to defer to
@@ -76,70 +77,150 @@ local function isOnDutyEMS(src)
     return job ~= nil and job.name == Config.job.name and job.onduty == true
 end
 
+---@param src integer
+---@param garage vector3|table
+---@return boolean
+local function isNearGarage(src, garage)
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 then return false end
+
+    local coords = GetEntityCoords(ped)
+    local dx, dy, dz = coords.x - garage.x, coords.y - garage.y, coords.z - garage.z
+    return dx * dx + dy * dy + dz * dz <= Config.dutyGarage.interactionRange ^ 2
+end
+
+local function isNearDutyPoint(src)
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 then return false end
+    local coords = GetEntityCoords(ped)
+    for _, hospital in ipairs(Config.hospitals) do
+        local duty = hospital.duty
+        local dx, dy, dz = coords.x - duty.x, coords.y - duty.y, coords.z - duty.z
+        if dx * dx + dy * dy + dz * dz <= 9.0 then return true end
+    end
+    return false
+end
+
+---@param src integer
+---@param onDuty boolean
+---@return boolean, string|nil
+function Duty.setDuty(src, onDuty)
+    local job = QBCore:getJob(src)
+    if not job or job.name ~= Config.job.name then return false, 'You are not employed as EMS.' end
+    if not isNearDutyPoint(src) then return false, 'Use a hospital duty point to change duty status.' end
+    onDuty = onDuty == true
+    if job.onduty == onDuty then return true end
+
+    local current = GetGameTimer()
+    if lastDutyChange[src] and current - lastDutyChange[src] < 1000 then
+        return false, 'Wait before changing duty status again.'
+    end
+    local changed, err = QBCore:setJobDuty(src, onDuty)
+    if changed then lastDutyChange[src] = current end
+    return changed, err
+end
+
+---@param src integer
+---@return boolean
+local function actionAllowed(src)
+    local now = GetGameTimer()
+    local previous = lastVehicleAction[src]
+    if previous and now - previous < Config.dutyGarage.actionCooldown then return false end
+    lastVehicleAction[src] = now
+    return true
+end
+
+---@param networkId integer|nil
+local function deleteNetworkVehicle(networkId)
+    if not networkId then return end
+    local vehicle = NetworkGetEntityFromNetworkId(networkId)
+    if vehicle and vehicle ~= 0 and DoesEntityExist(vehicle) then DeleteEntity(vehicle) end
+end
+
+---@param src integer
+local function clearDutyVehicle(src)
+    local active = currentVehicle[src]
+    if active then deleteNetworkVehicle(active.networkId) end
+    currentVehicle[src] = nil
+end
+
 QB.callback.register('qbambulance:server:spawnDutyVehicle', function(src, hospitalName, vehicleIndex)
     if not isOnDutyEMS(src) then return false, 'not on duty' end
     if currentVehicle[src] then return false, 'you already have a duty vehicle checked out' end
+    if not actionAllowed(src) then return false, 'please wait before trying again' end
 
     local hospital
     for _, h in ipairs(Config.hospitals) do
         if h.name == hospitalName then hospital = h; break end
     end
     if not hospital then return false, 'unknown hospital' end
+    if not isNearGarage(src, hospital.garage) then return false, 'not at this garage' end
 
     local vehicleDef = Config.dutyVehicles[tonumber(vehicleIndex) or 0]
     if not vehicleDef then return false, 'unknown vehicle' end
 
     local plate = Duty.generatePlate()
-    local ok, err = QBCore:createVehicle(nil, vehicleDef.model, plate, Config.job.name)
-    if not ok then return false, err end
+    local vehicle = CreateVehicle(
+        joaat(vehicleDef.model),
+        hospital.garage.x, hospital.garage.y, hospital.garage.z,
+        hospital.garage.w or 0.0,
+        true,
+        false
+    )
+    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return false, 'failed to create vehicle' end
 
-    local networkId, spawnErr = QBCore:spawnVehicle(src, plate, hospital.garage, hospital.garage.w or 0.0)
-    if not networkId then
-        QBCore:deleteVehicle(plate)
-        return false, spawnErr
+    SetEntityRoutingBucket(vehicle, GetPlayerRoutingBucket(src))
+    SetVehicleNumberPlateText(vehicle, plate)
+
+    local networkId = NetworkGetNetworkIdFromEntity(vehicle)
+    if not networkId or networkId == 0 then
+        DeleteEntity(vehicle)
+        return false, 'failed to network vehicle'
     end
 
-    currentVehicle[src] = plate
-    currentVehicleNetId[src] = networkId
+    currentVehicle[src] = { plate = plate, networkId = networkId }
     return networkId
 end)
 
-QB.events.register('qbambulance:server:storeDutyVehicle', function(src, snapshot)
-    local plate = currentVehicle[src]
-    if not plate then return end
+QB.events.register('qbambulance:server:storeDutyVehicle', function(src)
+    local active = currentVehicle[src]
+    if not active or not isOnDutyEMS(src) or not actionAllowed(src) then return end
 
-    QBCore:storeVehicle(plate, snapshot)
-
-    local netId = currentVehicleNetId[src]
-    if netId then
-        local veh = NetworkGetEntityFromNetworkId(netId)
-        if veh and veh ~= 0 and DoesEntityExist(veh) then DeleteEntity(veh) end
+    local nearGarage = false
+    for _, hospital in ipairs(Config.hospitals) do
+        if isNearGarage(src, hospital.garage) then nearGarage = true; break end
     end
+    if not nearGarage then return end
 
-    currentVehicle[src] = nil
-    currentVehicleNetId[src] = nil
+    clearDutyVehicle(src)
     QB.notify.send(src, { title = 'EMS Garage', message = 'Vehicle returned to the fleet.', type = 'success' })
 end)
 
 ---@param src integer
 ---@return string|nil
 function Duty.currentVehiclePlate(src)
-    return currentVehicle[src]
+    return currentVehicle[src] and currentVehicle[src].plate or nil
 end
 
-QBCore:addCommand('ems-duty', 'Toggle EMS duty', {}, false, function(source)
+QB.commands.add('ems-duty', 'Toggle EMS duty at a hospital', {}, false, function(source)
     local job = QBCore:getJob(source)
-    if not job or job.name ~= Config.job.name then
-        TriggerClientEvent('QBCore:Notify', source, 'You are not employed as EMS.', 'error')
-        return
-    end
-
-    local newDuty = not job.onduty
-    QBCore:setJobDuty(source, newDuty)
-    TriggerClientEvent('QBCore:Notify', source, newDuty and 'You are now on duty.' or 'You are now off duty.', 'success')
+    local newDuty = job ~= nil and not job.onduty
+    local changed, err = Duty.setDuty(source, newDuty)
+    QB.notify.send(source, {
+        message = changed and (newDuty and 'You are now on duty.' or 'You are now off duty.')
+            or (err or 'Duty status could not be changed.'),
+        type = changed and 'success' or 'error',
+    })
 end)
 
 AddEventHandler('playerDropped', function()
-    currentVehicle[source] = nil
-    currentVehicleNetId[source] = nil
+    local src = source
+    clearDutyVehicle(src)
+    lastVehicleAction[src] = nil
+    lastDutyChange[src] = nil
+end)
+
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+    for src in pairs(currentVehicle) do clearDutyVehicle(src) end
 end)

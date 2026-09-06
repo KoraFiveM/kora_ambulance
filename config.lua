@@ -17,6 +17,8 @@ Config.job = {
 Config.death = {
     deathTime = 300000,               -- ms a player can stay in laststand before bleeding out to full death
     respawnTime = 60000,              -- ms a fully dead player waits before /respawn is accepted (enforced in Death.respawnAtHospital, not just counted down on screen)
+    reportRetryInterval = 100,         -- ms a dead client waits before retrying server ped-state corroboration
+    reportRetryAttempts = 5,           -- bounded retries for OneSync health replication before leaving the native death state intact
     minimumRevive = 20,               -- % of max health a successful revive restores the patient to
     reviveInterval = 5000,            -- ms cooldown between CPR attempts on the same patient (prevents minigame-spam revives)
     reviveRange = 3.0,                -- metres the reviver must stay within the patient to keep the CPR session valid
@@ -43,6 +45,8 @@ Config.painkillers = {
 Config.dispatch = {
     alertCooldown = 30000,            -- ms cooldown per player on the /911e emergency alert command
     housecallCooldown = 60000,        -- ms cooldown per player on submitting a new house-call request
+    housecallTtl = 900000,             -- ms an unclaimed house-call request remains available
+    maxHousecalls = 50,                -- maximum live house-call requests retained server-wide
 
     accent = '#EF4444',               -- EMS red, applied to this player's dispatch UI
 
@@ -91,6 +95,11 @@ Config.dutyVehicles = {
     { label = 'Ambulance', model = 'ambulance' },
     { label = 'Ambulance (Lifeguard)', model = 'lguard' },
     { label = 'Response Bike', model = 'faggio2' },
+}
+
+Config.dutyGarage = {
+    interactionRange = 8.0,            -- metres from a configured garage allowed for checkout or return
+    actionCooldown = 3000,             -- ms between checkout/return requests from one player
 }
 
 -- 15 body parts, each with a relative hit-weight (used by Wounds.pickBodyPart's

@@ -32,4 +32,64 @@ h.test('an unrelated resource starting does not re-trigger hospital registration
     h.assertEqual(#handle.qbinventory.calls, before, 'only a qbinventory restart should re-trigger registerHospitals')
 end)
 
+local function makeMedicAtGarage(src, hospital)
+    handle.ensurePlayer(src)
+    handle.players[src].job = { name = Config.job.name, onduty = true, grade = { level = 1 } }
+    handle.setCoords(src, hospital.garage.x, hospital.garage.y, hospital.garage.z)
+end
+
+h.test('duty checkout creates one ephemeral server-owned vehicle without a garage row', function()
+    local hospital = Config.hospitals[1]
+    makeMedicAtGarage(20, hospital)
+
+    local networkId = handle.QB.callback.registry['qbambulance:server:spawnDutyVehicle'](20, hospital.name, 1)
+
+    h.assertTrue(type(networkId) == 'number' and networkId > 0)
+    h.assertTrue(handle.entities[networkId] ~= nil, 'the shared vehicle exists server-side')
+    h.assertTrue(Duty.currentVehiclePlate(20) ~= nil, 'the checkout is tracked by source')
+end)
+
+h.test('duty checkout refuses remote callers and return deletes the ephemeral entity', function()
+    local hospital = Config.hospitals[1]
+    makeMedicAtGarage(21, hospital)
+    handle.setCoords(21, 0, 0, 0)
+    local remote = handle.QB.callback.registry['qbambulance:server:spawnDutyVehicle'](21, hospital.name, 1)
+    h.assertFalse(remote)
+
+    makeMedicAtGarage(22, hospital)
+    local networkId = handle.QB.callback.registry['qbambulance:server:spawnDutyVehicle'](22, hospital.name, 1)
+    handle.advanceTime(Config.dutyGarage.actionCooldown)
+    handle.QB.events.registry['qbambulance:server:storeDutyVehicle'](22)
+
+    h.assertEqual(handle.entities[networkId], nil, 'return deletes the live entity')
+    h.assertEqual(Duty.currentVehiclePlate(22), nil, 'return clears the checkout guard')
+end)
+
+h.test('disconnect deletes a checked-out duty vehicle', function()
+    local hospital = Config.hospitals[1]
+    makeMedicAtGarage(23, hospital)
+    local networkId = handle.QB.callback.registry['qbambulance:server:spawnDutyVehicle'](23, hospital.name, 1)
+
+    handle.fireEvent('playerDropped', 23)
+
+    h.assertEqual(handle.entities[networkId], nil)
+    h.assertEqual(Duty.currentVehiclePlate(23), nil)
+end)
+
+h.test('EMS duty command requires a configured hospital duty point', function()
+    local src = 24
+    handle.ensurePlayer(src)
+    handle.players[src].job = { name = Config.job.name, onduty = false, grade = { level = 1 } }
+    local command = handle.QB.commands.registry['ems-duty']
+    h.assertTrue(type(command) == 'function')
+
+    command(src)
+    h.assertFalse(handle.players[src].job.onduty, 'remote command must not toggle duty')
+
+    local duty = Config.hospitals[1].duty
+    handle.setCoords(src, duty.x, duty.y, duty.z)
+    command(src)
+    h.assertTrue(handle.players[src].job.onduty)
+end)
+
 h.report('duty')

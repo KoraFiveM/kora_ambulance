@@ -3,8 +3,8 @@
 -- is entirely client-side (client/stretcher.lua): the dragged player's own
 -- client stays network owner of their own ped and self-corrects off the
 -- dragger's live (already-networked) ped coords + a broadcast relative
--- offset -- this module only decides WHO is allowed to drag WHOM, and
--- relays the begin/end handshake and the low-tick-rate offset updates.
+-- offset -- this module only decides WHO is allowed to drag WHOM, relays the
+-- begin/end handshake, and verifies a low-rate relationship heartbeat.
 --
 -- Differentiator feature (confirmed absent from both qb-ambulancejob and
 -- qbx_ambulancejob) -- see the plan's qbambulance section for why
@@ -20,6 +20,7 @@ local QBCore = exports.qbcore
 
 local draggerOf = {}  -- targetSrc -> draggerSrc
 local targetOf = {}   -- draggerSrc -> targetSrc
+local lastHeartbeatAt = {}
 
 ---Pure eligibility check for starting a drag.
 ---@param targetState "alive"|"laststand"|"dead"
@@ -59,6 +60,7 @@ local function releaseInternal(draggerSrc, silent)
 
     targetOf[draggerSrc] = nil
     draggerOf[targetSrc] = nil
+    lastHeartbeatAt[draggerSrc] = nil
 
     if not silent then
         TriggerClientEvent('qbambulance:client:stretcherEnd', draggerSrc)
@@ -96,10 +98,24 @@ end)
 -- client only (never broadcast), which is what makes this cheap regardless
 -- of server population -- one small table, one targeted TriggerClientEvent,
 -- at whatever interval client/stretcher.lua chooses to send it at.
-QB.events.register('qbambulance:server:stretcherOffset', function(src, offset)
+QB.events.register('qbambulance:server:stretcherHeartbeat', function(src)
     local targetSrc = targetOf[src]
     if not targetSrc then return end
-    TriggerClientEvent('qbambulance:client:stretcherOffset', targetSrc, src, offset)
+
+    local now = GetGameTimer()
+    local previous = lastHeartbeatAt[src]
+    if previous and now - previous < 500 then return end
+    lastHeartbeatAt[src] = now
+
+    local ped, targetPed = GetPlayerPed(src), GetPlayerPed(targetSrc)
+    local invalid = not isOnDutyEMS(src)
+        or not exports.qbcore:getPlayerData(targetSrc)
+        or GetPlayerRoutingBucket(src) ~= GetPlayerRoutingBucket(targetSrc)
+        or not ped or ped == 0
+        or not targetPed or targetPed == 0
+        or #(GetEntityCoords(ped) - GetEntityCoords(targetPed)) > Config.death.reviveRange * 2.0
+
+    if invalid then releaseInternal(src, false) end
 end)
 
 AddEventHandler('playerDropped', function()
