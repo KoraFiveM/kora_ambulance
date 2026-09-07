@@ -45,6 +45,7 @@ server_scripts {
     'server/revive.lua',
     'server/duty.lua',
     'server/items.lua',
+    'server/treatment.lua',
     'server/stretcher.lua',
     'server/housecall.lua',
     'server/compat/hospital.lua'
@@ -60,6 +61,7 @@ client_scripts {
     'client/hospital.lua',
     'client/duty.lua',
     'client/revive.lua',
+    'client/treatment.lua',
     'client/stretcher.lua',
     'client/pharmacy.lua',
     'client/housecall.lua',

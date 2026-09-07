@@ -4,7 +4,8 @@ title: qbambulance
 ---
 
 EMS/ambulance job for FiveM. A per-body-part wound ledger drives bleeding/limping
-severity, a defibrillator + CPR minigame powers field revives, dispatch runs
+severity, on-duty medics can assess and treat individual wounds, a defibrillator
+and CPR minigame power field revives, and dispatch runs
 through both a one-shot `/911e` alert and a browsable house-call queue, hospital
 respawns charge a wound-scaled bill, and on-duty medics get duty vehicles from a
 per-hospital garage plus a stretcher system to drag downed players. A doctor
@@ -19,6 +20,7 @@ keep working unmodified.
 - [qbcore](https://qbcore2.github.io/qbcore/)
 - [qbinventory](https://qbcore2.github.io/qbinventory/)
 - [qbtarget](https://qbcore2.github.io/qbtarget/)
+- [qbdispatch](https://qbcore2.github.io/qbdispatch/)
 
 ## Installation
 
@@ -29,6 +31,7 @@ ensure qblib
 ensure qbcore
 ensure qbinventory
 ensure qbtarget
+ensure qbdispatch
 ensure qbambulance
 ```
 qbambulance registers its own pharmacy shops and EMS stashes (one pair per
@@ -89,6 +92,22 @@ AddEventHandler('qbambulance:server:onPlayerRevivedBy', function(targetSrc, revi
 end)
 ```
 
+### Assess and treat a patient
+
+While on duty, target another player and choose **Assess Patient** for a stable,
+head-to-toe summary of their open wounds. Choose **Treat Wound** to run a
+cancellable qblib action and close one wound using the medic's own supplies.
+The most urgent treatable wound is selected: a bandage handles tier 1-2 wounds,
+while severe and critical wounds require an IFAK. Job, proximity, item ownership,
+action timing and current wound severity are all checked again on the server when
+the action completes.
+
+```lua
+AddEventHandler('qbambulance:server:onPatientTreated', function(patientSrc, medicSrc, bodyPart, tier, item)
+    print(('%d treated %d (%s, tier %d) with %s'):format(medicSrc, patientSrc, bodyPart, tier, item))
+end)
+```
+
 ### React to a hospital bill being charged
 ```lua
 -- server, any resource
@@ -125,6 +144,14 @@ QB.callback.trigger('qbambulance:server:beginRevive', targetSrc)      -- -> toke
 QB.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
 qbambulance:server:onPlayerRevivedBy(targetSrc, reviverSrc)           -- hook
 qbambulance:server:onPlayerRevived(src)                               -- hook
+```
+
+### Patient assessment & treatment
+```
+QB.callback.trigger('qbambulance:server:assessPatient', targetSrc) -- -> report | nil, err
+QB.callback.trigger('qbambulance:server:beginTreatment', targetSrc) -- -> token | nil, err
+QB.callback.trigger('qbambulance:server:completeTreatment', targetSrc, token, completed) -- -> treated, err
+qbambulance:server:onPatientTreated(patientSrc, medicSrc, bodyPart, tier, item) -- hook
 ```
 
 ### Death state machine
@@ -236,7 +263,8 @@ grade counted toward the self-heal gate); `Config.death.deathTime/respawnTime/
 minimumRevive/reviveRange/reviveInterval`; `Config.doctors.minimalDoctors/selfHealDelay/
 docCooldown` (AI self-heal when too few medics are on duty); `Config.billing.
 baseCost/perWoundCost/account/fallbackAccount`; `Config.dispatch.autoCall/autoCallCooldown/accent/alertCooldown/
-housecallCooldown`; `Config.hospitals` (multiple check-in points, each with its
+housecallCooldown`; `Config.treatment.duration/range/actionTtl` (server-authorized
+medic-to-patient wound care); `Config.hospitals` (multiple check-in points, each with its
 own beds/pharmacy/stash/duty/garage coords); `Config.dutyVehicles`;
 `Config.bodyParts` (15 parts with hit-weight and `vital` flag) and
 `Config.woundLevels` (4-tier bleed severity, tier ≥ `ifakRequired` can't be

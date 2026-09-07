@@ -42,6 +42,12 @@ Config.painkillers = {
     interval = 300000,                -- ms cooldown between painkiller uses (metadata.lastPainkillerAt-gated)
 }
 
+Config.treatment = {
+    duration = 5000,                  -- ms an on-duty medic must spend treating one wound
+    range = 3.0,                      -- metres the medic must remain from the patient throughout treatment
+    actionTtl = 15000,                -- ms before an unfinished server-issued treatment action expires
+}
+
 Config.dispatch = {
     alertCooldown = 30000,            -- ms cooldown per player on the /911e emergency alert command
     housecallCooldown = 60000,        -- ms cooldown per player on submitting a new house-call request
