@@ -163,3 +163,6 @@ Config.weaponClassMap = {
     explosive = { injuryChance = 1.00, bleedChance = 0.90, severityBias = 2 },
     fall      = { injuryChance = 0.50, bleedChance = 0.20, severityBias = 0 },
 }
+
+-- Registers this resource-owned configuration with qblib without changing its public Config table.
+if QB and QB.config and QB.config.adopt then Config = QB.config.adopt(Config) end
