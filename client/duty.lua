@@ -40,6 +40,7 @@ local function storeVehicle()
     QB.events.trigger('qbambulance:server:storeDutyVehicle')
 end
 
+local function registerDutyTargets()
 for _, hospital in ipairs(Config.hospitals) do
     local options = {}
 
@@ -47,34 +48,49 @@ for _, hospital in ipairs(Config.hospitals) do
         options[#options + 1] = {
             label = ('Check out %s'):format(vehicleDef.label),
             icon = 'car',
-            job = Config.job.name,
             canInteract = isOnDutyEMS,
-            action = function() spawnVehicle(hospital, index) end,
+            onSelect = function() spawnVehicle(hospital, index) end,
         }
     end
 
     options[#options + 1] = {
         label = 'Return Vehicle',
         icon = 'undo',
-        job = Config.job.name,
         canInteract = isOnDutyEMS,
-        action = storeVehicle,
+        onSelect = storeVehicle,
     }
 
-    QB.interact.addCircleZone(('qbambulance:garage:%s'):format(hospital.name), hospital.garage, 6.0, options, false)
+    exports.qbtarget:addSphereZone({
+        coords = hospital.garage,
+        radius = 6.0,
+        options = options,
+    })
 
-    QB.interact.addCircleZone(('qbambulance:duty:%s'):format(hospital.name), hospital.duty, 2.0, {
-        {
-            label = 'Toggle Duty',
-            icon = 'briefcase',
-            job = Config.job.name,
-            -- The real toggle is server/duty.lua's /ems-duty command (also
-            -- reachable directly from chat) -- routed through here too so
-            -- the world-space prompt doesn't duplicate its validation logic.
-            action = function() ExecuteCommand('ems-duty') end,
+    exports.qbtarget:addSphereZone({
+        coords = hospital.duty,
+        radius = 2.0,
+        options = {
+            {
+                label = 'Toggle Duty',
+                icon = 'briefcase',
+                canInteract = function()
+                    local job = exports.qbcore:getJob()
+                    return job ~= nil and job.name == Config.job.name
+                end,
+                -- The real toggle is server/duty.lua's /ems-duty command (also
+                -- reachable directly from chat) -- routed through here too so
+                -- the world-space prompt doesn't duplicate its validation logic.
+                onSelect = function() ExecuteCommand('ems-duty') end,
+            },
         },
-    }, false)
+    })
 end
+end
+
+registerDutyTargets()
+AddEventHandler('onClientResourceStart', function(resource)
+    if resource == 'qbtarget' then registerDutyTargets() end
+end)
 
 
 -- EMS red for this player's dispatch UI. Client-side because it is per-player:

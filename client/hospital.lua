@@ -29,40 +29,62 @@ local function lieInBed(hospital, bedIndex)
     end)
 end
 
+local function registerHospitalTargets()
 for _, hospital in ipairs(Config.hospitals) do
     local bedOptions = {}
     for i in ipairs(hospital.beds) do
         bedOptions[#bedOptions + 1] = {
             label = ('Lie in bed %d'):format(i),
             icon = 'bed',
-            action = function() lieInBed(hospital, i) end,
+            onSelect = function() lieInBed(hospital, i) end,
         }
     end
 
-    QB.interact.addCircleZone(('qbambulance:beds:%s'):format(hospital.name), hospital.coords, 8.0, bedOptions, false)
+    exports.qbtarget:addSphereZone({
+        coords = hospital.coords,
+        radius = 8.0,
+        options = bedOptions,
+    })
 
-    QB.interact.addCircleZone(('qbambulance:pharmacy:%s'):format(hospital.name), hospital.pharmacy, 3.0, {
-        {
-            label = 'Browse Pharmacy',
-            icon = 'pill',
-            action = function()
-                exports.qbinventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
-            end,
+    exports.qbtarget:addSphereZone({
+        coords = hospital.pharmacy,
+        radius = 3.0,
+        options = {
+            {
+                label = 'Browse Pharmacy',
+                icon = 'pill',
+                onSelect = function()
+                    exports.qbinventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
+                end,
+            },
         },
-    }, false)
+    })
 
-    QB.interact.addCircleZone(('qbambulance:stash:%s'):format(hospital.name), hospital.stash.coords, 3.0, {
-        {
-            label = 'EMS Stash',
-            icon = 'box',
-            job = Config.job.name,
-            action = function()
-                exports.qbinventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
-            end,
+    exports.qbtarget:addSphereZone({
+        coords = hospital.stash.coords,
+        radius = 3.0,
+        options = {
+            {
+                label = 'EMS Stash',
+                icon = 'box',
+                canInteract = function()
+                    local job = exports.qbcore:getJob()
+                    return job ~= nil and job.name == Config.job.name
+                end,
+                onSelect = function()
+                    exports.qbinventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
+                end,
+            },
         },
-    }, false)
+    })
 
     if hospital.blip then
         QB.blips.create(hospital.coords, hospital.blip)
     end
 end
+end
+
+registerHospitalTargets()
+AddEventHandler('onClientResourceStart', function(resource)
+    if resource == 'qbtarget' then registerHospitalTargets() end
+end)
