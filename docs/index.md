@@ -3,16 +3,16 @@ layout: default
 title: qbambulance
 ---
 
-EMS/ambulance job for FiveM. A per-body-part wound ledger drives bleeding/limping
-severity, on-duty medics can assess and treat individual wounds, a defibrillator
-and CPR minigame power field revives, and dispatch runs
-through both a one-shot `/911e` alert and a browsable house-call queue, hospital
-respawns charge a wound-scaled bill, and on-duty medics get duty vehicles from a
-per-hospital garage plus a stretcher system to drag downed players. A doctor
-self-heal AI steps in when too few EMS are on duty. Ships full drop-in
-compatibility with legacy `qb-ambulancejob`/`hospital:*` events — existing
-resources that call `hospital:client:Revive`, `hospital:server:TreatWounds`, etc.
-keep working unmodified.
+EMS/ambulance job for FiveM. Hits are correlated with the victim's actual damaged
+bone, then validated and classified by the server into a persistent per-body-part
+wound ledger. On-duty medics can assess and treat wounds, perform CPR, emergency-
+carry a patient, or deploy a physical stretcher from a configured duty ambulance.
+Patients can check in for timed care in an atomically assigned hospital bed;
+hospital respawns remain an independent escape path for fully dead players.
+Dispatch includes `/911e`, automatic casualty calls and a house-call queue. A
+guarded compatibility adapter supports common `qb-ambulancejob`/`hospital:*`
+integrations while intentionally refusing legacy shortcuts that would let a
+client directly heal, revive, choose a bed, or remove inventory.
 
 ## Requirements
 
@@ -34,9 +34,10 @@ ensure qbtarget
 ensure qbdispatch
 ensure qbambulance
 ```
-qbambulance registers its own pharmacy shops and EMS stashes (one pair per
-`Config.hospitals` entry) against qbinventory at boot — no manual setup needed
-beyond the job record `ambulance` already seeded by qbcore's shared job list.
+qbambulance registers configured pharmacy shops and EMS stashes against
+qbinventory at boot. Pharmacy, stash, duty and garage points are optional per
+hospital; the `ambulance` job record is already seeded by qbcore's shared job
+list.
 
 ## Usage examples
 
@@ -108,6 +109,38 @@ AddEventHandler('qbambulance:server:onPatientTreated', function(patientSrc, medi
 end)
 ```
 
+### Check in for hospital care
+
+An injured or laststand player can use **Check In for Care** at a configured
+hospital desk. The server atomically reserves the lowest free bed, moves the
+patient into the timed care presentation, and rechecks the token, elapsed time,
+death state and bed proximity before completing care. Successful care restores
+health, clears wounds and charges `Config.billing.checkInCost`; cancellation,
+expiry and disconnect release the bed without charging.
+
+```lua
+AddEventHandler('qbambulance:server:onPatientCheckedIn', function(src, hospitalName, bedIndex)
+    print(('%d entered %s bed %d'):format(src, hospitalName, bedIndex))
+end)
+
+AddEventHandler('qbambulance:server:onBedCareCompleted', function(src, hospitalName, bedIndex, charged)
+    print(('%d completed care at %s for $%d'):format(src, hospitalName, charged))
+end)
+
+AddEventHandler('qbambulance:server:onBedReleased', function(src, hospitalName, bedIndex, reason)
+    print(('%s bed %d released: %s'):format(hospitalName, bedIndex, reason))
+end)
+```
+
+### Transport a patient
+
+Check out the configured Ambulance, target it to deploy its stretcher, then use
+the stretcher targets to push or release it. Target a downed player to load them;
+target the linked ambulance to stow or unstow the occupied stretcher. The server
+creates the prop, binds it to the tracked duty vehicle and owns every operator,
+patient and lifecycle transition. **Emergency Carry** remains available when a
+physical stretcher is impractical.
+
 ### React to a hospital bill being charged
 ```lua
 -- server, any resource
@@ -154,6 +187,16 @@ QB.callback.trigger('qbambulance:server:completeTreatment', targetSrc, token, co
 qbambulance:server:onPatientTreated(patientSrc, medicSrc, bodyPart, tier, item) -- hook
 ```
 
+### Hospital admission
+```
+QB.callback.trigger('qbambulance:server:checkInRequested', hospitalName) -- -> care | false, reason
+QB.callback.trigger('qbambulance:server:bedCareCompleted', token)        -- -> true | false, reason
+QB.events.trigger('qbambulance:server:bedLeft', token)
+qbambulance:server:onPatientCheckedIn(src, hospitalName, bedIndex)       -- hook
+qbambulance:server:onBedCareCompleted(src, hospitalName, bedIndex, cost) -- hook
+qbambulance:server:onBedReleased(src, hospitalName, bedIndex, reason)    -- hook
+```
+
 ### Death state machine
 ```
 /respawn                                          -- command: client, only while dead and only after Config.death.respawnTime
@@ -165,6 +208,18 @@ qbambulance:server:onPlayerDied(src, cause)       -- hook
 qbambulance:server:onPlayerDead(src)              -- hook
 qbambulance:server:onPlayerRespawned(src, hospitalName) -- hook
 ```
+
+The server also exposes a detached, read-only medical snapshot:
+```lua
+local status = exports.qbambulance:getPatientStatus(source)
+-- { version = 1, state = 'alive'|'laststand'|'dead', wounds = {...},
+--   laststandAt = unixTimestamp|nil, deadAt = unixTimestamp|nil }
+```
+
+Wounds and down-state deadlines are stored in
+`metadata.qbambulanceMedical`. A reconnect or resource restart restores the
+ledger, continues the bleed-out/respawn clocks, and republishes the server-owned
+`emsDown` state bag. Invalid or stale metadata fields are discarded.
 
 **Two visible timers.** A downed player sees a `QB.textui` clock counting the
 bleed-out down (`Config.death.deathTime`), and once they die a second clock
@@ -186,9 +241,9 @@ The client-side check on `/respawn` only saves a round-trip; a player who fires
 notified back to them rather than failing silently. Refusal happens before any
 side effect, so a rejected attempt is never billed.
 
-A dead player who reconnects has no in-memory death timestamp and is allowed to
-respawn immediately — being stranded with no way back into the world is worse
-than skipping a wait that has almost certainly already passed.
+A dead player who reconnects keeps the original persisted respawn deadline. A
+legacy dead record with no medical timestamp remains immediately respawnable so
+older data cannot strand a player during migration.
 
 ### Dispatch / house-calls
 ```
@@ -234,42 +289,61 @@ qbambulance:server:onBillCharged(src, cost) -- hook, fires from Death.respawnAtH
 Cost is `Config.billing.baseCost` plus `Config.billing.perWoundCost[tier]` for
 every still-open wound at respawn time.
 
-### Stretcher
+### Patient transport
 ```
+QB.callback.trigger('qbambulance:server:stretcherDeployRequested', vehicleNetId)
+QB.events.trigger('qbambulance:server:stretcherPushRequested', stretcherNetId)
+QB.events.trigger('qbambulance:server:stretcherReleased', stretcherNetId)
+QB.events.trigger('qbambulance:server:patientLoadedOnStretcher', stretcherNetId, targetSrc)
+QB.events.trigger('qbambulance:server:patientUnloadedFromStretcher', stretcherNetId)
+QB.events.trigger('qbambulance:server:stretcherStowed', stretcherNetId, vehicleNetId)
+QB.events.trigger('qbambulance:server:stretcherUnstowed', vehicleNetId)
+
+-- emergency-carry fallback
 QB.events.trigger('qbambulance:server:stretcherPickup', targetSrc)
 QB.events.trigger('qbambulance:server:stretcherRelease')
-QB.events.trigger('qbambulance:server:stretcherOffset', offset)
-qbambulance:client:stretcherBegin(otherSrc, iAmDragger)  -- client event
-qbambulance:client:stretcherEnd()                        -- client event
 ```
-qbtarget options "Pick Up Patient" / "Release Patient" are registered globally
-on the `player` target type, gated to on-duty EMS against a downed target.
+All models, attachment offsets, duty-vehicle associations and relationship
+changes are resolved from server/config state. Network events are internal
+transport surfaces; integrations should prefer the target interactions.
 
-### Legacy `qb-ambulancejob` / `hospital:*` compat
-Full `hospital:client:*` / `hospital:server:*` event surface (Revive,
-RevivePlayer, TreatWounds, SendToBed, RespawnAtHospital, SetDoctorCount,
-UseFirstAid/UseIfaks/UsePainkillers, ambulanceAlert, ...) plus callbacks
-`hospital:GetDoctors`, `hospital:GetPlayerStatus`, `hospital:GetPlayerBleeding`.
-Two legacy client exports:
+### Legacy `qb-ambulancejob` / `hospital:*` compatibility
+
+`Config.compat.enabled` registers the common `hospital:client:*`,
+`hospital:server:*` and callback names. Compatibility is semantic and guarded,
+not a promise to reproduce insecure client authority:
+
+- revive and treatment requests enter the modern server-validated CPR/action
+  flows;
+- `SendToBed` ignores the supplied bed index and asks the hospital service to
+  allocate a free bed;
+- another player's status is visible only to nearby on-duty EMS;
+- legacy injury ingestion and direct item-removal events are disabled by
+  default through `Config.compat`;
+- locally callable admin-heal/kill shortcuts are inert;
+- respawn, alerts, duty aliases, usable items and reduce-only armour/weapon
+  modifiers retain guarded mappings.
+
+`hospital:GetDoctors`, `hospital:GetPlayerStatus` and
+`hospital:GetPlayerBleeding` remain available. Two legacy client exports remain:
 ```lua
-exports.qbambulance:isEscorted()  -- true while this client is being dragged on a stretcher
-exports.qbambulance:CanHelp()     -- always true; no client-side item check is wired up
+exports.qbambulance:isEscorted()  -- true while carried or loaded on a stretcher
+exports.qbambulance:CanHelp()     -- UX availability only; never authorization
 ```
 
 ## Config highlights (`config.lua`)
 
-`Config.job.name` (`'ambulance'`) and `Config.job.onDutyDoctorGrade` (minimum
-grade counted toward the self-heal gate); `Config.death.deathTime/respawnTime/
-minimumRevive/reviveRange/reviveInterval`; `Config.doctors.minimalDoctors/selfHealDelay/
-docCooldown` (AI self-heal when too few medics are on duty); `Config.billing.
-baseCost/perWoundCost/account/fallbackAccount`; `Config.dispatch.autoCall/autoCallCooldown/accent/alertCooldown/
-housecallCooldown`; `Config.treatment.duration/range/actionTtl` (server-authorized
-medic-to-patient wound care); `Config.hospitals` (multiple check-in points, each with its
-own beds/pharmacy/stash/duty/garage coords); `Config.dutyVehicles`;
-`Config.bodyParts` (15 parts with hit-weight and `vital` flag) and
-`Config.woundLevels` (4-tier bleed severity, tier ≥ `ifakRequired` can't be
-closed with a plain bandage); `Config.weaponClassMap` (per weapon-class injury/
-bleed chance and severity bias).
+`Config.job` selects the EMS job/type; `Config.death` controls the FSM and CPR;
+`Config.injuries` controls hit correlation, report validation and damage-to-tier
+thresholds; `Config.hospitalCare` controls admissions; `Config.transport`
+controls the stretcher model/attachments/heartbeat; `Config.compat` controls the
+legacy adapter; `Config.billing` covers respawn and check-in costs;
+`Config.dispatch` controls emergency/house-call behavior; and `Config.treatment`
+controls medic-to-patient actions. `Config.hospitals` supports multiple facilities
+with beds plus optional check-in/pharmacy/stash/duty/garage points.
+`Config.dutyVehicles[n].stretcher` opts a vehicle into physical transport.
+`Config.bodyParts` maps GTA bones to 15 anatomical regions, and
+`Config.woundLevels` defines four treatment/mobility tiers.
 
 ## Related resources
 

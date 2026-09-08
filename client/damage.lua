@@ -1,69 +1,74 @@
--- Damage (client realm) -- per-body-part wound LOCATION while alive.
--- QB.cache reports the alive->dead transition (see client/death.lua's
--- header); this is the separate, lightweight damage-source listener the
--- plan calls for, feeding Wounds' pure roll functions to decide whether a
--- hit becomes a tracked wound, then reporting it to the server (server/
--- death.lua's qbambulance:server:reportWound, which re-validates before
--- calling Death.recordWound).
---
--- CEventNetworkEntityDamage's exact argument layout is FiveM-build-dependent
--- (flagged as a known risk in the plan's open decisions) -- indexed
--- defensively via pcall rather than assumed exhaustive.
+-- Damage (client realm) -- correlates the local victim's native damage event
+-- with qblib's next observed health decrease. The client reports measurements
+-- only; server/death.lua owns validation, body-part remapping, and severity.
 
--- WEAPON_GROUP_* hashes classify a weapon without needing its exact name
--- (GetWeapontypeGroup is a stable native across builds, unlike parsing
--- CEventNetworkEntityDamage's own weapon field position).
-local GROUP_CLASS = {
-    [joaat('GROUP_UNARMED')] = 'unarmed',
-    [joaat('GROUP_MELEE')] = 'melee',
-    [joaat('GROUP_PISTOL')] = 'pistol',
-    [joaat('GROUP_SMG')] = 'smg',
-    [joaat('GROUP_MG')] = 'smg',
-    [joaat('GROUP_RIFLE')] = 'rifle',
-    [joaat('GROUP_SHOTGUN')] = 'shotgun',
-    [joaat('GROUP_SNIPER')] = 'sniper',
-    [joaat('GROUP_HEAVY')] = 'explosive',
-    [joaat('GROUP_THROWN')] = 'explosive',
-    [joaat('GROUP_STUNGUN')] = 'pistol',
-}
+local pendingHit
+local sequence = math.max(0, GetGameTimer())
 
-local function classifyWeapon(weaponHash)
-    local ok, group = pcall(GetWeapontypeGroup, weaponHash)
-    if not ok then return 'unarmed' end
-    return GROUP_CLASS[group] or 'unarmed'
+local function nextSequence()
+    sequence = math.max(sequence + 1, GetGameTimer())
+    return sequence
 end
 
-local lastProcessedAt = 0
+---@param bone any
+---@return number|false
+local function normalizeBone(bone)
+    if type(bone) ~= 'number' or bone ~= bone or bone % 1 ~= 0 then return false end
+    return bone
+end
 
 AddEventHandler('gameEventTriggered', function(name, args)
     if name ~= 'CEventNetworkEntityDamage' then return end
     if not (State and State.isAlive and State.isAlive()) then return end
+    if type(args) ~= 'table' or args[1] ~= QB.cache.ped() then return end
 
-    local ok, victim, _attacker, victimDied, weaponHash = pcall(function()
-        return args[1], args[2], args[3] == 1, args[4]
-    end)
-    if not ok or victim ~= QB.cache.ped() then return end
-    if victimDied then return end -- QB.cache/client/death.lua owns the death transition itself
+    local victimDied = args[4] == true or args[4] == 1
+    if victimDied then return end
 
-    -- Coarse client-side rate limit -- a shotgun/explosive can fire several
-    -- CEventNetworkEntityDamage entries for one visual hit; without this a
-    -- single blast could report (and bill for) several wounds at once.
+    -- GetPedLastDamageBone is edge-sensitive: delaying this until the cache's
+    -- health tick risks observing a later hit instead of this event.
+    local ok, found, bone = pcall(GetPedLastDamageBone, args[1])
+    if not ok or not found then bone = false end
+
+    pendingHit = {
+        at = GetGameTimer(),
+        bone = normalizeBone(bone),
+    }
+end)
+
+QB.cache.onChange('health', function(health, previousHealth)
+    local hit = pendingHit
+    if not hit then return end
+
     local now = GetGameTimer()
-    if now - lastProcessedAt < 300 then return end
-    lastProcessedAt = now
-
-    local weaponClass = classifyWeapon(weaponHash)
-    if not Wounds.rollInjury(weaponClass) then return end
-
-    local bodyPart = Wounds.pickBodyPart()
-    local tier = Wounds.rollSeverity(weaponClass, bodyPart)
-
-    if Wounds.rollBleed(weaponClass) then
-        local ped = QB.cache.ped()
-        pcall(function()
-            QB.fx.playPtfx({ dict = 'blood', name = 'blood_bullet_impact_var2', entity = ped, looped = false })
-        end)
+    if now - hit.at > Config.injuries.captureWindow then
+        pendingHit = nil
+        return
     end
 
-    QB.events.trigger('qbambulance:server:reportWound', bodyPart, tier)
+    if type(health) ~= 'number' or type(previousHealth) ~= 'number' then return end
+    if health > previousHealth then
+        pendingHit = nil
+        return
+    end
+    if health == previousHealth then return end
+
+    -- A health decrease consumes the correlated hit even if it is too small
+    -- to report. This prevents a later unrelated decrease reusing its bone.
+    pendingHit = nil
+    local damage = previousHealth - health
+    if damage < Config.injuries.minDamage or damage > Config.injuries.maxDamage then return end
+
+    local bodyPart = Wounds.bodyPartFromBone(hit.bone)
+    local fallback = bodyPart == nil
+    if fallback then bodyPart = Wounds.pickBodyPart() end
+
+    QB.events.trigger('qbambulance:server:hitObserved', {
+        sequence = nextSequence(),
+        bone = hit.bone,
+        bodyPart = bodyPart,
+        damage = damage,
+        healthAfter = health,
+        fallback = fallback,
+    })
 end)

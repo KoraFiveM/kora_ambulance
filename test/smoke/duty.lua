@@ -32,6 +32,19 @@ h.test('an unrelated resource starting does not re-trigger hospital registration
     h.assertEqual(#handle.qbinventory.calls, before, 'only a qbinventory restart should re-trigger registerHospitals')
 end)
 
+h.test('optional pharmacy and stash points can be omitted independently', function()
+    local hospital = Config.hospitals[1]
+    local pharmacy, stash = hospital.pharmacy, hospital.stash
+    hospital.pharmacy, hospital.stash = nil, nil
+    local before = #handle.qbinventory.calls
+
+    handle.fireEvent('onResourceStart', nil, 'qbinventory')
+
+    hospital.pharmacy, hospital.stash = pharmacy, stash
+    h.assertEqual(#handle.qbinventory.calls, before + (hospitalCount - 1) * 2,
+        'only configured inventory points should be registered')
+end)
+
 local function makeMedicAtGarage(src, hospital)
     handle.ensurePlayer(src)
     handle.players[src].job = { name = Config.job.name, onduty = true, grade = { level = 1 } }
@@ -47,6 +60,11 @@ h.test('duty checkout creates one ephemeral server-owned vehicle without a garag
     h.assertTrue(type(networkId) == 'number' and networkId > 0)
     h.assertTrue(handle.entities[networkId] ~= nil, 'the shared vehicle exists server-side')
     h.assertTrue(Duty.currentVehiclePlate(20) ~= nil, 'the checkout is tracked by source')
+    h.assertEqual(Duty.currentVehicleNetworkId(20), networkId)
+    local record, owner = Duty.vehicleRecord(networkId)
+    h.assertEqual(owner, 20)
+    h.assertEqual(record.vehicleIndex, 1)
+    h.assertEqual(record.model, joaat(Config.dutyVehicles[1].model))
 end)
 
 h.test('duty checkout refuses remote callers and return deletes the ephemeral entity', function()

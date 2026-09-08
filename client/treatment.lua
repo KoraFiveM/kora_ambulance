@@ -14,9 +14,10 @@ local function targetServerId(entity)
     return GetPlayerServerId(playerIndex)
 end
 
-local function assessPatient(entity)
-    local patientSrc = targetServerId(entity)
-    if not patientSrc then return end
+---@param patientSrc integer
+local function assessPatientById(patientSrc)
+    patientSrc = tonumber(patientSrc)
+    if not patientSrc or patientSrc < 1 or patientSrc % 1 ~= 0 then return end
 
     local report, reason = QB.callback.trigger('qbambulance:server:assessPatient', patientSrc)
     if not report then
@@ -40,9 +41,10 @@ local function assessPatient(entity)
     })
 end
 
-local function treatPatient(entity)
-    local patientSrc = targetServerId(entity)
-    if not patientSrc then return end
+---@param patientSrc integer
+local function treatPatientById(patientSrc)
+    patientSrc = tonumber(patientSrc)
+    if not patientSrc or patientSrc < 1 or patientSrc % 1 ~= 0 then return end
 
     local started, outcome = QB.actions.run({
         label = 'Treating patient',
@@ -75,6 +77,20 @@ local function treatPatient(entity)
         })
     end
 end
+
+local function assessPatient(entity)
+    local patientSrc = targetServerId(entity)
+    if patientSrc then assessPatientById(patientSrc) end
+end
+
+local function treatPatient(entity)
+    local patientSrc = targetServerId(entity)
+    if patientSrc then treatPatientById(patientSrc) end
+end
+
+-- Legacy integrations enter the same qblib action as the native target
+-- option. All authority remains in server/treatment.lua.
+RegisterNetEvent('qbambulance:client:treatmentRequested', treatPatientById)
 
 local function registerTargets()
     exports.qbtarget:addGlobalType('player', {

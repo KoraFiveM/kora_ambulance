@@ -33,9 +33,44 @@ Config.doctors = {
 
 Config.billing = {
     baseCost = 500,                   -- flat hospital bill charged on every respawn-at-hospital
+    checkInCost = 250,                -- flat fee charged only after a successful non-death check-in treatment
     perWoundCost = { 150, 350, 650, 1200 }, -- extra cost per still-open wound, indexed by its severity tier (1..4)
     account = 'cash',                 -- Core.money account billed first (capped at what's available -- cash can't go negative)
     fallbackAccount = 'bank',         -- account billed for whatever `account` couldn't cover (allowed to go negative, so this always fully succeeds)
+}
+
+Config.hospitalCare = {
+    interactionRange = 3.0,           -- metres a patient must be from a hospital check-in point
+    bedRange = 2.5,                   -- metres a patient must remain from their assigned bed to finish care
+    duration = 15000,                 -- ms a check-in treatment takes once the server has reserved a bed
+    actionTtl = 45000,                -- ms a reserved care action can remain unfinished before its bed is released
+    requireInjury = true,             -- healthy players cannot occupy a treatment bed
+}
+
+Config.injuries = {
+    captureWindow = 500,              -- ms client damage observations may be correlated before reporting a wound
+    reportCooldown = 300,             -- ms between client injury reports for one observed hit
+    healthTolerance = 5,              -- HP below max that still counts as healthy for hospital check-in
+    minDamage = 3,                    -- smallest health loss considered an injury report
+    maxDamage = 100,                  -- largest single health loss accepted by the client injury classifier
+    severityThresholds = { 8, 20, 40 }, -- dense ascending damage cutoffs for wound severity tiers
+}
+
+Config.transport = {
+    model = 'v_med_emptybed',         -- GTA hospital-bed prop used by patient transport integrations
+    interactionRange = 3.0,           -- metres from a transport bed allowed for its interaction
+    heartbeatInterval = 2000,         -- ms between transport ownership heartbeats
+    heartbeatTtl = 6500,              -- ms without a heartbeat before transport ownership expires
+    patientOffset = vector3(0.0, 0.0, 0.55), -- patient attachment offset on the bed prop
+    patientRotation = vector3(0.0, 0.0, 180.0), -- patient attachment rotation on the bed prop
+    pushOffset = vector3(0.0, -1.15, 0.15), -- pusher attachment offset on the bed prop
+    pushRotation = vector3(0.0, 0.0, 0.0), -- pusher attachment rotation on the bed prop
+}
+
+Config.compat = {
+    enabled = true,                   -- enables legacy qb-ambulancejob compatibility endpoints
+    acceptClientInjurySync = false,   -- legacy injury sync remains opt-in; server-owned injury reports are preferred
+    allowDestructiveItemEvents = false, -- legacy item-removal events never remove inventory without explicit opt-in
 }
 
 Config.painkillers = {
@@ -70,6 +105,7 @@ Config.hospitals = {
         name = 'pillbox',
         label = 'Pillbox Hill Medical Center',
         coords = vector4(298.7, -584.7, 43.3, 90.0),
+        checkIn = vector4(307.1, -595.1, 43.3, 70.0),
         beds = {
             vector4(295.5, -595.6, 43.3, 90.0),
             vector4(295.5, -597.9, 43.3, 90.0),
@@ -79,12 +115,13 @@ Config.hospitals = {
         stash = { coords = vector4(308.6, -598.8, 43.3, 160.0), slots = 50, maxWeight = 4000000 },
         duty = vector4(308.0, -595.0, 43.2, 340.0),
         garage = vector4(294.5, -583.5, 43.2, 250.0),
-        blip = { sprite = 61, color = 1, scale = 0.8, label = 'Pillbox Hill Medical' },
+        blip = { sprite = 61, color = 1, scale = 0.8, category = 'Hospital', name = 'Pillbox Hill Medical' },
     },
     {
         name = 'sandy',
         label = 'Sandy Shores Medical Center',
         coords = vector4(1839.5, 3672.9, 34.3, 130.0),
+        checkIn = vector4(1839.5, 3672.9, 34.3, 130.0),
         beds = {
             vector4(1838.9, 3670.6, 34.3, 40.0),
             vector4(1836.9, 3669.0, 34.3, 40.0),
@@ -93,12 +130,18 @@ Config.hospitals = {
         stash = { coords = vector4(1839.9, 3675.0, 34.3, 40.0), slots = 30, maxWeight = 2000000 },
         duty = vector4(1835.8, 3672.9, 34.6, 320.0),
         garage = vector4(1849.8, 3686.5, 34.2, 145.0),
-        blip = { sprite = 61, color = 1, scale = 0.8, label = 'Sandy Shores Medical' },
+        blip = { sprite = 61, color = 1, scale = 0.8, category = 'Hospital', name = 'Sandy Shores Medical' },
     },
 }
 
 Config.dutyVehicles = {
-    { label = 'Ambulance', model = 'ambulance' },
+    {
+        label = 'Ambulance', model = 'ambulance',
+        stretcher = {
+            offset = vector3(0.0, -3.5, 0.25),
+            rotation = vector3(0.0, 0.0, 0.0),
+        },
+    },
     { label = 'Ambulance (Lifeguard)', model = 'lguard' },
     { label = 'Response Bike', model = 'faggio2' },
 }
@@ -113,21 +156,21 @@ Config.dutyGarage = {
 -- `vital` flag (a tier-4 wound to a vital part shortens the blackout timer,
 -- see Wounds.blackoutTimer).
 Config.bodyParts = {
-    { name = 'head',           label = 'Head',            weight = 3,  vital = true },
-    { name = 'neck',           label = 'Neck',            weight = 2,  vital = true },
-    { name = 'chest',          label = 'Chest',           weight = 10, vital = true },
-    { name = 'abdomen',        label = 'Abdomen',         weight = 8,  vital = true },
-    { name = 'spine',          label = 'Spine',           weight = 3,  vital = true },
-    { name = 'left_shoulder',  label = 'Left Shoulder',   weight = 5,  vital = false },
-    { name = 'right_shoulder', label = 'Right Shoulder',  weight = 5,  vital = false },
-    { name = 'left_arm',       label = 'Left Arm',        weight = 8,  vital = false },
-    { name = 'right_arm',      label = 'Right Arm',       weight = 8,  vital = false },
-    { name = 'left_hand',      label = 'Left Hand',       weight = 4,  vital = false },
-    { name = 'right_hand',     label = 'Right Hand',      weight = 4,  vital = false },
-    { name = 'left_leg',       label = 'Left Leg',        weight = 10, vital = false },
-    { name = 'right_leg',      label = 'Right Leg',       weight = 10, vital = false },
-    { name = 'left_foot',      label = 'Left Foot',       weight = 4,  vital = false },
-    { name = 'right_foot',     label = 'Right Foot',      weight = 4,  vital = false },
+    { name = 'head',           label = 'Head',            weight = 3,  vital = true,  bones = { 31086 } },
+    { name = 'neck',           label = 'Neck',            weight = 2,  vital = true,  bones = { 39317 } },
+    { name = 'chest',          label = 'Chest',           weight = 10, vital = true,  bones = { 24816, 24817 } },
+    { name = 'abdomen',        label = 'Abdomen',         weight = 8,  vital = true,  bones = { 11816 } },
+    { name = 'spine',          label = 'Spine',           weight = 3,  vital = true,  bones = { 23553 } },
+    { name = 'left_shoulder',  label = 'Left Shoulder',   weight = 5,  vital = false, bones = { 64729 } },
+    { name = 'right_shoulder', label = 'Right Shoulder',  weight = 5,  vital = false, bones = { 10706 } },
+    { name = 'left_arm',       label = 'Left Arm',        weight = 8,  vital = false, bones = { 61163 } },
+    { name = 'right_arm',      label = 'Right Arm',       weight = 8,  vital = false, bones = { 28252 } },
+    { name = 'left_hand',      label = 'Left Hand',       weight = 4,  vital = false, bones = { 18905 } },
+    { name = 'right_hand',     label = 'Right Hand',      weight = 4,  vital = false, bones = { 57005 } },
+    { name = 'left_leg',       label = 'Left Leg',        weight = 10, vital = false, bones = { 58271 } },
+    { name = 'right_leg',      label = 'Right Leg',       weight = 10, vital = false, bones = { 63931 } },
+    { name = 'left_foot',      label = 'Left Foot',       weight = 4,  vital = false, bones = { 14201 } },
+    { name = 'right_foot',     label = 'Right Foot',      weight = 4,  vital = false, bones = { 52301 } },
 }
 
 -- 4-tier bleed severity, qbx_medical-style: escalating tick damage and
@@ -148,6 +191,95 @@ Config.bleed = {
 
 Config.blackoutTimer = 20000           -- ms of sustained tier-4 bleeding before the screen starts fading to black
 Config.fadeOutTimer = 8000             -- ms the fade-to-black takes once triggered, before forced laststand
+
+local function isPositiveNumber(value)
+    return type(value) == 'number' and value > 0
+end
+
+local function isVector3(value)
+    local kind = type(value)
+    return (kind == 'table' or kind == 'vector3' or kind == 'vector4')
+        and type(value.x) == 'number' and type(value.y) == 'number' and type(value.z) == 'number'
+end
+
+---Validates the structural configuration required by hospital and transport flows.
+---Kept Lua-table based so test/mocks.lua can load this file outside FiveM.
+---@return boolean
+function Config.validate()
+    local hospitalNames, beds, bones = {}, {}, {}
+    assert(type(Config.hospitals) == 'table' and #Config.hospitals > 0, 'at least one hospital is required')
+    for _, hospital in ipairs(Config.hospitals) do
+        assert(type(hospital.name) == 'string' and hospital.name ~= '' and not hospitalNames[hospital.name], 'hospital names must be unique')
+        hospitalNames[hospital.name] = true
+        assert(isVector3(hospital.coords), 'hospital coords must be vectors')
+        assert(isVector3(hospital.checkIn or hospital.coords), 'hospital check-in must be a vector')
+        assert(type(hospital.beds) == 'table' and #hospital.beds > 0, 'each hospital requires at least one bed')
+        for _, bed in ipairs(hospital.beds) do
+            assert(isVector3(bed), 'hospital beds must be vectors')
+            local key = ('%.3f:%.3f:%.3f'):format(bed.x, bed.y, bed.z)
+            assert(not beds[key], 'hospital beds must be unique')
+            beds[key] = true
+        end
+    end
+
+    assert(isPositiveNumber(Config.hospitalCare.interactionRange)
+        and isPositiveNumber(Config.hospitalCare.bedRange)
+        and isPositiveNumber(Config.hospitalCare.duration)
+        and isPositiveNumber(Config.hospitalCare.actionTtl), 'hospital care ranges and durations must be positive')
+    assert(type(Config.hospitalCare.requireInjury) == 'boolean', 'hospital care requireInjury must be boolean')
+    assert(isPositiveNumber(Config.injuries.captureWindow)
+        and isPositiveNumber(Config.injuries.reportCooldown)
+        and type(Config.injuries.healthTolerance) == 'number' and Config.injuries.healthTolerance >= 0
+        and isPositiveNumber(Config.injuries.minDamage)
+        and isPositiveNumber(Config.injuries.maxDamage)
+        and Config.injuries.minDamage <= Config.injuries.maxDamage,
+        'injury capture values must be valid positive ranges')
+    assert(type(Config.transport.model) == 'string' or type(Config.transport.model) == 'number', 'transport model must be a string or hash')
+    assert(isPositiveNumber(Config.transport.interactionRange) and isPositiveNumber(Config.transport.heartbeatInterval)
+        and isPositiveNumber(Config.transport.heartbeatTtl), 'transport ranges and durations must be positive')
+    assert(Config.transport.heartbeatTtl > Config.transport.heartbeatInterval, 'transport heartbeat ttl must exceed its interval')
+    assert(isVector3(Config.transport.patientOffset) and isVector3(Config.transport.patientRotation)
+        and isVector3(Config.transport.pushOffset) and isVector3(Config.transport.pushRotation), 'transport attachments must be vector3 values')
+
+    local lastThreshold, thresholdCount = 0, 0
+    for index, threshold in pairs(Config.injuries.severityThresholds) do
+        assert(type(index) == 'number' and index >= 1 and index == math.floor(index), 'injury thresholds must be dense and ascending')
+        thresholdCount = thresholdCount + 1
+    end
+    for index = 1, thresholdCount do
+        local threshold = Config.injuries.severityThresholds[index]
+        assert(isPositiveNumber(threshold) and threshold > lastThreshold, 'injury thresholds must be dense and ascending')
+        lastThreshold = threshold
+    end
+    assert(thresholdCount > 0, 'injury thresholds must not be empty')
+
+    local bodyPartNames = {}
+    assert(type(Config.bodyParts) == 'table' and #Config.bodyParts > 0, 'at least one body part is required')
+    for _, part in ipairs(Config.bodyParts) do
+        assert(type(part.name) == 'string' and part.name ~= '' and not bodyPartNames[part.name], 'body-part names must be unique')
+        bodyPartNames[part.name] = true
+        assert(isPositiveNumber(part.weight) and type(part.vital) == 'boolean', 'body parts require a positive weight and vital flag')
+        assert(type(part.bones) == 'table' and #part.bones > 0, 'body parts require bones')
+        for _, bone in ipairs(part.bones) do
+            assert(type(bone) == 'number' and bone % 1 == 0 and bone >= 0 and bone <= 65535
+                and not bones[bone], 'body-part bones must be unique valid IDs')
+            bones[bone] = true
+        end
+    end
+    assert(type(Config.compat.enabled) == 'boolean'
+        and type(Config.compat.acceptClientInjurySync) == 'boolean'
+        and type(Config.compat.allowDestructiveItemEvents) == 'boolean', 'compatibility flags must be boolean')
+    assert(type(Config.dutyVehicles) == 'table' and #Config.dutyVehicles > 0, 'at least one duty vehicle is required')
+    for _, vehicle in ipairs(Config.dutyVehicles) do
+        assert(type(vehicle.model) == 'string' or type(vehicle.model) == 'number', 'duty vehicle models must be strings or hashes')
+        if vehicle.stretcher then
+            assert(isVector3(vehicle.stretcher.offset) and isVector3(vehicle.stretcher.rotation), 'stretcher attachments require offset and rotation vector3 values')
+        end
+    end
+    return true
+end
+
+Config.validate()
 
 -- Weapon class -> {injuryChance, bleedChance, severityBias}. `severityBias`
 -- is added to the 1..4 tier roll before clamping (see Wounds.rollSeverity) --

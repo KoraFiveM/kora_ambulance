@@ -27,25 +27,29 @@ local lastDutyChange = {}
 -- every qbinventory onResourceStart, to survive that case too.
 local function registerHospitals()
     for _, hospital in ipairs(Config.hospitals) do
-        exports.qbinventory:registerShop(('ambulance_pharmacy_%s'):format(hospital.name), {
-            label = hospital.label .. ' Pharmacy',
-            slots = 4,
-            coords = hospital.pharmacy,
-            distance = 3.0,
-            inventory = {
-                { slot = 1, name = 'bandage', amount = 200, price = 15 },
-                { slot = 2, name = 'ifak', amount = 100, price = 60 },
-                { slot = 3, name = 'painkillers', amount = 150, price = 25 },
-                { slot = 4, name = 'defibrillator', amount = 20, price = 350 },
-            },
-        })
+        if hospital.pharmacy then
+            exports.qbinventory:registerShop(('ambulance_pharmacy_%s'):format(hospital.name), {
+                label = hospital.label .. ' Pharmacy',
+                slots = 4,
+                coords = hospital.pharmacy,
+                distance = 3.0,
+                inventory = {
+                    { slot = 1, name = 'bandage', amount = 200, price = 15 },
+                    { slot = 2, name = 'ifak', amount = 100, price = 60 },
+                    { slot = 3, name = 'painkillers', amount = 150, price = 25 },
+                    { slot = 4, name = 'defibrillator', amount = 20, price = 350 },
+                },
+            })
+        end
 
-        exports.qbinventory:registerStash(
-            ('ambulance_stash_%s'):format(hospital.name),
-            hospital.label .. ' EMS Stash',
-            hospital.stash.slots, hospital.stash.maxWeight,
-            false, { [Config.job.name] = 0 }, hospital.stash.coords
-        )
+        if hospital.stash then
+            exports.qbinventory:registerStash(
+                ('ambulance_stash_%s'):format(hospital.name),
+                hospital.label .. ' EMS Stash',
+                hospital.stash.slots, hospital.stash.maxWeight,
+                false, { [Config.job.name] = 0 }, hospital.stash.coords
+            )
+        end
     end
 end
 
@@ -95,8 +99,10 @@ local function isNearDutyPoint(src)
     local coords = GetEntityCoords(ped)
     for _, hospital in ipairs(Config.hospitals) do
         local duty = hospital.duty
-        local dx, dy, dz = coords.x - duty.x, coords.y - duty.y, coords.z - duty.z
-        if dx * dx + dy * dy + dz * dz <= 9.0 then return true end
+        if duty then
+            local dx, dy, dz = coords.x - duty.x, coords.y - duty.y, coords.z - duty.z
+            if dx * dx + dy * dy + dz * dz <= 9.0 then return true end
+        end
     end
     return false
 end
@@ -140,6 +146,9 @@ end
 ---@param src integer
 local function clearDutyVehicle(src)
     local active = currentVehicle[src]
+    if active and Stretcher and Stretcher.removeForVehicle then
+        Stretcher.removeForVehicle(active.networkId, 'duty vehicle removed')
+    end
     if active then deleteNetworkVehicle(active.networkId) end
     currentVehicle[src] = nil
 end
@@ -178,7 +187,12 @@ QB.callback.register('qbambulance:server:spawnDutyVehicle', function(src, hospit
         return false, 'failed to network vehicle'
     end
 
-    currentVehicle[src] = { plate = plate, networkId = networkId }
+    currentVehicle[src] = {
+        plate = plate,
+        networkId = networkId,
+        vehicleIndex = tonumber(vehicleIndex),
+        model = joaat(vehicleDef.model),
+    }
     return networkId
 end)
 
@@ -188,7 +202,7 @@ QB.events.register('qbambulance:server:storeDutyVehicle', function(src)
 
     local nearGarage = false
     for _, hospital in ipairs(Config.hospitals) do
-        if isNearGarage(src, hospital.garage) then nearGarage = true; break end
+        if hospital.garage and isNearGarage(src, hospital.garage) then nearGarage = true; break end
     end
     if not nearGarage then return end
 
@@ -200,6 +214,24 @@ end)
 ---@return string|nil
 function Duty.currentVehiclePlate(src)
     return currentVehicle[src] and currentVehicle[src].plate or nil
+end
+
+---@param src integer
+---@return integer|nil
+function Duty.currentVehicleNetworkId(src)
+    return currentVehicle[src] and currentVehicle[src].networkId or nil
+end
+
+---Returns a tracked ephemeral duty-vehicle record. This is an internal
+---same-resource contract for the stretcher module; callers must not mutate it.
+---@param networkId integer
+---@return table|nil record
+---@return integer|nil ownerSrc
+function Duty.vehicleRecord(networkId)
+    for ownerSrc, record in pairs(currentVehicle) do
+        if record.networkId == networkId then return record, ownerSrc end
+    end
+    return nil, nil
 end
 
 QB.commands.add('ems-duty', 'Toggle EMS duty at a hospital', {}, false, function(source)

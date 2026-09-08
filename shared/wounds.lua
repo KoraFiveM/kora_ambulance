@@ -8,7 +8,11 @@
 Wounds = Wounds or {}
 
 local bodyPartByName = {}
-for _, part in ipairs(Config.bodyParts) do bodyPartByName[part.name] = part end
+local bodyPartByBone = {}
+for _, part in ipairs(Config.bodyParts) do
+    bodyPartByName[part.name] = part
+    for _, bone in ipairs(part.bones or {}) do bodyPartByBone[bone] = part.name end
+end
 
 local woundLevelByTier = {}
 for _, level in ipairs(Config.woundLevels) do woundLevelByTier[level.tier] = level end
@@ -26,6 +30,38 @@ end
 ---@return table|nil
 function Wounds.bodyPartDef(name)
     return bodyPartByName[name]
+end
+
+---Maps a GTA ped bone ID to this resource's configured body-part name.
+---@param bone number|nil
+---@return string|nil bodyPart
+function Wounds.bodyPartFromBone(bone)
+    if type(bone) ~= 'number' or bone ~= bone or bone % 1 ~= 0 then return nil end
+    return bodyPartByBone[bone]
+end
+
+---Derives a wound tier from observed health loss. The configured thresholds
+---are the lower bounds for tiers 2..N; vital locations add one tier after
+---classification. The final tier is always clamped to the configured wound
+---level range.
+---@param damage number
+---@param bodyPart string
+---@return integer tier
+function Wounds.severityFromDamage(damage, bodyPart)
+    damage = tonumber(damage) or 0
+
+    local tier = 1
+    for _, threshold in ipairs(Config.injuries.severityThresholds) do
+        if damage < threshold then break end
+        tier = tier + 1
+    end
+
+    local part = bodyPartByName[bodyPart]
+    if part and part.vital then tier = tier + 1 end
+
+    if tier < 1 then return 1 end
+    if tier > MAX_TIER then return MAX_TIER end
+    return tier
 end
 
 ---@param tier integer

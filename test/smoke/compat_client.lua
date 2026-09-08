@@ -1,0 +1,21 @@
+local h = dofile('test/harness.lua')
+local mocks = dofile('test/mocks.lua')
+local handle = mocks.install()
+dofile('config.lua')
+
+dofile('client/compat.lua')
+
+h.test('legacy pain effect retains and releases qblib handle identity', function()
+    handle.fireEvent('hospital:client:SetPain', 0, 2)
+    handle.fireEvent('hospital:client:SetPain', 0, 3)
+
+    h.assertEqual(#handle.QB.fx.started, 1, 'repeated pain updates must not leak screen handles')
+    local startedHandle = handle.QB.fx.started[1].handle
+
+    handle.fireEvent('hospital:client:SetPain', 0, 0)
+
+    h.assertEqual(handle.QB.fx.stopped[1], startedHandle,
+        'clearing pain must release the opaque handle returned by screenEffect')
+end)
+
+h.report('compat_client')

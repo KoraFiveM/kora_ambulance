@@ -17,6 +17,27 @@ h.test('pickBodyPart respects weight and is deterministic given a fixed rand', f
     h.assertEqual(lastPart, Config.bodyParts[#Config.bodyParts].name)
 end)
 
+h.test('bodyPartFromBone maps every configured bone and rejects missing or malformed IDs', function()
+    for _, part in ipairs(Config.bodyParts) do
+        for _, bone in ipairs(part.bones) do h.assertEqual(Wounds.bodyPartFromBone(bone), part.name) end
+    end
+    h.assertEqual(Wounds.bodyPartFromBone(65535), nil)
+    h.assertEqual(Wounds.bodyPartFromBone(false), nil)
+    h.assertEqual(Wounds.bodyPartFromBone(31086.5), nil)
+end)
+
+h.test('severityFromDamage uses configured thresholds, adds vital bump, and clamps', function()
+    h.assertEqual(Wounds.severityFromDamage(3, 'left_hand'), 1)
+    h.assertEqual(Wounds.severityFromDamage(7, 'left_hand'), 1)
+    h.assertEqual(Wounds.severityFromDamage(8, 'left_hand'), 2)
+    h.assertEqual(Wounds.severityFromDamage(20, 'left_hand'), 3)
+    h.assertEqual(Wounds.severityFromDamage(40, 'left_hand'), 4)
+
+    h.assertEqual(Wounds.severityFromDamage(3, 'head'), 2)
+    h.assertEqual(Wounds.severityFromDamage(20, 'chest'), 4)
+    h.assertEqual(Wounds.severityFromDamage(100, 'head'), Wounds.MAX_TIER)
+end)
+
 h.test('resolveWeaponClass classifies common weapon names', function()
     h.assertEqual(Wounds.resolveWeaponClass('WEAPON_PISTOL'), 'pistol')
     h.assertEqual(Wounds.resolveWeaponClass('weapon_pumpshotgun'), 'shotgun')

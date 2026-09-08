@@ -41,50 +41,53 @@ local function storeVehicle()
 end
 
 local function registerDutyTargets()
-for _, hospital in ipairs(Config.hospitals) do
-    local options = {}
+    for _, hospital in ipairs(Config.hospitals) do
+        if hospital.garage then
+            local options = {}
 
-    for index, vehicleDef in ipairs(Config.dutyVehicles) do
-        options[#options + 1] = {
-            label = ('Check out %s'):format(vehicleDef.label),
-            icon = 'car',
-            canInteract = isOnDutyEMS,
-            onSelect = function() spawnVehicle(hospital, index) end,
-        }
+            for index, vehicleDef in ipairs(Config.dutyVehicles) do
+                options[#options + 1] = {
+                    label = ('Check out %s'):format(vehicleDef.label),
+                    icon = 'car',
+                    canInteract = isOnDutyEMS,
+                    onSelect = function() spawnVehicle(hospital, index) end,
+                }
+            end
+
+            options[#options + 1] = {
+                label = 'Return Vehicle',
+                icon = 'undo',
+                canInteract = isOnDutyEMS,
+                onSelect = storeVehicle,
+            }
+
+            exports.qbtarget:addSphereZone({
+                coords = hospital.garage,
+                radius = 6.0,
+                options = options,
+            })
+        end
+
+        if hospital.duty then
+            exports.qbtarget:addSphereZone({
+                coords = hospital.duty,
+                radius = 2.0,
+                options = {
+                    {
+                        label = 'Toggle Duty',
+                        icon = 'briefcase',
+                        canInteract = function()
+                            local job = exports.qbcore:getJob()
+                            return job ~= nil and job.name == Config.job.name
+                        end,
+                        -- The command and target share the same server-side
+                        -- location and employment validation.
+                        onSelect = function() ExecuteCommand('ems-duty') end,
+                    },
+                },
+            })
+        end
     end
-
-    options[#options + 1] = {
-        label = 'Return Vehicle',
-        icon = 'undo',
-        canInteract = isOnDutyEMS,
-        onSelect = storeVehicle,
-    }
-
-    exports.qbtarget:addSphereZone({
-        coords = hospital.garage,
-        radius = 6.0,
-        options = options,
-    })
-
-    exports.qbtarget:addSphereZone({
-        coords = hospital.duty,
-        radius = 2.0,
-        options = {
-            {
-                label = 'Toggle Duty',
-                icon = 'briefcase',
-                canInteract = function()
-                    local job = exports.qbcore:getJob()
-                    return job ~= nil and job.name == Config.job.name
-                end,
-                -- The real toggle is server/duty.lua's /ems-duty command (also
-                -- reachable directly from chat) -- routed through here too so
-                -- the world-space prompt doesn't duplicate its validation logic.
-                onSelect = function() ExecuteCommand('ems-duty') end,
-            },
-        },
-    })
-end
 end
 
 registerDutyTargets()

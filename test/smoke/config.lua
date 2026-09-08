@@ -1,0 +1,23 @@
+local h = dofile('test/harness.lua')
+local mocks = dofile('test/mocks.lua'); mocks.install()
+dofile('config.lua')
+
+h.test('the shipped hospital, injury and transport configuration is valid', function()
+    h.assertTrue(Config.validate())
+end)
+
+h.test('validation rejects an empty hospital list', function()
+    local hospitals = Config.hospitals
+    Config.hospitals = {}
+    h.assertThrows(Config.validate)
+    Config.hospitals = hospitals
+end)
+
+h.test('validation rejects malformed injury ranges', function()
+    local maxDamage = Config.injuries.maxDamage
+    Config.injuries.maxDamage = Config.injuries.minDamage - 1
+    h.assertThrows(Config.validate)
+    Config.injuries.maxDamage = maxDamage
+end)
+
+h.report('config')

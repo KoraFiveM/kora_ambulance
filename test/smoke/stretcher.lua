@@ -9,6 +9,7 @@ dofile('config.lua')
 dofile('shared/wounds.lua')
 dofile('server/death.lua')
 dofile('server/billing.lua')
+dofile('server/duty.lua')
 dofile('server/stretcher.lua')
 
 h.test('canPickup refuses an alive patient', function()
@@ -103,6 +104,8 @@ h.test('a playerDropped for the dragger also releases their patient', function()
 
     handle.fireEvent('playerDropped', 10)
     h.assertEqual(Stretcher.draggedBy(11), nil)
+    local released = handle.lastClient('qbambulance:client:stretcherEnd')
+    h.assertEqual(released.target, 11, 'the surviving patient must be told to stop the carry presentation')
 end)
 
 h.test('heartbeat releases a relationship that is no longer nearby', function()
@@ -116,6 +119,152 @@ h.test('heartbeat releases a relationship that is no longer nearby', function()
 
     h.assertEqual(Stretcher.draggingTarget(12), nil)
     h.assertEqual(Stretcher.draggedBy(13), nil)
+end)
+
+h.test('a missing carry heartbeat expires ownership so another medic can help', function()
+    makeMedic(14)
+    makeMedic(15)
+    handle.ensurePlayer(16)
+    Death.enterLaststand(16)
+
+    local pickup = handle.QB.events.registry['qbambulance:server:stretcherPickup']
+    pickup(14, 16)
+    h.assertEqual(Stretcher.draggedBy(16), 14)
+
+    handle.advanceTime(Config.transport.heartbeatTtl + 1)
+    Stretcher.sweep(GetGameTimer())
+    h.assertEqual(Stretcher.draggedBy(16), nil)
+    h.assertEqual(Stretcher.draggingTarget(14), nil)
+
+    pickup(15, 16)
+    h.assertEqual(Stretcher.draggedBy(16), 15, 'expired ownership must not block a replacement medic')
+end)
+
+h.test('physical transport mode transitions are explicit and reject illegal edges', function()
+    h.assertEqual(Stretcher.transition('world', 'push'), 'pushed')
+    h.assertEqual(Stretcher.transition('pushed', 'release'), 'world')
+    h.assertEqual(Stretcher.transition('world', 'stow'), 'vehicle')
+    h.assertEqual(Stretcher.transition('vehicle', 'unstow'), 'world')
+    h.assertEqual(Stretcher.transition('vehicle', 'push'), nil)
+    h.assertEqual(Stretcher.transition('world', 'unstow'), nil)
+end)
+
+local function checkoutTransportVehicle(src, vehicleIndex)
+    local hospital = Config.hospitals[1]
+    makeMedic(src)
+    handle.setCoords(src, hospital.garage.x, hospital.garage.y, hospital.garage.z)
+    return handle.QB.callback.registry['qbambulance:server:spawnDutyVehicle'](src, hospital.name, vehicleIndex or 1)
+end
+
+local function deployTransport(src)
+    local vehicleNetworkId = checkoutTransportVehicle(src, 1)
+    local stretcherNetworkId, reason = Stretcher.deploy(src, vehicleNetworkId)
+    h.assertTrue(stretcherNetworkId ~= nil, reason)
+    return vehicleNetworkId, stretcherNetworkId
+end
+
+h.test('deployment requires an on-duty medic and a tracked compatible duty vehicle', function()
+    handle.ensurePlayer(20)
+    local untracked = CreateVehicle(joaat('ambulance'), 0, 0, 0, 0, true, false)
+    h.assertEqual((Stretcher.deploy(20, untracked)), nil, 'a civilian cannot deploy')
+
+    makeMedic(20)
+    h.assertEqual((Stretcher.deploy(20, untracked)), nil, 'an arbitrary ambulance is not a duty vehicle')
+
+    local unsupported = checkoutTransportVehicle(21, 2)
+    h.assertEqual((Stretcher.deploy(21, unsupported)), nil, 'a configured vehicle without stretcher support is refused')
+end)
+
+h.test('one server-created stretcher is tied to one compatible duty vehicle', function()
+    local vehicleNetworkId, stretcherNetworkId = deployTransport(22)
+    h.assertEqual(Stretcher.vehicleStretcher(vehicleNetworkId), stretcherNetworkId)
+    h.assertEqual(Stretcher.state(stretcherNetworkId).mode, 'world')
+    h.assertEqual(handle.entities[stretcherNetworkId].type, 3)
+    h.assertEqual(handle.entities[stretcherNetworkId].model, joaat(Config.transport.model))
+    h.assertEqual(handle.entityStates[stretcherNetworkId].qbambulanceStretcher.networkId, stretcherNetworkId)
+    h.assertEqual((Stretcher.deploy(22, vehicleNetworkId)), nil, 'a second stretcher cannot be deployed')
+end)
+
+h.test('a downed patient can be loaded, transported in the linked vehicle, and unloaded', function()
+    local vehicleNetworkId, stretcherNetworkId = deployTransport(23)
+    local stretcher = handle.entities[stretcherNetworkId]
+    handle.setCoords(23, stretcher.coords.x, stretcher.coords.y, stretcher.coords.z)
+
+    h.assertTrue((Stretcher.beginPush(23, stretcherNetworkId)))
+    h.assertEqual(Stretcher.state(stretcherNetworkId).mode, 'pushed')
+
+    handle.ensurePlayer(24)
+    handle.setCoords(24, stretcher.coords.x, stretcher.coords.y, stretcher.coords.z)
+    Death.enterLaststand(24)
+    h.assertTrue((Stretcher.loadPatient(23, stretcherNetworkId, 24)))
+    h.assertEqual(Stretcher.patientStretcher(24), stretcherNetworkId)
+
+    local vehicle = handle.entities[vehicleNetworkId]
+    stretcher.coords = vehicle.coords -- simulate the client-owned push movement
+    handle.setCoords(23, vehicle.coords.x, vehicle.coords.y, vehicle.coords.z)
+    h.assertTrue((Stretcher.stow(23, stretcherNetworkId, vehicleNetworkId)))
+    local stowed = Stretcher.state(stretcherNetworkId)
+    h.assertEqual(stowed.mode, 'vehicle')
+    h.assertEqual(stowed.patient, 24, 'the patient remains loaded for transport')
+
+    h.assertTrue((Stretcher.unstow(23, vehicleNetworkId)))
+    handle.setCoords(23, stretcher.coords.x, stretcher.coords.y, stretcher.coords.z)
+    handle.setCoords(24, stretcher.coords.x, stretcher.coords.y, stretcher.coords.z)
+    h.assertTrue((Stretcher.unloadPatient(23, stretcherNetworkId)))
+    h.assertEqual(Stretcher.patientStretcher(24), nil)
+end)
+
+h.test('alive patients and competing patient relationships are refused', function()
+    local _, stretcherNetworkId = deployTransport(25)
+    local coords = handle.entities[stretcherNetworkId].coords
+    handle.setCoords(25, coords.x, coords.y, coords.z)
+    handle.ensurePlayer(26)
+    handle.setCoords(26, coords.x, coords.y, coords.z)
+
+    h.assertFalse((Stretcher.loadPatient(25, stretcherNetworkId, 26)), 'an alive patient cannot be loaded')
+    Death.enterLaststand(26)
+    handle.QB.events.registry['qbambulance:server:stretcherPickup'](25, 26)
+    h.assertFalse((Stretcher.loadPatient(25, stretcherNetworkId, 26)), 'a carried patient cannot also be loaded')
+end)
+
+h.test('heartbeat expiry releases an operator without deleting the stretcher', function()
+    local _, stretcherNetworkId = deployTransport(27)
+    local coords = handle.entities[stretcherNetworkId].coords
+    handle.setCoords(27, coords.x, coords.y, coords.z)
+    h.assertTrue((Stretcher.beginPush(27, stretcherNetworkId)))
+
+    handle.advanceTime(Config.transport.heartbeatTtl + 1)
+    Stretcher.sweep(GetGameTimer())
+    h.assertEqual(Stretcher.state(stretcherNetworkId).mode, 'world')
+    h.assertEqual(Stretcher.state(stretcherNetworkId).operator, nil)
+    h.assertTrue(handle.entities[stretcherNetworkId] ~= nil)
+end)
+
+h.test('returning a duty vehicle removes its stretcher and releases its patient', function()
+    local vehicleNetworkId, stretcherNetworkId = deployTransport(28)
+    local stretcher = handle.entities[stretcherNetworkId]
+    handle.setCoords(28, stretcher.coords.x, stretcher.coords.y, stretcher.coords.z)
+    handle.ensurePlayer(29)
+    handle.setCoords(29, stretcher.coords.x, stretcher.coords.y, stretcher.coords.z)
+    Death.enterLaststand(29)
+    h.assertTrue((Stretcher.loadPatient(28, stretcherNetworkId, 29)))
+
+    local garage = Config.hospitals[1].garage
+    handle.setCoords(28, garage.x, garage.y, garage.z)
+    handle.advanceTime(Config.dutyGarage.actionCooldown)
+    handle.QB.events.registry['qbambulance:server:storeDutyVehicle'](28)
+
+    h.assertEqual(Stretcher.vehicleStretcher(vehicleNetworkId), nil)
+    h.assertEqual(Stretcher.patientStretcher(29), nil)
+    h.assertEqual(handle.entities[stretcherNetworkId], nil)
+end)
+
+h.test('lost physical entities are swept and cannot leave stale relationships', function()
+    local vehicleNetworkId, stretcherNetworkId = deployTransport(30)
+    DeleteEntity(stretcherNetworkId)
+    Stretcher.sweep(GetGameTimer())
+    h.assertEqual(Stretcher.vehicleStretcher(vehicleNetworkId), nil)
+    h.assertEqual(Stretcher.state(stretcherNetworkId), nil)
 end)
 
 h.report('stretcher')

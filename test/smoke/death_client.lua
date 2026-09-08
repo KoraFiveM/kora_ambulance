@@ -29,7 +29,8 @@ handle.QB.callback.trigger = function(name, cause)
     return acceptReport
 end
 
-_G.LocalPlayer = { state = { set = function() end } }
+local clientStateWrites = 0
+_G.LocalPlayer = { state = { set = function() clientStateWrites = clientStateWrites + 1 end } }
 _G.RegisterCommand = function() end
 _G.PlayerPedId = function() return 77 end
 _G.GetEntityHeading = function() return 90.0 end
@@ -38,6 +39,9 @@ _G.NetworkResurrectLocalPlayer = function(x, y, z, heading)
 end
 _G.SetEntityHealth = function(_, value) health = value end
 _G.SetPedToRagdoll = function() ragdolled = true end
+_G.GetEntityMaxHealth = function() return 200 end
+_G.ClearPedTasksImmediately = function() end
+_G.SetPedCanRagdoll = function() end
 
 dofile('client/death.lua')
 
@@ -68,6 +72,25 @@ h.test('a corroborated death report suppresses native wasted after server accept
     h.assertEqual(health, 50)
     h.assertTrue(ragdolled)
 
+end)
+
+h.test('client death lifecycle never writes the server-owned emsDown state bag', function()
+    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    h.assertTrue(State.inLaststand)
+    h.assertEqual(clientStateWrites, 0)
+end)
+
+h.test('death screen effect retains and releases qblib handle identity', function()
+    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+
+    h.assertEqual(#handle.QB.fx.started, 1, 'repeated dead-state updates must not leak screen handles')
+    local startedHandle = handle.QB.fx.started[1].handle
+
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+
+    h.assertEqual(handle.QB.fx.stopped[1], startedHandle,
+        'revive must release the opaque handle returned by screenEffect')
 end)
 
 h.report('death_client')

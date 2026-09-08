@@ -1,98 +1,132 @@
--- Hospital (client realm) -- multi-hospital check-in/bed system, pharmacy,
--- and EMS stash zones. The pharmacy shop / EMS stash themselves are
--- registered server-side (server/duty.lua) -- this file only wires up the
--- world-space interaction points via QB.interact.
+-- Hospital (client realm) -- facility presentation only. The server chooses
+-- and reserves beds; this file cannot select one or make care succeed early.
 
-local inBed = false
+local activeCare
 
-local function lieInBed(hospital, bedIndex)
-    if inBed then return end
-    inBed = true
+local function stopCare(token)
+    if not activeCare or (token and activeCare.token ~= token) then return end
+    ClearPedTasks(PlayerPedId())
+    activeCare = nil
+end
 
-    local bed = hospital.beds[bedIndex]
+local function startCare(care)
+    if type(care) ~= 'table' or type(care.token) ~= 'string' or activeCare then return end
+    activeCare = care
+
+    local bed = care.bed
     local ped = PlayerPedId()
-
-    TaskStartScenarioAtCoords(ped, 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w, 0, true, false)
-
-    QB.notify.send({ title = hospital.label, message = 'Resting -- stand up to leave.', type = 'info' })
+    SetEntityCoords(ped, bed.x, bed.y, bed.z, false, false, false, false)
+    TaskStartScenarioAtCoords(ped, 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w or 0.0, 0, true, false)
+    QB.notify.send({ title = 'Hospital Check-in', message = 'Resting in your assigned bed.', type = 'info' })
 
     CreateThread(function()
-        while inBed do
-            DisableControlAction(0, 24, true)
-            DisableControlAction(0, 25, true)
-            if IsControlJustPressed(0, 38) then break end -- E to get up
+        local token = care.token
+        local startedAt = GetGameTimer()
+        while activeCare and activeCare.token == token do
+            if IsControlJustPressed(0, 38) then
+                QB.events.trigger('qbambulance:server:bedLeft', token)
+                return
+            end
+            if GetGameTimer() - startedAt >= care.duration then
+                local completed, reason = QB.callback.trigger('qbambulance:server:bedCareCompleted', token)
+                if not completed then
+                    QB.notify.send({ title = 'Hospital Check-in', message = reason or 'Care was not completed.', type = 'warning' })
+                end
+                return
+            end
             Wait(0)
         end
-
-        ClearPedTasks(PlayerPedId())
-        inBed = false
     end)
 end
 
-local function registerHospitalTargets()
-for _, hospital in ipairs(Config.hospitals) do
-    local bedOptions = {}
-    for i in ipairs(hospital.beds) do
-        bedOptions[#bedOptions + 1] = {
-            label = ('Lie in bed %d'):format(i),
-            icon = 'bed',
-            onSelect = function() lieInBed(hospital, i) end,
-        }
+local function requestCheckIn(hospital)
+    if activeCare then
+        QB.notify.send({ title = 'Hospital Check-in', message = 'You already have a bed reserved.', type = 'warning' })
+        return
     end
+    local care, reason = QB.callback.trigger('qbambulance:server:checkInRequested', hospital.name)
+    if not care then
+        QB.notify.send({ title = 'Hospital Check-in', message = reason or 'Check-in is unavailable.', type = 'error' })
+        return
+    end
+    startCare(care)
+end
 
-    exports.qbtarget:addSphereZone({
-        coords = hospital.coords,
-        radius = 8.0,
-        options = bedOptions,
-    })
+RegisterNetEvent('qbambulance:client:checkInAccepted', function(care)
+    startCare(care)
+end)
 
-    exports.qbtarget:addSphereZone({
-        coords = hospital.pharmacy,
-        radius = 3.0,
-        options = {
-            {
-                label = 'Browse Pharmacy',
-                icon = 'pill',
-                onSelect = function()
-                    exports.qbinventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
-                end,
+RegisterNetEvent('qbambulance:client:bedReleased', function(reason)
+    if not activeCare then return end
+    stopCare(activeCare.token)
+    if reason == 'completed' then
+        QB.notify.send({ title = 'Hospital Check-in', message = 'Care completed.', type = 'success' })
+    elseif reason ~= 'left-bed' then
+        QB.notify.send({ title = 'Hospital Check-in', message = 'Your bed reservation was released.', type = 'warning' })
+    end
+end)
+
+local function registerHospitalTargets()
+    for _, hospital in ipairs(Config.hospitals) do
+        exports.qbtarget:addSphereZone({
+            coords = hospital.checkIn or hospital.coords,
+            radius = Config.hospitalCare.interactionRange,
+            options = {
+                {
+                    label = 'Check In for Care', icon = 'bed',
+                    onSelect = function() requestCheckIn(hospital) end,
+                },
             },
-        },
-    })
+        })
 
-    exports.qbtarget:addSphereZone({
-        coords = hospital.stash.coords,
-        radius = 3.0,
-        options = {
-            {
-                label = 'EMS Stash',
-                icon = 'box',
-                canInteract = function()
-                    local job = exports.qbcore:getJob()
-                    return job ~= nil and job.name == Config.job.name
-                end,
-                onSelect = function()
-                    exports.qbinventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
-                end,
-            },
-        },
-    })
-
-    if hospital.blip then
-        local blip = QB.blips.create(hospital.coords, hospital.blip)
-        if blip and not hospital.blip.info then
-            QB.blips.setInfo(blip, {
-                title = hospital.label,
-                rows = {
-                    { kind = 'wrappedText', value = 'Medical services and EMS facilities are available here.' },
+        if hospital.pharmacy then
+            exports.qbtarget:addSphereZone({
+                coords = hospital.pharmacy,
+                radius = 3.0,
+                options = {
+                    {
+                        label = 'Browse Pharmacy', icon = 'pill',
+                        onSelect = function()
+                            exports.qbinventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
+                        end,
+                    },
                 },
             })
         end
+
+        if hospital.stash and hospital.stash.coords then
+            exports.qbtarget:addSphereZone({
+                coords = hospital.stash.coords,
+                radius = 3.0,
+                options = {
+                    {
+                        label = 'EMS Stash', icon = 'box',
+                        canInteract = function()
+                            local job = exports.qbcore:getJob()
+                            return job ~= nil and job.name == Config.job.name
+                        end,
+                        onSelect = function()
+                            exports.qbinventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
+                        end,
+                    },
+                },
+            })
+        end
+
+        if hospital.blip then
+            local blip = QB.blips.create(hospital.coords, hospital.blip)
+            if blip and not hospital.blip.info then
+                QB.blips.setInfo(blip, {
+                    title = hospital.label,
+                    rows = { { kind = 'wrappedText', value = 'Medical services and EMS facilities are available here.' } },
+                })
+            end
+        end
     end
-end
 end
 
 registerHospitalTargets()
+
 AddEventHandler('onClientResourceStart', function(resource)
     if resource == 'qbtarget' then registerHospitalTargets() end
 end)

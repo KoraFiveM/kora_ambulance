@@ -1,11 +1,11 @@
--- Legacy qb-ambulancejob compat (client realm) -- the client-side half of
--- the checklist; server/compat/hospital.lua is the other half. Where a
--- legacy name has real state consequences, the handler bounces to the
--- matching hospital:server:* event (already implemented in server/compat/
--- hospital.lua) rather than re-implementing the same logic twice; purely
--- local/cosmetic names are handled directly here.
+-- Safe qb-ambulancejob compatibility presentation. Client events never
+-- grant health, alter medical state or select a bed; meaningful actions are
+-- requested through the validated server adapter.
+
+if not Config.compat.enabled then return end
 
 local lastKnownDoctorCount = 0
+local painScreenHandle
 
 -- Registered but inert. qbdispatch renders every EMS call now, including the
 -- ones raised from the legacy hospital:server:ambulanceAlert path -- it
@@ -18,39 +18,41 @@ local lastKnownDoctorCount = 0
 RegisterNetEvent('hospital:client:ambulanceAlert', function() end)
 
 RegisterNetEvent('hospital:client:Revive', function()
-    TriggerServerEvent('hospital:server:RevivePlayer')
+    QB.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:RevivePlayer', function()
-    TriggerServerEvent('hospital:server:RevivePlayer')
+    QB.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:SetPain', function(level)
     if tonumber(level) and tonumber(level) > 0 then
-        QB.fx.screenEffect('DrugsMichaelAliensFightIn', 0, true)
+        if not painScreenHandle then
+            painScreenHandle = QB.fx.screenEffect('DrugsMichaelAliensFightIn', 0, true)
+        end
     else
-        QB.fx.stopScreenEffect({ name = 'DrugsMichaelAliensFightIn' })
+        if painScreenHandle then
+            QB.fx.stopScreenEffect(painScreenHandle)
+            painScreenHandle = nil
+        end
     end
 end)
 
 RegisterNetEvent('hospital:client:KillPlayer', function()
-    SetEntityHealth(PlayerPedId(), 0)
+    -- Intentionally inert: a locally-triggerable compatibility event cannot
+    -- be an authority for changing a player's health.
 end)
 
 RegisterNetEvent('hospital:client:HealInjuries', function(_percent)
-    TriggerServerEvent('hospital:server:TreatWounds')
+    QB.notify.send({ title = 'Hospital', message = 'Use patient treatment or hospital check-in.', type = 'info' })
 end)
 
-RegisterNetEvent('hospital:client:SendToBed', function(bedIndex)
-    local hospital = Config.hospitals[1]
-    local bed = hospital.beds[tonumber(bedIndex) or 1] or hospital.beds[1]
-    if not bed then return end
-
-    TaskStartScenarioAtCoords(PlayerPedId(), 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w, 0, true, false)
+RegisterNetEvent('hospital:client:SendToBed', function(_bedIndex)
+    QB.notify.send({ title = 'Hospital', message = 'Use a check-in desk for a server-assigned bed.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:LeaveBed', function()
-    ClearPedTasks(PlayerPedId())
+    TriggerServerEvent('hospital:server:LeaveBed')
 end)
 
 RegisterNetEvent('hospital:client:SetBed', function(bedIndex)
@@ -74,10 +76,7 @@ RegisterNetEvent('hospital:client:SetDoctorCount', function(count)
 end)
 
 RegisterNetEvent('hospital:client:adminHeal', function()
-    local ped = PlayerPedId()
-    SetEntityHealth(ped, GetEntityMaxHealth(ped))
-    ClearPedBloodDamage(ped)
-    TriggerServerEvent('hospital:server:TreatWounds')
+    QB.notify.send({ title = 'Hospital', message = 'Client-side admin healing is disabled.', type = 'error' })
 end)
 
 RegisterNetEvent('hospital:client:CheckStatus', function()
@@ -95,7 +94,7 @@ RegisterNetEvent('hospital:client:CheckStatus', function()
 end)
 
 RegisterNetEvent('hospital:client:TreatWounds', function()
-    TriggerServerEvent('hospital:server:TreatWounds')
+    QB.notify.send({ title = 'EMS', message = 'Target a patient to start validated treatment.', type = 'info' })
 end)
 
 -- SetEscortingState/isEscorted map onto our own stretcher system rather than
@@ -111,13 +110,10 @@ exports('isEscorted', function()
     return Stretcher and Stretcher.isBeingDragged and Stretcher.isBeingDragged() or false
 end)
 
--- CanHelp has no single canonical real-world signature (see server/compat/
--- hospital.lua's own note on the same name) -- a client-side inventory
--- check would need a qbinventory client export this codebase doesn't
--- currently expose, so this is deliberately permissive rather than
--- guessing at item state it can't actually verify.
 exports('CanHelp', function()
-    return true
+    local alive = State and State.isAlive and State.isAlive()
+    local escorted = Stretcher and Stretcher.isBeingDragged and Stretcher.isBeingDragged()
+    return alive == true and escorted ~= true
 end)
 
 RegisterNetEvent('hospital:client:HelpPerson', function()

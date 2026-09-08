@@ -18,20 +18,17 @@ State.isDead = false
 -- instead of leaving a stale timer ticking on screen.
 local downGeneration = 0
 local respawnAvailableAt = 0
+local deathScreenHandle
+
+local function stopDeathScreen()
+    if not deathScreenHandle then return end
+    QB.fx.stopScreenEffect(deathScreenHandle)
+    deathScreenHandle = nil
+end
 
 ---@return boolean
 function State.isAlive()
     return not State.inLaststand and not State.isDead
-end
-
--- qbcore's PlayerData replication is 1:1 (server -> the owning client only)
--- -- another client can never read a remote player's PlayerData.metadata.
--- isdead directly. A replicated player state bag is the correct, idiomatic
--- FiveM mechanism for "is this OTHER player currently down" -- client/
--- revive.lua and client/stretcher.lua's qbtarget canInteract checks read
--- this off the target's Player(serverId).state, not off any qbcore data.
-local function setDownState(value)
-    LocalPlayer.state:set('emsDown', value, true)
 end
 
 -- Immediately keeps the ped from actually going through the native wasted
@@ -125,7 +122,6 @@ end)
 RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
     State.inLaststand = true
     State.isDead = false
-    setDownState('laststand')
 
     downGeneration = downGeneration + 1
     local myGeneration = downGeneration
@@ -156,10 +152,9 @@ end)
 RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
     State.inLaststand = false
     State.isDead = true
-    setDownState('dead')
     downGeneration = downGeneration + 1
 
-    QB.fx.screenEffect('DeathFailOut', 0, true)
+    if not deathScreenHandle then deathScreenHandle = QB.fx.screenEffect('DeathFailOut', 0, true) end
     QB.notify.send({ title = 'EMS', message = 'You have died. Wait for the coroner or a medic.', type = 'error' })
 
     respawnAvailableAt = GetGameTimer() + (tonumber(respawnTimeMs) or 0)
@@ -171,7 +166,6 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
     local wasDead = State.isDead
     State.inLaststand = false
     State.isDead = false
-    setDownState(false)
     downGeneration = downGeneration + 1
     stopCountdown()
 
@@ -180,7 +174,7 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
     SetEntityHealth(ped, math.floor(GetEntityMaxHealth(ped) * ((tonumber(healthPct) or 20) / 100)))
     SetPedCanRagdoll(ped, true)
 
-    if wasDead then QB.fx.stopScreenEffect({ name = 'DeathFailOut' }) end
+    if wasDead then stopDeathScreen() end
 
     QB.notify.send({ title = 'EMS', message = 'You have been stabilised.', type = 'success' })
 end)
@@ -200,10 +194,9 @@ RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
 
     State.isDead = false
     State.inLaststand = false
-    setDownState(false)
     downGeneration = downGeneration + 1
     stopCountdown()
-    QB.fx.stopScreenEffect({ name = 'DeathFailOut' })
+    stopDeathScreen()
 
     Wait(200)
     DoScreenFadeIn(800)

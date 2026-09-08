@@ -2,11 +2,12 @@
 
 A modern, qblib-native successor to `qb-ambulancejob` for FiveM.
 
-It provides a server-authoritative death state machine, per-body-part wounds,
-EMS patient assessment and treatment, CPR/defibrillator revives, stretchers,
-hospital billing, pharmacies and stashes, duty vehicles, emergency dispatch and
-a house-call queue. The legacy `hospital:*` event surface remains available so
-existing resources can migrate without a flag day.
+It provides a server-authoritative death state machine, persistent anatomical
+wounds, EMS patient assessment and treatment, CPR/defibrillator revives,
+server-assigned hospital beds, physical ambulance stretchers, billing,
+pharmacies and stashes, duty vehicles, emergency dispatch and a house-call
+queue. A guarded `hospital:*` compatibility adapter keeps common legacy
+integrations working without preserving insecure client-authoritative shortcuts.
 
 ## Requirements
 

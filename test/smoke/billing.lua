@@ -73,4 +73,14 @@ h.test('chargeForRespawn fires the legacy SendBillEmail client event with the ch
     h.assertEqual(push.args[1], cost)
 end)
 
+h.test('charge is reusable for successful non-respawn care', function()
+    handle.ensurePlayer(5)
+    handle.players[5].money[Config.billing.account] = 300
+    handle.players[5].money[Config.billing.fallbackAccount] = 1000
+
+    local charged = Billing.charge(5, Config.billing.checkInCost, 'EMS check-in care')
+    h.assertEqual(charged, Config.billing.checkInCost)
+    h.assertEqual(handle.players[5].money[Config.billing.account], 300 - Config.billing.checkInCost)
+end)
+
 h.report('billing')

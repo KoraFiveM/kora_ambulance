@@ -1,6 +1,6 @@
 -- Revive (client realm) -- the defibrillator/CPR flow: a qbtarget option on
 -- any downed player (visibility gated by their replicated `emsDown` state
--- bag, set in client/death.lua -- see that file's header for why a plain
+-- bag, owned by server/death.lua -- see that file's header for why a plain
 -- PlayerData read can't be used to detect ANOTHER player's death state),
 -- a CPR minigame + anim, then a secure server report. All real validation
 -- (job/duty, item, target eligibility, cooldown) happens server-side in
@@ -27,9 +27,10 @@ local function isDowned(entity)
     return state.emsDown == 'laststand' or state.emsDown == 'dead'
 end
 
-local function performCPR(entity)
-    local targetSrc = targetServerId(entity)
-    if not targetSrc then return end
+---@param targetSrc integer
+local function performCPRForTarget(targetSrc)
+    targetSrc = tonumber(targetSrc)
+    if not targetSrc or targetSrc < 1 or targetSrc % 1 ~= 0 then return end
 
     local token, beginErr, authorization = QB.callback.trigger('qbambulance:server:beginRevive', targetSrc)
     if not token then
@@ -46,6 +47,16 @@ local function performCPR(entity)
     local proof = ok and type(result) == 'table' and result.success == true and result.proof or nil
     QB.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
 end
+
+local function performCPR(entity)
+    local targetSrc = targetServerId(entity)
+    if targetSrc then performCPRForTarget(targetSrc) end
+end
+
+-- Compatibility asks the caller to run this exact modern flow. Triggering
+-- the client event locally cannot bypass anything: begin/complete still bind
+-- the action token, proof, job, duty, item, range and patient state server-side.
+RegisterNetEvent('qbambulance:client:reviveRequested', performCPRForTarget)
 
 local function registerTargets()
     exports.qbtarget:addGlobalType('player', {

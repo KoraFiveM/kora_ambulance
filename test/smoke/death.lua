@@ -63,6 +63,8 @@ h.test('enterLaststand sets metadata, pushes the client event, and getState refl
     local push = handle.lastClient('qbambulance:client:enterLaststand')
     h.assertTrue(push ~= nil)
     h.assertEqual(push.target, 1)
+    h.assertEqual(handle.playerStates[1].emsDown, 'laststand')
+    h.assertEqual(handle.players[1].metadata.qbambulanceMedical.laststandAt, now)
 end)
 
 h.test('enterLaststand is a no-op if already in laststand or dead', function()
@@ -76,6 +78,7 @@ h.test('markDead transitions laststand -> dead and alive -> dead (skipping lasts
     Death.enterLaststand(3)
     h.assertTrue(Death.markDead(3))
     h.assertTrue(Death.isDead(3))
+    h.assertEqual(handle.playerStates[3].emsDown, 'dead')
 
     handle.ensurePlayer(4) -- starts alive
     h.assertTrue(Death.markDead(4))
@@ -92,6 +95,7 @@ h.test('reviveInField only works from laststand/dead, stops bleeding, does not c
 
     h.assertTrue(Death.reviveInField(5, 30))
     h.assertTrue(Death.isAlive(5))
+    h.assertEqual(handle.playerStates[5].emsDown, false)
     h.assertFalse(handle.QB.status.isActive(5, 'bleeding'))
     -- Wound ledger itself is untouched -- only the visible bleeding status is cleared.
     h.assertEqual(Death.getWoundData(5).chest, 3)
@@ -181,12 +185,72 @@ h.test('respawnAtHospital refuses a laststand player outright -- the wait never 
     h.assertTrue(Death.isLaststand(23))
 end)
 
-h.test('respawnWaitRemaining is 0 with no death timestamp -- a dead player who relogged is not stranded', function()
+h.test('legacy dead metadata without a medical timestamp remains immediately respawnable', function()
     handle.ensurePlayer(24)
     handle.players[24].metadata.isdead = true -- rejoined dead; the in-memory timestamp did not survive
 
     h.assertEqual(Death.respawnWaitRemaining(24), 0)
     h.assertTrue((Death.respawnAtHospital(24)))
+end)
+
+h.test('persisted dead timestamps survive a relog and continue the respawn deadline', function()
+    local src = 26
+    handle.ensurePlayer(src)
+    Death.markDead(src)
+    local persistedAt = handle.players[src].metadata.qbambulanceMedical.deadAt
+    handle.fireEvent('playerDropped', src)
+
+    now = now + 10
+    handle.fireEvent('qbcore:server:playerLoaded', src, src)
+    h.assertEqual(Death.respawnWaitRemaining(src), respawnWaitSeconds - 10)
+    h.assertEqual(handle.players[src].metadata.qbambulanceMedical.deadAt, persistedAt)
+    h.assertEqual(handle.playerStates[src].emsDown, 'dead')
+end)
+
+h.test('persisted wounds round-trip and exported snapshots are detached copies', function()
+    local src = 27
+    handle.ensurePlayer(src)
+    Death.recordWound(src, 'left_arm', 3)
+    local persisted = handle.players[src].metadata.qbambulanceMedical
+    h.assertEqual(persisted.version, 1)
+    h.assertEqual(persisted.wounds.left_arm, 3)
+
+    handle.fireEvent('playerDropped', src)
+    handle.fireEvent('qbcore:server:playerLoaded', src, src)
+    h.assertEqual(Death.getWoundData(src).left_arm, 3)
+
+    local snapshot = handle.exports.getPatientStatus(src)
+    h.assertEqual(snapshot.state, 'alive')
+    h.assertEqual(snapshot.wounds.left_arm, 3)
+    snapshot.wounds.left_arm = 1
+    h.assertEqual(Death.getWoundData(src).left_arm, 3)
+end)
+
+h.test('player load sanitizes malformed medical data and promotes elapsed laststand', function()
+    local src = 28
+    local player = handle.ensurePlayer(src)
+    player.metadata.inlaststand = true
+    local deathSeconds = math.floor(Config.death.deathTime / 1000)
+    local startedAt = now - deathSeconds - 10
+    player.metadata.qbambulanceMedical = {
+        version = 1,
+        wounds = { chest = 3, invented = 4, left_hand = 1.5 },
+        laststandAt = startedAt,
+        deadAt = now + 100,
+        injected = true,
+    }
+
+    handle.fireEvent('qbcore:server:playerLoaded', src, src)
+    h.assertTrue(Death.isDead(src))
+    h.assertEqual(Death.getWoundData(src).chest, 3)
+    h.assertEqual(Death.getWoundData(src).invented, nil)
+    local clean = player.metadata.qbambulanceMedical
+    h.assertEqual(clean.version, 1)
+    h.assertEqual(clean.laststandAt, nil)
+    h.assertEqual(clean.deadAt, startedAt + deathSeconds)
+    h.assertEqual(clean.injected, nil)
+    h.assertEqual(handle.playerStates[src].emsDown, 'dead')
+    h.assertEqual(Death.respawnWaitRemaining(src), respawnWaitSeconds - 10)
 end)
 
 h.test('a revive clears the death timestamp so a later death starts a fresh wait', function()
@@ -330,19 +394,65 @@ h.test('legacy doctor alert is accepted only at a configured hospital', function
     h.assertEqual(handle.lastDispatchCall().title, 'Doctor Requested', 'a nearby caller raises the fixed alert')
 end)
 
-h.test('qbambulance:server:reportWound validates body part/tier before recording', function()
-    handle.ensurePlayer(12)
-    local reportWound = handle.QB.events.registry['qbambulance:server:reportWound']
-    h.assertTrue(reportWound ~= nil)
+h.test('the legacy client-selected wound tier route is inaccessible', function()
+    h.assertEqual(handle.QB.events.registry['qbambulance:server:reportWound'], nil)
+end)
 
-    reportWound(12, 'not_a_real_part', 2)
-    h.assertEqual(next(Death.getWoundData(12)), nil)
+h.test('hitObserved validates measurements, remaps known bones, and derives severity', function()
+    local src = 12
+    handle.ensurePlayer(src)
+    handle.setHealth(src, 180)
+    local observed = handle.QB.events.registry['qbambulance:server:hitObserved']
+    h.assertTrue(observed ~= nil)
 
-    reportWound(12, 'chest', 99) -- out of range tier
-    h.assertEqual(next(Death.getWoundData(12)), nil)
+    observed(src, nil)
+    observed(src, { sequence = 1, bone = 31086, bodyPart = 'head', damage = 0 / 0, healthAfter = 180, fallback = false })
+    observed(src, { sequence = 1, bone = 31086, bodyPart = 'head', damage = 8, healthAfter = 150, fallback = false })
+    h.assertEqual(next(Death.getWoundData(src)), nil)
 
-    reportWound(12, 'chest', 2)
-    h.assertEqual(Death.getWoundData(12).chest, 2)
+    -- The claimed bodyPart is not authoritative for a recognized bone.
+    observed(src, { sequence = 1, bone = 31086, bodyPart = 'right_foot', damage = 8, healthAfter = 175, fallback = false })
+    h.assertEqual(Death.getWoundData(src).head, 3)
+    h.assertEqual(Death.getWoundData(src).right_foot, nil)
+end)
+
+h.test('hitObserved accepts fallback only for a missing or unmapped bone', function()
+    local observed = handle.QB.events.registry['qbambulance:server:hitObserved']
+
+    handle.ensurePlayer(29)
+    handle.setHealth(29, 190)
+    observed(29, { sequence = 1, bone = false, bodyPart = 'left_leg', damage = 10, healthAfter = 190, fallback = true })
+    h.assertEqual(Death.getWoundData(29).left_leg, 2)
+
+    handle.ensurePlayer(30)
+    handle.setHealth(30, 190)
+    observed(30, { sequence = 1, bone = 65535, bodyPart = 'right_arm', damage = 10, healthAfter = 190, fallback = false })
+    h.assertEqual(next(Death.getWoundData(30)), nil)
+    observed(30, { sequence = 2, bone = 31086, bodyPart = 'right_arm', damage = 10, healthAfter = 190, fallback = true })
+    h.assertEqual(next(Death.getWoundData(30)), nil)
+    observed(30, { sequence = 3, bone = 65535, bodyPart = 'right_arm', damage = 10, healthAfter = 190, fallback = true })
+    h.assertEqual(Death.getWoundData(30).right_arm, 2)
+end)
+
+h.test('hitObserved burns replayed and cooldown-rejected sequences', function()
+    local src = 31
+    handle.ensurePlayer(src)
+    handle.setHealth(src, 180)
+    local observed = handle.QB.events.registry['qbambulance:server:hitObserved']
+
+    observed(src, { sequence = 10, bone = 18905, bodyPart = 'left_hand', damage = 20, healthAfter = 180, fallback = false })
+    h.assertEqual(Death.getWoundData(src).left_hand, 3)
+    handle.advanceTime(Config.injuries.reportCooldown + 1)
+    observed(src, { sequence = 10, bone = 31086, bodyPart = 'head', damage = 40, healthAfter = 180, fallback = false })
+    h.assertEqual(Death.getWoundData(src).head, nil)
+
+    observed(src, { sequence = 11, bone = 57005, bodyPart = 'right_hand', damage = 40, healthAfter = 180, fallback = false })
+    h.assertEqual(Death.getWoundData(src).right_hand, 4)
+    observed(src, { sequence = 12, bone = 52301, bodyPart = 'right_foot', damage = 40, healthAfter = 180, fallback = false })
+    h.assertEqual(Death.getWoundData(src).right_foot, nil)
+    handle.advanceTime(Config.injuries.reportCooldown + 1)
+    observed(src, { sequence = 12, bone = 52301, bodyPart = 'right_foot', damage = 40, healthAfter = 180, fallback = false })
+    h.assertEqual(Death.getWoundData(src).right_foot, nil)
 end)
 
 h.report('death')

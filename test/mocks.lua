@@ -18,6 +18,9 @@ function M.install()
     local serverEvents = {}   -- recorded TriggerServerEvent
     local resourceStates = {}
     local players = {}        -- src -> { job, metadata, money, items }
+    local playerStates = {}   -- src -> replicated state-bag values
+    local entityStates = {}   -- entity -> replicated state-bag values
+    local registeredExports = {}
     local entities = {}
     local nextEntity = 1000
     local minigameAuthorizations, minigameProofs = {}, {}
@@ -47,6 +50,7 @@ function M.install()
     VEC3.__sub = function(a, b) return setmetatable({ x = a.x - b.x, y = a.y - b.y, z = a.z - b.z }, VEC3) end
     VEC3.__len = function(a) return math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) end
     local function vector(x, y, z) return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, VEC3) end
+    function _G.vector3(x, y, z) return vector(x, y, z) end
     function _G.vector4(x, y, z, w) local v = vector(x, y, z); v.w = w; return v end
     function _G.IsDuplicityVersion() return true end
     function _G.joaat(s) return s end -- identity stub; only client/damage.lua's group-hash lookup needs real hashing, and that file is never dofile'd by these tests
@@ -67,6 +71,26 @@ function M.install()
             coords = vector(0, 0, 0),
         }
         return players[src]
+    end
+
+    function _G.Player(src)
+        playerStates[src] = playerStates[src] or {}
+        local values = playerStates[src]
+        return {
+            state = setmetatable({
+                set = function(_, key, value) values[key] = value end,
+            }, { __index = values }),
+        }
+    end
+
+    function _G.Entity(entity)
+        entityStates[entity] = entityStates[entity] or {}
+        local values = entityStates[entity]
+        return {
+            state = setmetatable({
+                set = function(_, key, value) values[key] = value end,
+            }, { __index = values }),
+        }
     end
 
     -- --- fake qblib QB ---
@@ -103,6 +127,22 @@ function M.install()
     QB.notify = { sent = {}, send = function(...) end }
     function QB.notify.send(...)
         table.insert(QB.notify.sent, { ... })
+    end
+
+    QB.blips = {
+        create = function() return nil end,
+        setInfo = function() end,
+    }
+
+    QB.fx = { started = {}, stopped = {} }
+    function QB.fx.screenEffect(name, duration, looped)
+        local handle = { id = #QB.fx.started + 1, name = name }
+        QB.fx.started[#QB.fx.started + 1] = { handle = handle, duration = duration, looped = looped }
+        return handle
+    end
+    function QB.fx.stopScreenEffect(handle)
+        QB.fx.stopped[#QB.fx.stopped + 1] = handle
+        return true
     end
 
     QB.events = {
@@ -235,6 +275,12 @@ function M.install()
         addGlobalType = function(self, kind, options, distance)
             table.insert(qbtarget.calls, { kind = kind, options = options, distance = distance })
         end,
+        addSphereZone = function(self, definition)
+            table.insert(qbtarget.calls, { kind = 'sphere', definition = definition })
+        end,
+        addModel = function(self, model, options, distance)
+            table.insert(qbtarget.calls, { kind = 'model', model = model, options = options, distance = distance })
+        end,
     }
 
     -- Fake exports.qbinventory -- records registerShop/registerStash calls
@@ -304,11 +350,17 @@ function M.install()
     _G.exports = setmetatable({ qbcore = qbcore, qbtarget = qbtarget, qbinventory = qbinventory,
                                 qbdispatch = qbdispatch }, {
         __index = function() return setmetatable({}, { __index = function() return function() end end }) end,
+        __call = function(_, name, fn) registeredExports[name] = fn end,
     })
 
     function _G.CreateVehicle(model, x, y, z, heading)
         nextEntity = nextEntity + 1
-        entities[nextEntity] = { model = model, coords = vector(x, y, z), heading = heading, bucket = 0 }
+        entities[nextEntity] = { model = model, type = 2, coords = vector(x, y, z), heading = heading, bucket = 0 }
+        return nextEntity
+    end
+    function _G.CreateObjectNoOffset(model, x, y, z, _networked, _mission, _dynamic)
+        nextEntity = nextEntity + 1
+        entities[nextEntity] = { model = model, type = 3, coords = vector(x, y, z), heading = 0, bucket = 0 }
         return nextEntity
     end
     function _G.DoesEntityExist(entity) return entities[entity] ~= nil or players[entity] ~= nil end
@@ -316,7 +368,16 @@ function M.install()
     function _G.NetworkGetNetworkIdFromEntity(entity) return entities[entity] and entity or 0 end
     function _G.NetworkGetEntityFromNetworkId(networkId) return entities[networkId] and networkId or 0 end
     function _G.SetEntityRoutingBucket(entity, bucket) if entities[entity] then entities[entity].bucket = bucket end end
+    function _G.GetEntityRoutingBucket(entity) return entities[entity] and entities[entity].bucket or 0 end
     function _G.SetVehicleNumberPlateText(entity, plate) if entities[entity] then entities[entity].plate = plate end end
+    function _G.GetEntityType(entity) return entities[entity] and entities[entity].type or 0 end
+    function _G.GetEntityModel(entity) return entities[entity] and entities[entity].model or 0 end
+    function _G.GetOffsetFromEntityInWorldCoords(entity, x, y, z)
+        local coords = GetEntityCoords(entity)
+        return vector(coords.x + x, coords.y + y, coords.z + z)
+    end
+    function _G.FreezeEntityPosition(entity, frozen) if entities[entity] then entities[entity].frozen = frozen == true end end
+    function _G.SetEntityHeading(entity, heading) if entities[entity] then entities[entity].heading = heading end end
     function _G.GetPlayerRoutingBucket(_) return 0 end
     function _G.GetPlayerPed(src) return players[src] and src or 0 end
     function _G.GetEntityCoords(entity)
@@ -324,11 +385,16 @@ function M.install()
         return entities[entity] and entities[entity].coords or vector(0, 0, 0)
     end
     function _G.GetEntityHealth(ped) return players[ped] and players[ped].health or 0 end
+    function _G.GetEntityMaxHealth(ped) return players[ped] and (players[ped].maxHealth or 200) or 200 end
+    function _G.SetEntityHealth(ped, value) if players[ped] then players[ped].health = value end end
     function _G.GetPedArmour(ped) return players[ped] and players[ped].armour or 0 end
     function _G.SetPedArmour(ped, value) if players[ped] then players[ped].armour = value end end
 
     return {
         players = players,
+        playerStates = playerStates,
+        entityStates = entityStates,
+        exports = registeredExports,
         entities = entities,
         ensurePlayer = ensure,
         clientEvents = clientEvents,

@@ -4,8 +4,8 @@ lua54 'yes'
 
 name 'qbambulance'
 author 'Jamie'
-version '1.0.0'
-description 'EMS/ambulance job -- wounds, revive, dispatch, billing, duty vehicles, stretcher, house-calls'
+version '2.0.0'
+description 'Authoritative EMS care, anatomical injuries, hospital admissions, transport, dispatch and billing'
 
 dependency 'qblib'
 dependency 'qbcore'
@@ -41,6 +41,7 @@ server_scripts {
     -- that file emits, and before housecall.lua, which raises calls through it.
     'server/dispatch.lua',
     'server/billing.lua',
+    'server/hospital.lua',
     'server/doctors.lua',
     'server/revive.lua',
     'server/duty.lua',
