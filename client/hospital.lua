@@ -79,7 +79,15 @@ for _, hospital in ipairs(Config.hospitals) do
     })
 
     if hospital.blip then
-        QB.blips.create(hospital.coords, hospital.blip)
+        local blip = QB.blips.create(hospital.coords, hospital.blip)
+        if blip and not hospital.blip.info then
+            QB.blips.setInfo(blip, {
+                title = hospital.label,
+                rows = {
+                    { kind = 'wrappedText', value = 'Medical services and EMS facilities are available here.' },
+                },
+            })
+        end
     end
 end
 end
