@@ -54,13 +54,13 @@ local function runFeedback(src, itemName)
     local def = QBCore:getShared('items', itemName)
     local effect = def and def.effect or {}
 
-    local ok, completed = pcall(QB.callback.trigger, src, 'qbambulance:client:pharmacyProgress', {
+    local completed = QB.callback.trigger(src, 'qbambulance:client:pharmacyProgress', {
         label = def and def.label or itemName,
         duration = effect.duration or 2500,
         anim = effect.anim,
     })
 
-    return ok and completed == true
+    return completed == true
 end
 
 QBCore:createUseable('bandage', function(src, item)

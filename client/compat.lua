@@ -80,8 +80,8 @@ RegisterNetEvent('hospital:client:adminHeal', function()
 end)
 
 RegisterNetEvent('hospital:client:CheckStatus', function()
-    local ok, status = pcall(QB.callback.trigger, 'hospital:GetPlayerStatus')
-    if not ok or type(status) ~= 'table' then return end
+    local status = QB.callback.trigger('hospital:GetPlayerStatus')
+    if type(status) ~= 'table' then return end
 
     local woundCount = 0
     for _ in pairs(status.woundData or {}) do woundCount = woundCount + 1 end
