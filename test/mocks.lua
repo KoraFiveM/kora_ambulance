@@ -96,6 +96,21 @@ function M.install()
     -- --- fake qblib QB ---
     local QB = {}
 
+    QB.world = {
+        resolveNearbyPlayer = function(src, target, options)
+            local sourcePed, targetPed = GetPlayerPed(src), GetPlayerPed(target)
+            if sourcePed == 0 or targetPed == 0 then return nil, 'target_unavailable' end
+            if GetPlayerRoutingBucket(src) ~= GetPlayerRoutingBucket(target) then
+                return nil, 'routing_bucket_mismatch'
+            end
+            local a, b = GetEntityCoords(sourcePed), GetEntityCoords(targetPed)
+            local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z
+            local distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+            if distance > options.maxDistance then return nil, 'too_far' end
+            return targetPed, distance
+        end,
+    }
+
     QB.status = {
         registry = {},
         applied = {},   -- src -> name -> {severity, expiresAt}

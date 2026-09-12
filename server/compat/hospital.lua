@@ -13,11 +13,7 @@ end
 
 local function nearbyPlayers(a, b, range)
     if not QBCore:getPlayerData(a) or not QBCore:getPlayerData(b) then return false end
-    if GetPlayerRoutingBucket(a) ~= GetPlayerRoutingBucket(b) then return false end
-
-    local pedA, pedB = GetPlayerPed(a), GetPlayerPed(b)
-    if not pedA or pedA == 0 or not pedB or pedB == 0 then return false end
-    return #(GetEntityCoords(pedA) - GetEntityCoords(pedB)) <= range
+    return QB.world.resolveNearbyPlayer(a, b, { maxDistance = range }) ~= nil
 end
 
 local function nearbyHospital(src, checkInOnly)

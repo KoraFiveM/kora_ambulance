@@ -16,10 +16,7 @@ local actionsBySrc, actionOwnerByTarget = {}, {}
 
 local function nearby(a, b)
     if not QBCore:getPlayerData(b) then return false end
-    if GetPlayerRoutingBucket(a) ~= GetPlayerRoutingBucket(b) then return false end
-    local pedA, pedB = GetPlayerPed(a), GetPlayerPed(b)
-    if not pedA or pedA == 0 or not pedB or pedB == 0 then return false end
-    return #(GetEntityCoords(pedA) - GetEntityCoords(pedB)) <= Config.death.reviveRange
+    return QB.world.resolveNearbyPlayer(a, b, { maxDistance = Config.death.reviveRange }) ~= nil
 end
 
 ---Pure eligibility check: is `targetState` revivable at all, and has enough
