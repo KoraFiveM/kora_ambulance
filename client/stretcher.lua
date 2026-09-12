@@ -76,13 +76,6 @@ local function resolveEntity(networkId)
     return entity
 end
 
-local function requestControl(entity)
-    if NetworkHasControlOfEntity(entity) then return true end
-    NetworkRequestControlOfEntity(entity)
-    QB.loops.controlled(function() return NetworkHasControlOfEntity(entity) end, 0, 500, 25)
-    return NetworkHasControlOfEntity(entity)
-end
-
 ---@param vehicle integer
 ---@return table|nil
 local function vehicleStretcherDef(vehicle)
@@ -122,7 +115,7 @@ local function applyState(state)
     CreateThread(function()
         local stretcher = resolveEntity(state.networkId)
         if not stretcher then return end
-        requestControl(stretcher)
+        QB.entities.requestControl(stretcher, 500)
 
         if state.mode == 'vehicle' then
             local vehicle = resolveEntity(state.vehicleNetworkId)
