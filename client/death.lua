@@ -26,6 +26,14 @@ local DOWNED_ANIMS = {
     dead = { dict = 'dead', clip = 'dead_a' },
 }
 
+local DOWNED_DISABLED_CONTROLS = {
+    21, 22, 23, 24, 25,             -- sprint, jump, enter vehicle, attack, aim
+    30, 31, 32, 33, 34, 35, 36,    -- movement and duck
+    37, 44, 45, 47, 58,            -- weapon wheel, cover, reload and weapon actions
+    59, 60, 63, 64, 71, 72, 75,    -- vehicle movement, throttle, brake and exit
+    140, 141, 142, 143, 257, 263, 264, -- melee and alternate attacks
+}
+
 local function stopDeathScreen()
     if not deathScreenHandle then return end
     QB.fx.stopScreenEffect(deathScreenHandle)
@@ -49,17 +57,15 @@ local function playDownedAnimation(state)
 end
 
 local function disableDownedControls()
-    DisableAllControlActions(0)
-
-    if Config.death.allowCameraMovement then
-        EnableControlAction(0, 0, true) -- NextCamera
-        EnableControlAction(0, 1, true) -- LookLeftRight
-        EnableControlAction(0, 2, true) -- LookUpDown
+    for i = 1, #DOWNED_DISABLED_CONTROLS do
+        DisableControlAction(0, DOWNED_DISABLED_CONTROLS[i], true)
     end
+    DisablePlayerFiring(PlayerId(), true)
 
-    EnableControlAction(0, 245, true) -- Chat
-    EnableControlAction(0, 249, true) -- PushToTalk
-    EnableControlAction(0, 322, true) -- Escape
+    if Config.death.allowCameraMovement then return end
+    DisableControlAction(0, 0, true) -- NextCamera
+    DisableControlAction(0, 1, true) -- LookLeftRight
+    DisableControlAction(0, 2, true) -- LookUpDown
 end
 
 ---@param generation integer

@@ -16,8 +16,8 @@ local acceptReport = false
 local reportAttempts = 0
 local playedAnimations = {}
 local stoppedAnimation
-local disabledAllCount = 0
-local enabledControls = {}
+local disabledControls = {}
+local playerFiringDisabled = false
 local stopControlLoopAfterFrame = false
 
 handle.QB.cache = {
@@ -48,6 +48,7 @@ handle.QB.anim = {
 local clientStateWrites = 0
 _G.LocalPlayer = { state = { set = function() clientStateWrites = clientStateWrites + 1 end } }
 _G.RegisterCommand = function() end
+_G.PlayerId = function() return 1 end
 _G.PlayerPedId = function() return 77 end
 _G.GetEntityHeading = function() return 90.0 end
 _G.NetworkResurrectLocalPlayer = function(x, y, z, heading)
@@ -58,15 +59,15 @@ _G.SetPedToRagdoll = function() ragdolled = true end
 _G.GetEntityMaxHealth = function() return 200 end
 _G.ClearPedTasksImmediately = function() end
 _G.SetPedCanRagdoll = function() end
-_G.DisableAllControlActions = function()
-    disabledAllCount = disabledAllCount + 1
+_G.DisableControlAction = function(_, control)
+    disabledControls[control] = true
+end
+_G.DisablePlayerFiring = function(_, disabled)
+    playerFiringDisabled = disabled
     if stopControlLoopAfterFrame then
         State.inLaststand = false
         State.isDead = false
     end
-end
-_G.EnableControlAction = function(_, control)
-    enabledControls[control] = true
 end
 
 dofile('client/death.lua')
@@ -125,26 +126,26 @@ h.test('death screen effect retains and releases qblib handle identity', functio
 end)
 
 h.test('downed controls block movement while allowing configured camera movement', function()
-    disabledAllCount = 0
-    enabledControls = {}
+    disabledControls = {}
+    playerFiringDisabled = false
     stopControlLoopAfterFrame = true
 
     handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
     handle.step()
 
     stopControlLoopAfterFrame = false
-    h.assertTrue(disabledAllCount > 0)
-    h.assertTrue(enabledControls[1], 'horizontal camera look should remain enabled')
-    h.assertTrue(enabledControls[2], 'vertical camera look should remain enabled')
-    h.assertFalse(enabledControls[30], 'horizontal movement must remain disabled')
-    h.assertFalse(enabledControls[31], 'vertical movement must remain disabled')
+    h.assertFalse(disabledControls[1], 'horizontal camera look should remain enabled')
+    h.assertFalse(disabledControls[2], 'vertical camera look should remain enabled')
+    h.assertTrue(disabledControls[30], 'horizontal movement must remain disabled')
+    h.assertTrue(disabledControls[31], 'vertical movement must remain disabled')
+    h.assertTrue(playerFiringDisabled, 'weapon firing must remain disabled')
     handle.fireEvent('qbambulance:client:revived', 0, 20)
 end)
 
 h.test('downed camera movement can be disabled in config', function()
     local allowCameraMovement = Config.death.allowCameraMovement
     Config.death.allowCameraMovement = false
-    enabledControls = {}
+    disabledControls = {}
     stopControlLoopAfterFrame = true
 
     handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
@@ -152,8 +153,8 @@ h.test('downed camera movement can be disabled in config', function()
 
     stopControlLoopAfterFrame = false
     Config.death.allowCameraMovement = allowCameraMovement
-    h.assertFalse(enabledControls[1])
-    h.assertFalse(enabledControls[2])
+    h.assertTrue(disabledControls[1])
+    h.assertTrue(disabledControls[2])
     handle.fireEvent('qbambulance:client:revived', 0, 20)
 end)
 
