@@ -14,6 +14,11 @@ local ragdolled = false
 local reportedCause
 local acceptReport = false
 local reportAttempts = 0
+local playedAnimations = {}
+local stoppedAnimation
+local disabledAllCount = 0
+local enabledControls = {}
+local stopControlLoopAfterFrame = false
 
 handle.QB.cache = {
     onChange = function(key, handler)
@@ -28,6 +33,17 @@ handle.QB.callback.trigger = function(name, cause)
     reportAttempts = reportAttempts + 1
     return acceptReport
 end
+handle.QB.anim = {
+    play = function(entity, dict, clip, options)
+        local animation = { entity = entity, dict = dict, clip = clip, options = options }
+        playedAnimations[#playedAnimations + 1] = animation
+        return animation
+    end,
+    stopHandle = function(handleToStop)
+        stoppedAnimation = handleToStop
+        return true
+    end,
+}
 
 local clientStateWrites = 0
 _G.LocalPlayer = { state = { set = function() clientStateWrites = clientStateWrites + 1 end } }
@@ -42,6 +58,16 @@ _G.SetPedToRagdoll = function() ragdolled = true end
 _G.GetEntityMaxHealth = function() return 200 end
 _G.ClearPedTasksImmediately = function() end
 _G.SetPedCanRagdoll = function() end
+_G.DisableAllControlActions = function()
+    disabledAllCount = disabledAllCount + 1
+    if stopControlLoopAfterFrame then
+        State.inLaststand = false
+        State.isDead = false
+    end
+end
+_G.EnableControlAction = function(_, control)
+    enabledControls[control] = true
+end
 
 dofile('client/death.lua')
 
@@ -77,6 +103,7 @@ end)
 h.test('client death lifecycle never writes the server-owned emsDown state bag', function()
     handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
     h.assertTrue(State.inLaststand)
+    h.assertEqual(playedAnimations[#playedAnimations].clip, 'writhe_loop')
     h.assertEqual(clientStateWrites, 0)
 end)
 
@@ -85,12 +112,49 @@ h.test('death screen effect retains and releases qblib handle identity', functio
     handle.fireEvent('qbambulance:client:markDead', 0, 1000)
 
     h.assertEqual(#handle.QB.fx.started, 1, 'repeated dead-state updates must not leak screen handles')
+    h.assertEqual(playedAnimations[#playedAnimations].clip, 'dead_a')
     local startedHandle = handle.QB.fx.started[1].handle
+    local activeDownedAnimation = playedAnimations[#playedAnimations]
 
     handle.fireEvent('qbambulance:client:revived', 0, 20)
 
     h.assertEqual(handle.QB.fx.stopped[1], startedHandle,
         'revive must release the opaque handle returned by screenEffect')
+    h.assertEqual(stoppedAnimation, activeDownedAnimation,
+        'revive must release the downed animation it started')
+end)
+
+h.test('downed controls block movement while allowing configured camera movement', function()
+    disabledAllCount = 0
+    enabledControls = {}
+    stopControlLoopAfterFrame = true
+
+    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.step()
+
+    stopControlLoopAfterFrame = false
+    h.assertTrue(disabledAllCount > 0)
+    h.assertTrue(enabledControls[1], 'horizontal camera look should remain enabled')
+    h.assertTrue(enabledControls[2], 'vertical camera look should remain enabled')
+    h.assertFalse(enabledControls[30], 'horizontal movement must remain disabled')
+    h.assertFalse(enabledControls[31], 'vertical movement must remain disabled')
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+end)
+
+h.test('downed camera movement can be disabled in config', function()
+    local allowCameraMovement = Config.death.allowCameraMovement
+    Config.death.allowCameraMovement = false
+    enabledControls = {}
+    stopControlLoopAfterFrame = true
+
+    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.step()
+
+    stopControlLoopAfterFrame = false
+    Config.death.allowCameraMovement = allowCameraMovement
+    h.assertFalse(enabledControls[1])
+    h.assertFalse(enabledControls[2])
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
 end)
 
 h.report('death_client')

@@ -6,6 +6,13 @@ h.test('the shipped hospital, injury and transport configuration is valid', func
     h.assertTrue(Config.validate())
 end)
 
+h.test('validation rejects a non-boolean downed camera option', function()
+    local allowCameraMovement = Config.death.allowCameraMovement
+    Config.death.allowCameraMovement = 'yes'
+    h.assertThrows(Config.validate)
+    Config.death.allowCameraMovement = allowCameraMovement
+end)
+
 h.test('validation rejects an empty hospital list', function()
     local hospitals = Config.hospitals
     Config.hospitals = {}

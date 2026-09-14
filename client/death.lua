@@ -19,11 +19,57 @@ State.isDead = false
 local downGeneration = 0
 local respawnAvailableAt = 0
 local deathScreenHandle
+local downedAnimHandle
+
+local DOWNED_ANIMS = {
+    laststand = { dict = 'combat@damage@writhe', clip = 'writhe_loop' },
+    dead = { dict = 'dead', clip = 'dead_a' },
+}
 
 local function stopDeathScreen()
     if not deathScreenHandle then return end
     QB.fx.stopScreenEffect(deathScreenHandle)
     deathScreenHandle = nil
+end
+
+local function stopDownedAnimation()
+    if not downedAnimHandle then return end
+    QB.anim.stopHandle(downedAnimHandle)
+    downedAnimHandle = nil
+end
+
+---@param state 'laststand'|'dead'
+local function playDownedAnimation(state)
+    if Stretcher and Stretcher.isBeingDragged and Stretcher.isBeingDragged() then return end
+
+    stopDownedAnimation()
+    local animation = DOWNED_ANIMS[state]
+    local handle = QB.anim.play(PlayerPedId(), animation.dict, animation.clip, { flag = 1 })
+    if handle then downedAnimHandle = handle end
+end
+
+local function disableDownedControls()
+    DisableAllControlActions(0)
+
+    if Config.death.allowCameraMovement then
+        EnableControlAction(0, 0, true) -- NextCamera
+        EnableControlAction(0, 1, true) -- LookLeftRight
+        EnableControlAction(0, 2, true) -- LookUpDown
+    end
+
+    EnableControlAction(0, 245, true) -- Chat
+    EnableControlAction(0, 249, true) -- PushToTalk
+    EnableControlAction(0, 322, true) -- Escape
+end
+
+---@param generation integer
+local function runDeadControlLock(generation)
+    CreateThread(function()
+        while State.isDead and downGeneration == generation do
+            disableDownedControls()
+            Wait(0)
+        end
+    end)
 end
 
 ---@return boolean
@@ -127,6 +173,7 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
     local myGeneration = downGeneration
 
     QB.notify.send({ title = 'EMS', message = 'You are critically injured. Wait for help or you will bleed out.', type = 'error' })
+    playDownedAnimation('laststand')
 
     -- No final text: the server's bleed-out sweep is coarse (5s), so rather
     -- than assert a death it hasn't confirmed yet, the clock just clears and
@@ -135,14 +182,9 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
 
     CreateThread(function()
         local ped = PlayerPedId()
-        local endsAt = GetGameTimer() + deathTimeMs
 
-        while State.inLaststand and downGeneration == myGeneration and GetGameTimer() < endsAt do
-            DisableControlAction(0, 24, true)  -- attack
-            DisableControlAction(0, 25, true)  -- aim
-            DisableControlAction(0, 47, true)  -- weapon wheel
-            DisableControlAction(0, 21, true)  -- sprint
-            DisableControlAction(0, 22, true)  -- jump
+        while State.inLaststand and downGeneration == myGeneration do
+            disableDownedControls()
             SetPedCanRagdoll(ped, true)
             Wait(0)
         end
@@ -156,8 +198,10 @@ RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
 
     if not deathScreenHandle then deathScreenHandle = QB.fx.screenEffect('DeathFailOut', 0, true) end
     QB.notify.send({ title = 'EMS', message = 'You have died. Wait for the coroner or a medic.', type = 'error' })
+    playDownedAnimation('dead')
 
     respawnAvailableAt = GetGameTimer() + (tonumber(respawnTimeMs) or 0)
+    runDeadControlLock(downGeneration)
     runCountdown(downGeneration, respawnAvailableAt, 'You can respawn in',
         'Type /respawn to wake up at a hospital')
 end)
@@ -170,6 +214,7 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
     stopCountdown()
 
     local ped = PlayerPedId()
+    stopDownedAnimation()
     ClearPedTasksImmediately(ped)
     SetEntityHealth(ped, math.floor(GetEntityMaxHealth(ped) * ((tonumber(healthPct) or 20) / 100)))
     SetPedCanRagdoll(ped, true)
@@ -190,6 +235,7 @@ RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
     SetEntityHeading(ped, coords.w or 0.0)
     SetEntityHealth(ped, GetEntityMaxHealth(ped))
     ClearPedBloodDamage(ped)
+    stopDownedAnimation()
     ClearPedTasksImmediately(ped)
 
     State.isDead = false

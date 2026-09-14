@@ -228,6 +228,10 @@ counting down to their respawn (`Config.death.respawnTime`), replaced by a
 tick once a second on their own thread — the laststand loop that disables
 controls has to run every frame, and a clock does not.
 
+`Config.death.allowCameraMovement` controls whether mouse/controller look is
+left available while those downed controls are locked. Movement and combat
+remain disabled in either mode.
+
 **The respawn wait is enforced server-side**, in `Death.respawnAtHospital`,
 against the timestamp the server took when it marked the player dead:
 ```lua

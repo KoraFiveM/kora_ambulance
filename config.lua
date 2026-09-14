@@ -17,6 +17,7 @@ Config.job = {
 Config.death = {
     deathTime = 300000,               -- ms a player can stay in laststand before bleeding out to full death
     respawnTime = 60000,              -- ms a fully dead player waits before /respawn is accepted (enforced in Death.respawnAtHospital, not just counted down on screen)
+    allowCameraMovement = true,        -- lets downed players look around while movement, combat and other gameplay controls remain disabled
     reportRetryInterval = 100,         -- ms a dead client waits before retrying server ped-state corroboration
     reportRetryAttempts = 5,           -- bounded retries for OneSync health replication before leaving the native death state intact
     minimumRevive = 20,               -- % of max health a successful revive restores the patient to
@@ -207,6 +208,7 @@ end
 ---@return boolean
 function Config.validate()
     local hospitalNames, beds, bones = {}, {}, {}
+    assert(type(Config.death.allowCameraMovement) == 'boolean', 'death allowCameraMovement must be boolean')
     assert(type(Config.hospitals) == 'table' and #Config.hospitals > 0, 'at least one hospital is required')
     for _, hospital in ipairs(Config.hospitals) do
         assert(type(hospital.name) == 'string' and hospital.name ~= '' and not hospitalNames[hospital.name], 'hospital names must be unique')
