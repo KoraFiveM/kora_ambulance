@@ -1,6 +1,6 @@
 # qbambulance
 
-A modern, qblib-native successor to `qb-ambulancejob` for FiveM.
+A modern, qblib-native ambulance resource for FiveM.
 
 It provides a server-authoritative death state machine, persistent anatomical
 wounds, EMS patient assessment and treatment, CPR/defibrillator revives,

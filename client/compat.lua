@@ -51,8 +51,8 @@ RegisterNetEvent('hospital:client:SendToBed', function(_bedIndex)
     QB.notify.send({ title = 'Hospital', message = 'Use a check-in desk for a server-assigned bed.', type = 'info' })
 end)
 
-RegisterNetEvent('hospital:client:LeaveBed', function()
-    TriggerServerEvent('hospital:server:LeaveBed')
+RegisterNetEvent('hospital:client:leaveBed', function()
+    TriggerServerEvent('hospital:server:leaveBed')
 end)
 
 RegisterNetEvent('hospital:client:SetBed', function(bedIndex)
@@ -87,7 +87,7 @@ RegisterNetEvent('hospital:client:CheckStatus', function()
     for _ in pairs(status.woundData or {}) do woundCount = woundCount + 1 end
 
     QB.notify.send({
-        title = 'Status',
+        title = 'status',
         message = ('Dead: %s | Laststand: %s | Open wounds: %d'):format(tostring(status.isdead), tostring(status.inlaststand), woundCount),
         type = 'info',
     })

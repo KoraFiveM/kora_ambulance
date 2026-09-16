@@ -10,7 +10,7 @@ carry a patient, or deploy a physical stretcher from a configured duty ambulance
 Patients can check in for timed care in an atomically assigned hospital bed;
 hospital respawns remain an independent escape path for fully dead players.
 Dispatch includes `/911e`, automatic casualty calls and a house-call queue. A
-guarded compatibility adapter supports common `qb-ambulancejob`/`hospital:*`
+guarded compatibility adapter supports common `hospital:*`
 integrations while intentionally refusing legacy shortcuts that would let a
 client directly heal, revive, choose a bed, or remove inventory.
 
@@ -263,9 +263,8 @@ Presentation belongs to **qbdispatch**: the feed, the map, history and the
 response state machine. This resource decides only what counts as an EMS matter
 and how each call is worded.
 
-**Automatic calls** (`Config.dispatch.autoCall`) restore behaviour the rewrite had
-dropped — real qb-ambulancejob alerted on laststand, on death and on the help
-key, and none of that survived. Now:
+**Automatic calls** (`Config.dispatch.autoCall`) cover laststand, death, and the
+help key:
 
 | Event | Call | Priority |
 | --- | --- | --- |
@@ -311,7 +310,7 @@ All models, attachment offsets, duty-vehicle associations and relationship
 changes are resolved from server/config state. Network events are internal
 transport surfaces; integrations should prefer the target interactions.
 
-### Legacy `qb-ambulancejob` / `hospital:*` compatibility
+### Legacy `hospital:*` compatibility
 
 `Config.compat.enabled` registers the common `hospital:client:*`,
 `hospital:server:*` and callback names. Compatibility is semantic and guarded,
