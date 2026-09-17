@@ -275,7 +275,6 @@ QB.status.registerEffect('bleeding', {
     stacking = 'replace',
     severityLevels = MAX_TIER,
     fx = {
-        screen = 'DeathFailNeutralIn',
         ptfx = { dict = 'blood', name = 'blood_stab' },
     },
 })
