@@ -24,7 +24,7 @@ local function nearbyHospital(src, checkInOnly)
     for _, hospital in ipairs(Config.hospitals) do
         local point = checkInOnly and (hospital.checkIn or hospital.coords) or hospital.coords
         local range = checkInOnly and Config.hospitalCare.interactionRange or 15.0
-        if #(coords - point) <= range then return hospital end
+        if #(coords - vector3(point.x, point.y, point.z)) <= range then return hospital end
     end
     return nil
 end

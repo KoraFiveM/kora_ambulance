@@ -22,7 +22,7 @@ end
 local function isNear(src, point, range)
     local ped = GetPlayerPed(src)
     if not ped or ped == 0 then return false end
-    return #(GetEntityCoords(ped) - point) <= range
+    return #(GetEntityCoords(ped) - vector3(point.x, point.y, point.z)) <= range
 end
 
 local function hasInjury(src)

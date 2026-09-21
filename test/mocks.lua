@@ -47,11 +47,14 @@ function M.install()
     function _G.GetResourceState(name) return resourceStates[name] or 'missing' end
     local VEC3 = {}
     VEC3.__index = VEC3
-    VEC3.__sub = function(a, b) return setmetatable({ x = a.x - b.x, y = a.y - b.y, z = a.z - b.z }, VEC3) end
+    VEC3.__sub = function(a, b)
+        assert(getmetatable(b) == VEC3, 'attempt to perform unsupported operation on a vector value')
+        return setmetatable({ x = a.x - b.x, y = a.y - b.y, z = a.z - b.z }, VEC3)
+    end
     VEC3.__len = function(a) return math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) end
     local function vector(x, y, z) return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, VEC3) end
     function _G.vector3(x, y, z) return vector(x, y, z) end
-    function _G.vector4(x, y, z, w) local v = vector(x, y, z); v.w = w; return v end
+    function _G.vector4(x, y, z, w) return setmetatable({ x = x or 0, y = y or 0, z = z or 0, w = w or 0 }, {}) end
     function _G.IsDuplicityVersion() return true end
     function _G.joaat(s) return s end -- identity stub; only client/damage.lua's group-hash lookup needs real hashing, and that file is never dofile'd by these tests
 
