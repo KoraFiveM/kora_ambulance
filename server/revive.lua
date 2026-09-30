@@ -95,6 +95,15 @@ end
 QB.callback.register('qbambulance:server:beginRevive', function(src, targetSrc)
     targetSrc = tonumber(targetSrc)
     if not targetSrc or targetSrc == src then return nil, 'invalid patient' end
+
+    local now = GetGameTimer()
+    local current = actionsBySrc[src]
+    if current and current.expiresAt < now then clearAction(src) end
+
+    local owner = actionOwnerByTarget[targetSrc]
+    local ownedAction = owner and actionsBySrc[owner]
+    if ownedAction and ownedAction.expiresAt < now then clearAction(owner) end
+
     if actionsBySrc[src] then return nil, 'revive already in progress' end
     if actionOwnerByTarget[targetSrc] then return nil, 'another reviver is already working on this patient' end
     if not isOnDutyEMS(src) then return nil, 'not an on-duty paramedic' end

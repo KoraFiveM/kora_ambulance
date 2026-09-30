@@ -138,4 +138,59 @@ h.test('network revive requires the proof authorization issued for that action',
     h.assertTrue(Death.isAlive(19), 'the matching action proof revives the patient')
 end)
 
+local beginRevive = handle.QB.callback.registry['qbambulance:server:beginRevive']
+local completeRevive = handle.QB.events.registry['qbambulance:server:completeRevive']
+local originalTimer = GetGameTimer
+local clock = 1000000
+GetGameTimer = function() return clock end
+
+h.test('expired patient reservations admit another medic without accepting the old action', function()
+    makeMedic(20)
+    makeMedic(21)
+    handle.ensurePlayer(22)
+    Death.enterLaststand(22)
+    local oldToken, _, oldAuthorization = beginRevive(20, 22)
+    h.assertTrue(oldToken)
+    h.assertFalse(beginRevive(21, 22), 'an active patient reservation still blocks another medic')
+    clock = clock + Config.death.reviveActionTtl
+    h.assertFalse(beginRevive(21, 22), 'preserve completion eligibility at the exact TTL boundary')
+    clock = clock + 1
+    local token, _, authorization = beginRevive(21, 22)
+    h.assertTrue(token, 'a disconnected minigame must not lock the patient indefinitely')
+    local oldProof = handle.issueMinigameProof(20, 'mash', oldAuthorization)
+    completeRevive(20, 22, oldToken, oldProof)
+    h.assertTrue(Death.isLaststand(22), 'expired action cannot revive the patient')
+    h.assertEqual(handle.players[20].items.defibrillator, 1, 'expired action consumes no item')
+    h.assertFalse(beginRevive(20, 22), 'old completion must not release the new medic reservation')
+    local proof = handle.issueMinigameProof(21, 'mash', authorization)
+    completeRevive(21, 22, token, proof)
+    h.assertTrue(Death.isAlive(22), 'the new action still completes normally')
+    h.assertEqual(handle.players[21].items.defibrillator, 0)
+end)
+
+h.test('expired medic reservations release the previous patient before starting another action', function()
+    makeMedic(24)
+    makeMedic(27)
+    makeMedic(28)
+    handle.ensurePlayer(25)
+    handle.ensurePlayer(26)
+    Death.enterLaststand(25)
+    Death.enterLaststand(26)
+    local oldToken, _, oldAuthorization = beginRevive(24, 25)
+    h.assertTrue(oldToken)
+    h.assertFalse(beginRevive(24, 26), 'an active medic cannot begin two actions')
+    clock = clock + Config.death.reviveActionTtl + 1
+    local token, _, authorization = beginRevive(24, 26)
+    h.assertTrue(token, 'the same medic can retry after the action expires')
+    h.assertTrue(beginRevive(27, 25), 'the old patient reservation is also released')
+    completeRevive(24, 25, oldToken, handle.issueMinigameProof(24, 'mash', oldAuthorization))
+    h.assertFalse(beginRevive(28, 26), 'a late old token cannot clear the newer medic action')
+    h.assertTrue(Death.isLaststand(25))
+    h.assertEqual(handle.players[24].items.defibrillator, 1)
+    completeRevive(24, 26, token, handle.issueMinigameProof(24, 'mash', authorization))
+    h.assertTrue(Death.isAlive(26))
+    h.assertEqual(handle.players[24].items.defibrillator, 0)
+end)
+
+GetGameTimer = originalTimer
 h.report('revive')
