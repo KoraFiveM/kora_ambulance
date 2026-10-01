@@ -251,7 +251,16 @@ function Stretcher.deploy(src, vehicleNetworkId)
     if not isNearEntity(src, vehicle, Config.transport.interactionRange) then return nil, 'Move closer to the duty vehicle.' end
 
     local offset = vehicleDef.stretcher.offset
-    local coords = GetOffsetFromEntityInWorldCoords(vehicle, offset.x, offset.y, offset.z)
+    local origin, rotation = GetEntityCoords(vehicle), GetEntityRotation(vehicle)
+    -- Server rotations use ZXY order; the offset native is client-only.
+    local sx, cx = math.sin(math.rad(rotation.x)), math.cos(math.rad(rotation.x))
+    local sy, cy = math.sin(math.rad(rotation.y)), math.cos(math.rad(rotation.y))
+    local sz, cz = math.sin(math.rad(rotation.z)), math.cos(math.rad(rotation.z))
+    local coords = vector3(
+        origin.x + offset.x * (cz * cy - sz * sx * sy) - offset.y * sz * cx + offset.z * (cz * sy + sz * sx * cy),
+        origin.y + offset.x * (sz * cy + cz * sx * sy) + offset.y * cz * cx + offset.z * (sz * sy - cz * sx * cy),
+        origin.z - offset.x * cx * sy + offset.y * sx + offset.z * cx * cy
+    )
     local entity = CreateObjectNoOffset(joaat(Config.transport.model), coords.x, coords.y, coords.z, true, true, false)
     if not entity or entity == 0 or not DoesEntityExist(entity) then return nil, 'Could not deploy the stretcher.' end
 

@@ -138,8 +138,6 @@ function Hospital.completeBedCare(src, token)
     end
 
     if Death.isLaststand(src) then Death.reviveInField(src, 100) end
-    local ped = GetPlayerPed(src)
-    if ped and ped ~= 0 then SetEntityHealth(ped, GetEntityMaxHealth(ped)) end
     Death.clearAllWounds(src)
     local cost = Billing.charge(src, Config.billing.checkInCost, 'EMS check-in care')
 

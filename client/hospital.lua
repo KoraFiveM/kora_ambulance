@@ -16,7 +16,7 @@ local function startCare(care)
     local bed = care.bed
     local ped = PlayerPedId()
     SetEntityCoords(ped, bed.x, bed.y, bed.z, false, false, false, false)
-    TaskStartScenarioAtCoords(ped, 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w or 0.0, 0, true, false)
+    TaskStartScenarioAtPosition(ped, 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w or 0.0, 0, true, false)
     QB.notify.send({ title = 'Hospital Check-in', message = 'Resting in your assigned bed.', type = 'info' })
 
     CreateThread(function()
@@ -60,6 +60,8 @@ RegisterNetEvent('qbambulance:client:bedReleased', function(reason)
     if not activeCare then return end
     stopCare(activeCare.token)
     if reason == 'completed' then
+        local ped = PlayerPedId()
+        SetEntityHealth(ped, GetEntityMaxHealth(ped))
         QB.notify.send({ title = 'Hospital Check-in', message = 'Care completed.', type = 'success' })
     elseif reason ~= 'left-bed' then
         QB.notify.send({ title = 'Hospital Check-in', message = 'Your bed reservation was released.', type = 'warning' })

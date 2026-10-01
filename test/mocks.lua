@@ -390,9 +390,9 @@ function M.install()
     function _G.SetVehicleNumberPlateText(entity, plate) if entities[entity] then entities[entity].plate = plate end end
     function _G.GetEntityType(entity) return entities[entity] and entities[entity].type or 0 end
     function _G.GetEntityModel(entity) return entities[entity] and entities[entity].model or 0 end
-    function _G.GetOffsetFromEntityInWorldCoords(entity, x, y, z)
-        local coords = GetEntityCoords(entity)
-        return vector(coords.x + x, coords.y + y, coords.z + z)
+    _G.GetOffsetFromEntityInWorldCoords = nil
+    function _G.GetEntityRotation(entity)
+        return entities[entity] and entities[entity].rotation or vector(0, 0, entities[entity] and entities[entity].heading or 0)
     end
     function _G.FreezeEntityPosition(entity, frozen) if entities[entity] then entities[entity].frozen = frozen == true end end
     function _G.SetEntityHeading(entity, heading) if entities[entity] then entities[entity].heading = heading end end

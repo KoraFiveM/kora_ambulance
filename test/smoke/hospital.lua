@@ -9,6 +9,7 @@ dofile('server/billing.lua')
 dofile('server/hospital.lua')
 
 local hospital = Config.hospitals[1]
+SetEntityHealth = nil -- unavailable on the server
 
 local function placeAtCheckIn(src)
     handle.ensurePlayer(src)
@@ -78,7 +79,7 @@ h.test('completion requires the source-bound token, duration, and assigned-bed p
     h.assertEqual(Hospital.getSession(10), nil)
 end)
 
-h.test('successful care revives laststand, restores health, clears wounds and charges once', function()
+h.test('successful care revives laststand, requests client healing, clears wounds and charges once', function()
     placeAtCheckIn(11); injure(11)
     handle.players[11].money.cash = 1000
     handle.setHealth(11, 40)
@@ -97,7 +98,9 @@ h.test('successful care revives laststand, restores health, clears wounds and ch
     handle.advanceTime(Config.hospitalCare.duration + 1)
     h.assertTrue(Hospital.completeBedCare(11, care.token))
     h.assertTrue(Death.isAlive(11))
-    h.assertEqual(handle.players[11].health, 200)
+    local release = handle.lastClient('qbambulance:client:bedReleased')
+    h.assertEqual(release.target, 11)
+    h.assertEqual(release.args[1], 'completed')
     h.assertEqual(next(Death.getWoundData(11)), nil)
     h.assertEqual(handle.players[11].money.cash, 1000 - Config.billing.checkInCost)
     h.assertTrue(completedHook)

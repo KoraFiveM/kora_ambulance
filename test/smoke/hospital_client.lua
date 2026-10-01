@@ -35,4 +35,25 @@ h.test('hospital check-in targets register again after qbtarget restarts', funct
     h.assertEqual(#handle.qbtarget.calls, before * 2)
 end)
 
+h.test('completed server care heals locally; cancelled and inactive care do not', function()
+    handle.ensurePlayer(1)
+    handle.setHealth(1, 40)
+    PlayerPedId = function() return 1 end
+    SetEntityCoords = function() end
+    ClearPedTasks = function() end
+    local scenarios = 0
+    TaskStartScenarioAtPosition = function() scenarios = scenarios + 1 end
+    TaskStartScenarioAtCoords = nil
+    local care = { token = 'care-test', bed = { x = 1, y = 2, z = 3 }, duration = 5000 }
+    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, care)
+    h.assertEqual(scenarios, 1)
+    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'left-bed')
+    h.assertEqual(handle.players[1].health, 40)
+    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'completed')
+    h.assertEqual(handle.players[1].health, 40)
+    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, care)
+    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'completed')
+    h.assertEqual(handle.players[1].health, 200)
+end)
+
 h.report('hospital_client')

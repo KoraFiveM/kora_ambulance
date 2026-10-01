@@ -267,4 +267,27 @@ h.test('lost physical entities are swept and cannot leave stale relationships', 
     h.assertEqual(Stretcher.state(stretcherNetworkId), nil)
 end)
 
+h.test('deployment transforms offsets with server ZXY rotations', function()
+    local vehicleId = checkoutTransportVehicle(31, 1)
+    local vehicle = handle.entities[vehicleId]
+    local origin = vehicle.coords
+    local offset = Config.dutyVehicles[1].stretcher.offset
+    local function check(rotation, x, y, z)
+        vehicle.rotation = vector3(rotation[1], rotation[2], rotation[3])
+        local id, reason = Stretcher.deploy(31, vehicleId)
+        h.assertTrue(id ~= nil, reason)
+        local coords = handle.entities[id].coords
+        h.assertTrue(math.abs(coords.x - origin.x - x) < 0.000001)
+        h.assertTrue(math.abs(coords.y - origin.y - y) < 0.000001)
+        h.assertTrue(math.abs(coords.z - origin.z - z) < 0.000001)
+        DeleteEntity(id)
+        Stretcher.sweep(GetGameTimer())
+    end
+    check({ 0, 0, 0 }, offset.x, offset.y, offset.z)
+    check({ 0, 0, 90 }, -offset.y, offset.x, offset.z)
+    check({ 90, 0, 0 }, offset.x, -offset.z, offset.y)
+    check({ 0, 90, 0 }, offset.z, offset.y, -offset.x)
+    check({ 90, 90, 90 }, -offset.x, offset.z, offset.y)
+end)
+
 h.report('stretcher')
