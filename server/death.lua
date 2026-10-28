@@ -3,7 +3,7 @@
 
 Death = Death or {}
 
-local QBCore = exports.qbcore
+local QBCore = exports.kora_core
 local MEDICAL_VERSION = 1
 local MAX_SEQUENCE = 9007199254740991
 

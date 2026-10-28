@@ -1,7 +1,7 @@
 -- EMS dispatch.
 --
 -- Everything about presenting a call -- the feed, the map, history, response
--- states -- belongs to qbdispatch. This file only decides what counts as an EMS
+-- states -- belongs to kora_dispatch. This file only decides what counts as an EMS
 -- call and how each one is worded, which is medical-resource business that
 -- dispatch has no opinion about.
 --
@@ -13,7 +13,7 @@
 Ambulance = Ambulance or {}
 Ambulance.dispatch = {}
 
-local QBCore = exports.qbcore
+local QBCore = exports.kora_core
 
 -- src -> os.time() of that player's last automatic call. Death and laststand
 -- both fire on the way down, and a revive-then-die cycle can repeat quickly;
@@ -54,7 +54,7 @@ function Ambulance.dispatch.call(payload)
     if not payload.jobs and not payload.jobTypes then
         payload.jobTypes = { Config.job.type }
     end
-    return exports.qbdispatch:createCall(payload)
+    return exports.kora_dispatch:createCall(payload)
 end
 
 ---@param src integer
@@ -112,9 +112,9 @@ AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
     -- paramedic is already standing over them -- so re-alerting would just be
     -- noise during the exact minute they are busiest. Once the cooldown lapses
     -- it is treated as a genuinely new emergency again.
-    for _, call in ipairs(exports.qbdispatch:getCalls({ service = Config.job.type, activeOnly = true })) do
+    for _, call in ipairs(exports.kora_dispatch:getCalls({ service = Config.job.type, activeOnly = true })) do
         if call.data and call.data.source == src then
-            exports.qbdispatch:closeCall(call.id, 'patient treated')
+            exports.kora_dispatch:closeCall(call.id, 'patient treated')
         end
     end
 end)

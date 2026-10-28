@@ -1,5 +1,5 @@
--- Client death smoke test -- qblib cache owns fatal-injury detection while
--- qbambulance immediately suppresses the native wasted flow and reports the
+-- Client death smoke test -- kora_lib cache owns fatal-injury detection while
+-- kora_ambulance immediately suppresses the native wasted flow and reports the
 -- edge through a corroborating server callback without any baseevents
 -- dependency.
 local h = dofile('test/harness.lua')

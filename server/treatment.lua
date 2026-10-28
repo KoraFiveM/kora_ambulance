@@ -1,11 +1,11 @@
 -- Treatment (server realm) -- on-duty EMS can inspect another player's wound
 -- ledger and close one wound with supplies from their own inventory. The
--- client owns only the qblib action UX; job, range, item and wound checks are
+-- client owns only the kora_lib action UX; job, range, item and wound checks are
 -- repeated here when treatment completes.
 
 Treatment = Treatment or {}
 
-local QBCore = exports.qbcore
+local QBCore = exports.kora_core
 local actionsByMedic = {}
 local medicByPatient = {}
 
@@ -145,7 +145,7 @@ function Treatment.complete(medicSrc, patientSrc, token, completed)
     if not completed then return false, 'treatment cancelled' end
 
     local now = GetGameTimer()
-    -- Allow a small scheduling tolerance: the qblib progress bar may return
+    -- Allow a small scheduling tolerance: the kora_lib progress bar may return
     -- a frame before the nominal duration while server/client clocks settle.
     if now < action.readyAt - 250 then return false, 'treatment completed too quickly' end
     if now > action.expiresAt then return false, 'treatment action expired' end

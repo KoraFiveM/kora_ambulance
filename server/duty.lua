@@ -6,29 +6,29 @@
 
 Duty = Duty or {}
 
--- qbcore has no QB proxy of its own (see this resource's own AGENTS-style
+-- kora_core has no QB proxy of its own (see this resource's own AGENTS-style
 -- header note in the plan) -- every Core.<module>.<fn> call must cross the
--- exports boundary as a flat exports.qbcore:<fn>(...) call instead.
-local QBCore = exports.qbcore
+-- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
+local QBCore = exports.kora_core
 
 local currentVehicle = {}  -- src -> { plate, networkId }
 local lastVehicleAction = {}
 local lastDutyChange = {}
 
 -- Pharmacy shop + EMS stash per hospital. Safe to call unconditionally at
--- load time (unlike qbcore's own Core.consumables, which has to defer to
--- onResourceStart) -- qbambulance declares `dependency 'qbinventory'`, so
--- FXServer already guarantees qbinventory is running before this resource's
+-- load time (unlike kora_core's own Core.consumables, which has to defer to
+-- onResourceStart) -- kora_ambulance declares `dependency 'kora_inventory'`, so
+-- FXServer already guarantees kora_inventory is running before this resource's
 -- own scripts start. THAT guarantee only covers ordering on a fresh boot,
--- though -- a `dependency` declaration says nothing about a qbinventory
--- RESTART mid-session, which wipes qbinventory's own shop/stash tables
--- without touching qbambulance at all. So this is wrapped in a function,
+-- though -- a `dependency` declaration says nothing about a kora_inventory
+-- RESTART mid-session, which wipes kora_inventory's own shop/stash tables
+-- without touching kora_ambulance at all. So this is wrapped in a function,
 -- called once at load (per the load-time guarantee above) AND again on
--- every qbinventory onResourceStart, to survive that case too.
+-- every kora_inventory onResourceStart, to survive that case too.
 local function registerHospitals()
     for _, hospital in ipairs(Config.hospitals) do
         if hospital.pharmacy then
-            exports.qbinventory:registerShop(('ambulance_pharmacy_%s'):format(hospital.name), {
+            exports.kora_inventory:registerShop(('ambulance_pharmacy_%s'):format(hospital.name), {
                 label = hospital.label .. ' Pharmacy',
                 slots = 4,
                 coords = hospital.pharmacy,
@@ -43,7 +43,7 @@ local function registerHospitals()
         end
 
         if hospital.stash then
-            exports.qbinventory:registerStash(
+            exports.kora_inventory:registerStash(
                 ('ambulance_stash_%s'):format(hospital.name),
                 hospital.label .. ' EMS Stash',
                 hospital.stash.slots, hospital.stash.maxWeight,
@@ -56,7 +56,7 @@ end
 registerHospitals()
 
 AddEventHandler('onResourceStart', function(resourceName)
-    if resourceName == 'qbinventory' then registerHospitals() end
+    if resourceName == 'kora_inventory' then registerHospitals() end
 end)
 
 local PLATE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'

@@ -2,7 +2,7 @@
 -- each item (closing a wound, the painkiller cooldown) lives entirely in
 -- server/items.lua's QBCore:createUseable handlers; the cosmetic
 -- screen-fx/anim/hunger/thirst/stress playback is entirely generic
--- (qbcore's Core.consumables reading the item's own `effect` table) -- this
+-- (kora_core's Core.consumables reading the item's own `effect` table) -- this
 -- file's only job is running the QB.progressbar the server asks for while a
 -- pharmacy item is being applied, so treatment can be interrupted (moving,
 -- taking damage, the cancel key) instead of being an instant, un-interactable

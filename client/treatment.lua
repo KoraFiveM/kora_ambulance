@@ -2,7 +2,7 @@
 -- treatment actions. All authority stays in server/treatment.lua.
 
 local function isOnDutyEMS()
-    local job = exports.qbcore:getJob()
+    local job = exports.kora_core:getJob()
     return job ~= nil and job.name == Config.job.name and job.onduty == true
 end
 
@@ -88,12 +88,12 @@ local function treatPatient(entity)
     if patientSrc then treatPatientById(patientSrc) end
 end
 
--- Legacy integrations enter the same qblib action as the native target
+-- Legacy integrations enter the same kora_lib action as the native target
 -- option. All authority remains in server/treatment.lua.
 RegisterNetEvent('qbambulance:client:treatmentRequested', treatPatientById)
 
 local function registerTargets()
-    exports.qbtarget:addGlobalType('player', {
+    exports.kora_target:addGlobalType('player', {
         {
             label = 'Assess Patient',
             icon = 'stethoscope',
@@ -112,5 +112,5 @@ end
 registerTargets()
 
 AddEventHandler('onClientResourceStart', function(resourceName)
-    if resourceName == 'qbtarget' then registerTargets() end
+    if resourceName == 'kora_target' then registerTargets() end
 end)

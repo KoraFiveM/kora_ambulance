@@ -5,10 +5,10 @@
 
 Billing = Billing or {}
 
--- qbcore has no QB proxy of its own (see this resource's own AGENTS-style
+-- kora_core has no QB proxy of its own (see this resource's own AGENTS-style
 -- header note in the plan) -- every Core.<module>.<fn> call must cross the
--- exports boundary as a flat exports.qbcore:<fn>(...) call instead.
-local QBCore = exports.qbcore
+-- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
+local QBCore = exports.kora_core
 
 ---Base hospital fee plus Config.billing.perWoundCost[tier] for every still-open
 ---wound at respawn time -- more/worse wounds cost more, same as a real ER

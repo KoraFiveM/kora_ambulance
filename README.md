@@ -1,4 +1,4 @@
-# qbambulance
+# kora_ambulance
 
 A modern, qblib-native ambulance resource for FiveM.
 
@@ -11,13 +11,13 @@ integrations working without preserving insecure client-authoritative shortcuts.
 
 ## Requirements
 
-- qblib
-- qbcore
-- qbinventory
-- qbtarget
-- qbdispatch
+- kora_lib
+- kora_core
+- kora_inventory
+- kora_target
+- kora_dispatch
 
-Start those resources first, then `ensure qbambulance`.
+Start those resources first, then `ensure kora_ambulance`.
 
 See [the full documentation](docs/index.md) for setup, configuration, commands,
 integration hooks and compatibility details.

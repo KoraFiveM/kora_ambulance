@@ -1,4 +1,4 @@
--- Client damage capture: a native hit is only reported after qblib observes
+-- Client damage capture: a native hit is only reported after kora_lib observes
 -- a matching local health decrease within the configured window.
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()

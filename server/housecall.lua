@@ -13,10 +13,10 @@
 
 HouseCall = HouseCall or {}
 
--- qbcore has no QB proxy of its own (see this resource's own AGENTS-style
+-- kora_core has no QB proxy of its own (see this resource's own AGENTS-style
 -- header note in the plan) -- every Core.<module>.<fn> call must cross the
--- exports boundary as a flat exports.qbcore:<fn>(...) call instead.
-local QBCore = exports.qbcore
+-- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
+local QBCore = exports.kora_core
 
 local lastAlertAt = {}     -- src -> os.time()
 local lastRequestAt = {}   -- citizenid -> os.time()
@@ -35,7 +35,7 @@ end
 ---@param src integer
 ---@param coords table|nil
 ---@param message string|nil
----@return table payload Ready to pass to exports.qbdispatch:createCall.
+---@return table payload Ready to pass to exports.kora_dispatch:createCall.
 function HouseCall.buildAlertPayload(src, coords, message)
     return {
         -- Targets the ems job TYPE rather than this resource's job NAME, so a
@@ -132,7 +132,7 @@ local function pruneQueue()
     local expired
     queue, expired = HouseCall.prune(queue, os.time(), math.floor(Config.dispatch.housecallTtl / 1000))
     for _, request in ipairs(expired) do
-        if request.callId then exports.qbdispatch:closeCall(request.callId, 'house call expired') end
+        if request.callId then exports.kora_dispatch:closeCall(request.callId, 'house call expired') end
     end
 end
 
@@ -159,7 +159,7 @@ local function fire911e(src, coords, message)
     -- createCall returns (callId, recipientCount). The count is what tells the
     -- caller whether anybody actually heard them -- "nobody is on duty" and
     -- "help is coming" are very different things to be told while bleeding.
-    local _, count = exports.qbdispatch:createCall(HouseCall.buildAlertPayload(src, coords, message))
+    local _, count = exports.kora_dispatch:createCall(HouseCall.buildAlertPayload(src, coords, message))
     count = tonumber(count) or 0
 
     TriggerClientEvent('QBCore:Notify', src,
@@ -216,7 +216,7 @@ local function submitHousecall(src, note)
     -- feed and on the map alongside everything else instead of being a list you
     -- have to remember to type /housecalls to see. The in-memory queue remains
     -- the authority on what is unclaimed; the call is the view of it.
-    local callId = exports.qbdispatch:createCall(HouseCall.buildQueuePayload(request))
+    local callId = exports.kora_dispatch:createCall(HouseCall.buildQueuePayload(request))
     request.callId = callId or nil
 
     queue = HouseCall.submitToQueue(queue, request)
@@ -267,7 +267,7 @@ local function claimHousecall(src, requestId)
     -- The call has an owner now, so it leaves everyone else's live feed. It
     -- stays in history with the responding unit recorded against it.
     if accepted.callId then
-        exports.qbdispatch:closeCall(accepted.callId, 'accepted by a paramedic')
+        exports.kora_dispatch:closeCall(accepted.callId, 'accepted by a paramedic')
     end
 
     return true
@@ -290,13 +290,13 @@ QBCore:addCommand('accepthousecall', 'Accept a house-call request', {
     end
 end)
 
--- qbdispatch fires this when a paramedic first attaches to a house-call call.
+-- kora_dispatch fires this when a paramedic first attaches to a house-call call.
 -- The event NAME was handed to dispatch in the call's `onAccept` field --
 -- dispatch has no idea what a house call is, it just fires what it was given,
 -- which is what keeps job-specific behaviour out of the dispatch resource.
 RegisterNetEvent('qbambulance:server:housecallAccepted', function(src, _callId, data)
     -- A net event registration would also let a client fire this directly. It
-    -- is only ever raised server-side by qbdispatch (TriggerEvent, not
+    -- is only ever raised server-side by kora_dispatch (TriggerEvent, not
     -- TriggerClientEvent), so a non-zero `source` means it came over the
     -- network and is refused.
     if source ~= 0 and source ~= nil then return end

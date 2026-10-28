@@ -1,5 +1,5 @@
 -- Damage (client realm) -- correlates the local victim's native damage event
--- with qblib's next observed health decrease. The client reports measurements
+-- with kora_lib's next observed health decrease. The client reports measurements
 -- only; server/death.lua owns validation, body-part remapping, and severity.
 
 local pendingHit

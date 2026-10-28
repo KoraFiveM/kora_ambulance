@@ -28,7 +28,7 @@ h.test('bandage: no wound at all -> refused, item not consumed', function()
     handle.ensurePlayer(1)
     handle.players[1].items.bandage = 1
 
-    handle.qbcore:useItem(1, 'bandage')
+    handle.kora_core:useItem(1, 'bandage')
     h.assertEqual(handle.players[1].items.bandage, 1)
 end)
 
@@ -37,7 +37,7 @@ h.test('bandage: treats a tier-2-or-lower wound and consumes exactly one bandage
     handle.players[2].items.bandage = 2
     Death.recordWound(2, 'left_hand', 2)
 
-    handle.qbcore:useItem(2, 'bandage')
+    handle.kora_core:useItem(2, 'bandage')
 
     h.assertEqual(Death.getWoundData(2).left_hand, nil) -- treated
     h.assertEqual(handle.players[2].items.bandage, 1) -- exactly one consumed
@@ -48,7 +48,7 @@ h.test('bandage cannot treat a tier-3+ wound (needs an IFAK) and does not consum
     handle.players[3].items.bandage = 1
     Death.recordWound(3, 'chest', 4)
 
-    handle.qbcore:useItem(3, 'bandage')
+    handle.kora_core:useItem(3, 'bandage')
 
     h.assertEqual(Death.getWoundData(3).chest, 4) -- untouched
     h.assertEqual(handle.players[3].items.bandage, 1) -- not consumed
@@ -59,7 +59,7 @@ h.test('bandage refuses to be used while dead', function()
     handle.players[4].items.bandage = 1
     Death.markDead(4)
 
-    handle.qbcore:useItem(4, 'bandage')
+    handle.kora_core:useItem(4, 'bandage')
     h.assertEqual(handle.players[4].items.bandage, 1)
 end)
 
@@ -68,7 +68,7 @@ h.test('ifak treats any tier, including one a bandage could not', function()
     handle.players[5].items.ifak = 1
     Death.recordWound(5, 'chest', 4)
 
-    handle.qbcore:useItem(5, 'ifak')
+    handle.kora_core:useItem(5, 'ifak')
 
     h.assertEqual(Death.getWoundData(5).chest, nil)
     h.assertEqual(handle.players[5].items.ifak, 0)
@@ -80,7 +80,7 @@ h.test('a cancelled progress bar (client reports false) treats nothing and consu
     Death.recordWound(6, 'left_hand', 1)
 
     handle.QB.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return false end
-    handle.qbcore:useItem(6, 'bandage')
+    handle.kora_core:useItem(6, 'bandage')
     handle.QB.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return true end
 
     h.assertEqual(Death.getWoundData(6).left_hand, 1) -- untreated
@@ -91,10 +91,10 @@ h.test('painkillers: respects the cooldown and consumes exactly one on success',
     handle.ensurePlayer(7)
     handle.players[7].items.painkillers = 2
 
-    handle.qbcore:useItem(7, 'painkillers')
+    handle.kora_core:useItem(7, 'painkillers')
     h.assertEqual(handle.players[7].items.painkillers, 1)
 
-    handle.qbcore:useItem(7, 'painkillers') -- immediately again -- cooldown blocks it
+    handle.kora_core:useItem(7, 'painkillers') -- immediately again -- cooldown blocks it
     h.assertEqual(handle.players[7].items.painkillers, 1)
 end)
 

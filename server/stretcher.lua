@@ -5,7 +5,7 @@
 
 Stretcher = Stretcher or {}
 
-local QBCore = exports.qbcore
+local QBCore = exports.kora_core
 
 local draggerOf = {} -- patientSrc -> medicSrc (emergency carry)
 local targetOf = {} -- medicSrc -> patientSrc (emergency carry)

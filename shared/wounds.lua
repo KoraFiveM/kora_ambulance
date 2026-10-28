@@ -93,7 +93,7 @@ end
 
 -- Native GTA weapon hashes are build-dependent to enumerate exhaustively, so
 -- classification goes by name substring against the standard weapon_* naming
--- convention (matches qbcore/shared/weapons.lua's own item-name scheme) --
+-- convention (matches kora_core/shared/weapons.lua's own item-name scheme) --
 -- callers pass GetWeaponNameFromHash-style names, not raw hashes.
 local WEAPON_CLASS_PATTERNS = {
     { pattern = 'melee',  class = 'melee' },

@@ -36,7 +36,7 @@ h.test('buildQueuePayload is a low-priority call carrying the accept hook', func
     h.assertEqual(payload.priority, 3,
         'a house call must not outrank a patient who is actually bleeding out')
     h.assertEqual(payload.message, 'sore arm', 'the caller note becomes the message')
-    -- qbdispatch knows nothing about house calls: it fires whatever event name
+    -- kora_dispatch knows nothing about house calls: it fires whatever event name
     -- it was handed when a paramedic first attaches. That is what keeps
     -- job-specific behaviour out of the dispatch resource.
     h.assertEqual(payload.onAccept, 'qbambulance:server:housecallAccepted', 'the generic accept hook')
@@ -93,7 +93,7 @@ h.test('a 911 call reaches on-duty EMS and reports how many heard it', function(
     handle.ensurePlayer(2) -- civilian caller
     handle.ensurePlayer(3); handle.players[3].job = { name = Config.job.name, onduty = false, grade = { level = 1 } }
 
-    local _, count = handle.qbdispatch:createCall(HouseCall.buildAlertPayload(2, nil, 'help'))
+    local _, count = handle.kora_dispatch:createCall(HouseCall.buildAlertPayload(2, nil, 'help'))
 
     -- The count is what /911e uses to tell the caller "help is coming" versus
     -- "nobody is on duty" -- two very different things to hear while bleeding.

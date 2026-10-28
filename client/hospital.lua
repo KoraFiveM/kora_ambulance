@@ -70,7 +70,7 @@ end)
 
 local function registerHospitalTargets()
     for _, hospital in ipairs(Config.hospitals) do
-        exports.qbtarget:addSphereZone({
+        exports.kora_target:addSphereZone({
             coords = hospital.checkIn or hospital.coords,
             radius = Config.hospitalCare.interactionRange,
             options = {
@@ -82,14 +82,14 @@ local function registerHospitalTargets()
         })
 
         if hospital.pharmacy then
-            exports.qbtarget:addSphereZone({
+            exports.kora_target:addSphereZone({
                 coords = hospital.pharmacy,
                 radius = 3.0,
                 options = {
                     {
                         label = 'Browse Pharmacy', icon = 'pill',
                         onSelect = function()
-                            exports.qbinventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
+                            exports.kora_inventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
                         end,
                     },
                 },
@@ -97,18 +97,18 @@ local function registerHospitalTargets()
         end
 
         if hospital.stash and hospital.stash.coords then
-            exports.qbtarget:addSphereZone({
+            exports.kora_target:addSphereZone({
                 coords = hospital.stash.coords,
                 radius = 3.0,
                 options = {
                     {
                         label = 'EMS Stash', icon = 'box',
                         canInteract = function()
-                            local job = exports.qbcore:getJob()
+                            local job = exports.kora_core:getJob()
                             return job ~= nil and job.name == Config.job.name
                         end,
                         onSelect = function()
-                            exports.qbinventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
+                            exports.kora_inventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
                         end,
                     },
                 },
@@ -130,5 +130,5 @@ end
 registerHospitalTargets()
 
 AddEventHandler('onClientResourceStart', function(resource)
-    if resource == 'qbtarget' then registerHospitalTargets() end
+    if resource == 'kora_target' then registerHospitalTargets() end
 end)

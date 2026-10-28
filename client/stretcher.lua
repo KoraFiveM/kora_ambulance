@@ -35,7 +35,7 @@ function Stretcher.isPatientLoaded()
 end
 
 local function isOnDutyEMS()
-    local job = exports.qbcore:getJob()
+    local job = exports.kora_core:getJob()
     return job ~= nil and job.name == Config.job.name and job.onduty == true
 end
 
@@ -287,7 +287,7 @@ local function deployStretcher(vehicle)
 end
 
 local function registerTargets()
-    exports.qbtarget:addGlobalType('player', {
+    exports.kora_target:addGlobalType('player', {
         {
             label = 'Emergency Carry',
             icon = 'move',
@@ -326,7 +326,7 @@ local function registerTargets()
         },
     }, Config.transport.interactionRange)
 
-    exports.qbtarget:addModel(Config.transport.model, {
+    exports.kora_target:addModel(Config.transport.model, {
         {
             label = 'Push Stretcher',
             icon = 'hand',
@@ -362,7 +362,7 @@ local function registerTargets()
         },
     }, Config.transport.interactionRange)
 
-    exports.qbtarget:addGlobalType('vehicle', {
+    exports.kora_target:addGlobalType('vehicle', {
         {
             label = 'Deploy Stretcher',
             icon = 'bed',
@@ -409,7 +409,7 @@ end
 registerTargets()
 
 AddEventHandler('onClientResourceStart', function(resourceName)
-    if resourceName == 'qbtarget' then registerTargets() end
+    if resourceName == 'kora_target' then registerTargets() end
 end)
 
 AddEventHandler('onClientResourceStop', function(resourceName)

@@ -7,7 +7,7 @@ if not Config.compat.enabled then return end
 local lastKnownDoctorCount = 0
 local painScreenHandle
 
--- Registered but inert. qbdispatch renders every EMS call now, including the
+-- Registered but inert. kora_dispatch renders every EMS call now, including the
 -- ones raised from the legacy hospital:server:ambulanceAlert path -- it
 -- registers that server event itself and turns it into a real call. Rendering
 -- here as well would show the same incident twice, once as a proper dispatch

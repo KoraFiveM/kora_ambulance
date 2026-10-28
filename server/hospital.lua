@@ -4,7 +4,7 @@
 
 Hospital = Hospital or {}
 
-local QBCore = exports.qbcore
+local QBCore = exports.kora_core
 local sessions = {} -- src -> { token, hospital, bedIndex, readyAt, expiresAt }
 local reservedBeds = {} -- "hospital:index" -> src
 local nextToken = 0

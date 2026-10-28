@@ -1,12 +1,12 @@
--- Mocks for smoke-testing qbambulance modules under plain lua5.4 (no FiveM,
--- no DB, no qbcore/qblib actually running). Unlike qbcore/qblib's own test
--- mocks (which mock FiveM natives to test THEIR real internals), qbambulance
--- is a CONSUMER resource -- everything it calls on qbcore/qblib crosses an
+-- Mocks for smoke-testing kora_ambulance modules under plain lua5.4 (no FiveM,
+-- no DB, no kora_core/qblib actually running). Unlike kora_core/qblib's own test
+-- mocks (which mock FiveM natives to test THEIR real internals), kora_ambulance
+-- is a CONSUMER resource -- everything it calls on kora_core/qblib crosses an
 -- exports boundary, so this only needs to fake that boundary: a colon-
--- callable `exports.qbcore` backed by a tiny in-memory player store, and a
--- `QB` table with the handful of qblib primitives qbambulance's server code
+-- callable `exports.kora_core` backed by a tiny in-memory player store, and a
+-- `QB` table with the handful of kora_lib primitives kora_ambulance's server code
 -- actually calls (status/notify/events/callback/commands). Follows the same
--- install()/fireEvent() shape as qbcore's own test/mocks.lua so the smoke
+-- install()/fireEvent() shape as kora_core's own test/mocks.lua so the smoke
 -- tests read the same way.
 
 local M = {}
@@ -43,7 +43,7 @@ function M.install()
     local clock = 0
     function _G.GetGameTimer() clock = clock + 16; return clock end
     function _G.GetInvokingResource() return nil end
-    function _G.GetCurrentResourceName() return 'qbambulance' end
+    function _G.GetCurrentResourceName() return 'kora_ambulance' end
     function _G.GetResourceState(name) return resourceStates[name] or 'missing' end
     local VEC3 = {}
     VEC3.__index = VEC3
@@ -96,7 +96,7 @@ function M.install()
         }
     end
 
-    -- --- fake qblib QB ---
+    -- --- fake kora_lib QB ---
     local QB = {}
 
     QB.world = {
@@ -208,7 +208,7 @@ function M.install()
 
     _G.QB = QB
 
-    -- --- fake exports.qbcore -- a colon-callable object backed by `players` ---
+    -- --- fake exports.kora_core -- a colon-callable object backed by `players` ---
     local qbcore = {}
 
     function qbcore:getJob(src) return ensure(src).job end
@@ -260,7 +260,7 @@ function M.install()
     function qbcore:deleteVehicle(_plate) return true end
     function qbcore:storeVehicle(_plate, _snapshot) return true end
     function qbcore:reset(src) local p = ensure(src); p.metadata.hunger = 100; p.metadata.thirst = 100; p.metadata.stress = 0 end
-    -- Job types mirror qbcore/shared/jobs.lua. Dispatch calls target the TYPE,
+    -- Job types mirror kora_core/shared/jobs.lua. Dispatch calls target the TYPE,
     -- so a fire department registered with type='ems' answers the same radio.
     local JOB_TYPES = { police = 'leo', sheriff = 'leo', ambulance = 'ems', tow = 'recovery' }
     function qbcore:getPlayersByJobType(jobType, onDutyOnly)
@@ -284,7 +284,7 @@ function M.install()
     function qbcore:getShared(_name, _key) return nil end
     function qbcore:registerShared(_name, _key, _record) end
 
-    -- Fake exports.qbtarget -- just records addGlobalType calls so provider-
+    -- Fake exports.kora_target -- just records addGlobalType calls so provider-
     -- restart re-registration tests can assert it was called again, rather
     -- than actually doing anything with the option lists passed in.
     local qbtarget
@@ -301,7 +301,7 @@ function M.install()
         end,
     }
 
-    -- Fake exports.qbinventory -- records registerShop/registerStash calls
+    -- Fake exports.kora_inventory -- records registerShop/registerStash calls
     -- (server/duty.lua's hospital-fixture registration) so provider-restart
     -- re-registration tests can assert on call counts. Any other method
     -- falls through to a harmless stub via __index, same as before.
@@ -313,9 +313,9 @@ function M.install()
     }
     setmetatable(qbinventory, { __index = function() return function() end end })
 
-    -- qbdispatch owns the call lifecycle; qbambulance only raises calls through
+    -- kora_dispatch owns the call lifecycle; kora_ambulance only raises calls through
     -- it. Recorded rather than simulated -- what these tests care about is the
-    -- payload this resource builds, not qbdispatch's storage (which has its own
+    -- payload this resource builds, not kora_dispatch's storage (which has its own
     -- suite).
     local dispatchCalls = {}
     local dispatchClosed = {}
@@ -365,8 +365,8 @@ function M.install()
     function qbdispatch:closeCall(id, reason) dispatchClosed[id] = reason or true; return true end
     function qbdispatch:setTheme() return true end
 
-    _G.exports = setmetatable({ qbcore = qbcore, qbtarget = qbtarget, qbinventory = qbinventory,
-                                qbdispatch = qbdispatch }, {
+    _G.exports = setmetatable({ kora_core = qbcore, kora_target = qbtarget, kora_inventory = qbinventory,
+                                kora_dispatch = qbdispatch }, {
         __index = function() return setmetatable({}, { __index = function() return function() end end }) end,
         __call = function(_, name, fn) registeredExports[name] = fn end,
     })
@@ -419,13 +419,13 @@ function M.install()
         serverEvents = serverEvents,
         resourceStates = resourceStates,
         QB = QB,
-        qbcore = qbcore,
-        qbdispatch = qbdispatch,
+        kora_core = qbcore,
+        kora_dispatch = qbdispatch,
         dispatchCalls = dispatchCalls,
         playerAlertDefinitions = playerAlertDefinitions,
         lastDispatchCall = function() return dispatchCalls[#dispatchCalls] end,
-        qbtarget = qbtarget,
-        qbinventory = qbinventory,
+        kora_target = qbtarget,
+        kora_inventory = qbinventory,
         setHealth = function(src, health) ensure(src).health = health end,
         setCoords = function(src, x, y, z) ensure(src).coords = vector(x, y, z) end,
         advanceTime = function(ms) clock = clock + ms end,

@@ -1,4 +1,4 @@
--- Hospital client targets are facility-only and must survive qbtarget reloads
+-- Hospital client targets are facility-only and must survive kora_target reloads
 -- even when a deployment omits optional pharmacy/stash fields.
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
@@ -15,7 +15,7 @@ dofile('client/hospital.lua')
 
 h.test('hospital check-in targets tolerate optional facility points being absent', function()
     local checkIns = 0
-    for _, call in ipairs(handle.qbtarget.calls) do
+    for _, call in ipairs(handle.kora_target.calls) do
         h.assertEqual(call.kind, 'sphere')
         if call.definition.options[1].label == 'Check In for Care' then checkIns = checkIns + 1 end
     end
@@ -30,9 +30,9 @@ h.test('hospital markers use canonical category and facility names', function()
 end)
 
 h.test('hospital check-in targets register again after qbtarget restarts', function()
-    local before = #handle.qbtarget.calls
-    handle.fireEvent('onClientResourceStart', nil, 'qbtarget')
-    h.assertEqual(#handle.qbtarget.calls, before * 2)
+    local before = #handle.kora_target.calls
+    handle.fireEvent('onClientResourceStart', nil, 'kora_target')
+    h.assertEqual(#handle.kora_target.calls, before * 2)
 end)
 
 h.test('completed server care heals locally; cancelled and inactive care do not', function()

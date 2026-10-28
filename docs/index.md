@@ -1,6 +1,6 @@
 ---
 layout: default
-title: qbambulance
+title: kora_ambulance
 ---
 
 EMS/ambulance job for FiveM. Hits are correlated with the victim's actual damaged
@@ -16,27 +16,27 @@ client directly heal, revive, choose a bed, or remove inventory.
 
 ## Requirements
 
-- [qblib](https://qbcore2.github.io/qblib/)
-- [qbcore](https://qbcore2.github.io/qbcore/)
-- [qbinventory](https://qbcore2.github.io/qbinventory/)
-- [qbtarget](https://qbcore2.github.io/qbtarget/)
-- [qbdispatch](https://qbcore2.github.io/qbdispatch/)
+- [qblib](https://qbcore2.github.io/kora_lib/)
+- [qbcore](https://qbcore2.github.io/kora_core/)
+- [qbinventory](https://qbcore2.github.io/kora_inventory/)
+- [qbtarget](https://qbcore2.github.io/kora_target/)
+- [qbdispatch](https://qbcore2.github.io/kora_dispatch/)
 
 ## Installation
 
 `server.cfg`, in this order:
 ```
-ensure qbsql
-ensure qblib
-ensure qbcore
-ensure qbinventory
-ensure qbtarget
-ensure qbdispatch
-ensure qbambulance
+ensure kora_sql
+ensure kora_lib
+ensure kora_core
+ensure kora_inventory
+ensure kora_target
+ensure kora_dispatch
+ensure kora_ambulance
 ```
-qbambulance registers configured pharmacy shops and EMS stashes against
-qbinventory at boot. Pharmacy, stash, duty and garage points are optional per
-hospital; the `ambulance` job record is already seeded by qbcore's shared job
+kora_ambulance registers configured pharmacy shops and EMS stashes against
+kora_inventory at boot. Pharmacy, stash, duty and garage points are optional per
+hospital; the `ambulance` job record is already seeded by kora_core's shared job
 list.
 
 ## Usage examples
@@ -49,7 +49,7 @@ The prompt at each hospital's garage (`Config.hospitals[n].garage`) only shows
 "Check out Ambulance" / "Return Vehicle" options while on duty:
 ```lua
 -- client, e.g. from another resource checking whether to show an EMS-only UI
-local job = exports.qbcore:getJob()
+local job = exports.kora_core:getJob()
 if job and job.name == 'ambulance' and job.onduty then
     -- show EMS-only UI
 end
@@ -61,7 +61,7 @@ end
 ```
 This raises a priority-1 dispatch call to the whole **EMS service** — every job
 registered with `type = 'ems'`, not just this resource's own job name — with the
-caller's live coords read server-side. Medics see it in the qbdispatch feed and
+caller's live coords read server-side. Medics see it in the kora_dispatch feed and
 on the map, and respond with the dispatch keybinds.
 
 The caller is told whether anybody actually heard them: `createCall` returns a
@@ -89,7 +89,7 @@ AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
 end)
 
 AddEventHandler('qbambulance:server:onPlayerRevivedBy', function(targetSrc, reviverSrc)
-    exports.qbcore:incrementMetaData(reviverSrc, 'stat_revives', 1)
+    exports.kora_core:incrementMetaData(reviverSrc, 'stat_revives', 1)
 end)
 ```
 
@@ -97,7 +97,7 @@ end)
 
 While on duty, target another player and choose **Assess Patient** for a stable,
 head-to-toe summary of their open wounds. Choose **Treat Wound** to run a
-cancellable qblib action and close one wound using the medic's own supplies.
+cancellable kora_lib action and close one wound using the medic's own supplies.
 The most urgent treatable wound is selected: a bandage handles tier 1-2 wounds,
 while severe and critical wounds require an IFAK. Job, proximity, item ownership,
 action timing and current wound severity are all checked again on the server when
@@ -152,17 +152,17 @@ end)
 ### Give a fresh EMS hire their starting gear
 ```lua
 -- server
-exports.qbcore:setJob(source, 'ambulance', 1)
-exports.qbcore:addItem(source, 'defibrillator', 1)
-exports.qbcore:addItem(source, 'bandage', 5)
+exports.kora_core:setJob(source, 'ambulance', 1)
+exports.kora_core:addItem(source, 'defibrillator', 1)
+exports.kora_core:addItem(source, 'bandage', 5)
 ```
 
 ## API reference
 
 Cross-resource hooks use ordinary `TriggerEvent`/`AddEventHandler` (server) or
 `RegisterNetEvent` (client) — no exports needed to listen. `QB.callback.trigger`/
-`QB.events.trigger` calls below are qblib's RPC/fire-and-forget primitives, used
-internally between qbambulance's own client and server realms.
+`QB.events.trigger` calls below are kora_lib's RPC/fire-and-forget primitives, used
+internally between kora_ambulance's own client and server realms.
 
 ### Duty & vehicles
 ```
@@ -211,7 +211,7 @@ qbambulance:server:onPlayerRespawned(src, hospitalName) -- hook
 
 The server also exposes a detached, read-only medical snapshot:
 ```lua
-local status = exports.qbambulance:getPatientStatus(source)
+local status = exports.kora_ambulance:getPatientStatus(source)
 -- { version = 1, state = 'alive'|'laststand'|'dead', wounds = {...},
 --   laststandAt = unixTimestamp|nil, deadAt = unixTimestamp|nil }
 ```
@@ -259,7 +259,7 @@ qbambulance:client:housecallList(list)         -- client event
 qbambulance:client:housecallAccepted(request)  -- client event
 ```
 
-Presentation belongs to **qbdispatch**: the feed, the map, history and the
+Presentation belongs to **kora_dispatch**: the feed, the map, history and the
 response state machine. This resource decides only what counts as an EMS matter
 and how each call is worded.
 
@@ -282,7 +282,7 @@ paramedic already standing over them.
 **The house-call queue** is published as a priority-3 dispatch call carrying an
 `onAccept` hook. Accepting it in the dispatch UI and `/accepthousecall` go through
 one implementation, so a request can never be handed out twice because two doors
-disagreed about whether it was still open. qbdispatch knows nothing about house
+disagreed about whether it was still open. kora_dispatch knows nothing about house
 calls — it just fires the event name it was handed.
 
 ### Billing
@@ -330,8 +330,8 @@ not a promise to reproduce insecure client authority:
 `hospital:GetDoctors`, `hospital:GetPlayerStatus` and
 `hospital:GetPlayerBleeding` remain available. Two legacy client exports remain:
 ```lua
-exports.qbambulance:isEscorted()  -- true while carried or loaded on a stretcher
-exports.qbambulance:CanHelp()     -- UX availability only; never authorization
+exports.kora_ambulance:isEscorted()  -- true while carried or loaded on a stretcher
+exports.kora_ambulance:CanHelp()     -- UX availability only; never authorization
 ```
 
 ## Config highlights (`config.lua`)
@@ -352,10 +352,10 @@ with beds plus optional check-in/pharmacy/stash/duty/garage points.
 
 Part of the [qbcore2](https://github.com/qbcore2) resource set:
 
-- [qblib](https://qbcore2.github.io/qblib/) — shared helper library
-- [qbsql](https://qbcore2.github.io/qbsql/) — database driver
-- [qbcore](https://qbcore2.github.io/qbcore/) — framework core
-- [qbinventory](https://qbcore2.github.io/qbinventory/) — headless inventory
-- [qbtarget](https://qbcore2.github.io/qbtarget/) — targeting/interaction
-- [qbpolice](https://qbcore2.github.io/qbpolice/) — police/LEO job
+- [qblib](https://qbcore2.github.io/kora_lib/) — shared helper library
+- [qbsql](https://qbcore2.github.io/kora_sql/) — database driver
+- [qbcore](https://qbcore2.github.io/kora_core/) — framework core
+- [qbinventory](https://qbcore2.github.io/kora_inventory/) — headless inventory
+- [qbtarget](https://qbcore2.github.io/kora_target/) — targeting/interaction
+- [qbpolice](https://qbcore2.github.io/kora_police/) — police/LEO job
 - [full resource list ↗](https://github.com/orgs/qbcore2/repositories)

@@ -1,6 +1,6 @@
 -- EMS calls raised automatically off the death lifecycle, and the wording each
--- one carries. The call lifecycle itself belongs to qbdispatch and has its own
--- suite; this asserts what qbambulance decides is an EMS matter.
+-- one carries. The call lifecycle itself belongs to kora_dispatch and has its own
+-- suite; this asserts what kora_ambulance decides is an EMS matter.
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
 dofile('config.lua')
@@ -69,7 +69,7 @@ h.test('a treated patient stops being an open incident', function()
 
     -- A feed still listing people who were treated ten minutes ago stops being
     -- read at all.
-    local open = handle.qbdispatch:getCalls({ service = Config.job.type, activeOnly = true })
+    local open = handle.kora_dispatch:getCalls({ service = Config.job.type, activeOnly = true })
     for _, entry in ipairs(open) do
         h.assertTrue(not entry.data or entry.data.source ~= 6, 'the treated patient has no open call left')
     end

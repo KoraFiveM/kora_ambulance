@@ -4,7 +4,7 @@
 
 if not Config.compat.enabled then return end
 
-local QBCore = exports.qbcore
+local QBCore = exports.kora_core
 
 local function isOnDutyEMS(src)
     local job = QBCore:getJob(src)
@@ -68,20 +68,20 @@ local playerAlerts = {
 }
 
 for key, definition in pairs(playerAlerts) do
-    local ok, err = exports.qbdispatch:registerPlayerAlert(key, definition)
+    local ok, err = exports.kora_dispatch:registerPlayerAlert(key, definition)
     if not ok then print(('^3[qbambulance]^7 could not register dispatch alert %s: %s'):format(key, err)) end
 end
 
 RegisterNetEvent('hospital:server:ambulanceAlert', function()
     local src = source
     if Death.isAlive(src) then return end
-    exports.qbdispatch:createPlayerCall(src, 'qbambulance:emergency')
+    exports.kora_dispatch:createPlayerCall(src, 'qbambulance:emergency')
 end)
 
 RegisterNetEvent('hospital:server:SendDoctorAlert', function()
     local src = source
     if not nearbyHospital(src) then return end
-    exports.qbdispatch:createPlayerCall(src, 'qbambulance:doctor')
+    exports.kora_dispatch:createPlayerCall(src, 'qbambulance:doctor')
 end)
 
 RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospitalName)

@@ -1,4 +1,4 @@
--- Revive (client realm) -- the defibrillator/CPR flow: a qbtarget option on
+-- Revive (client realm) -- the defibrillator/CPR flow: a kora_target option on
 -- any downed player (visibility gated by their replicated `emsDown` state
 -- bag, owned by server/death.lua -- see that file's header for why a plain
 -- PlayerData read can't be used to detect ANOTHER player's death state),
@@ -6,7 +6,7 @@
 -- (job/duty, item, target eligibility, cooldown) happens server-side in
 -- server/revive.lua -- a client reporting `success = true` without actually
 -- winning the minigame gains nothing, since QB.minigames' own pass/fail is
--- already server-validated inside qblib.
+-- already server-validated inside kora_lib.
 
 local CPR_ANIM = { dict = 'mini@cpr@char_a@cpr_str', clip = 'cpr_pumpchest' }
 
@@ -59,7 +59,7 @@ end
 RegisterNetEvent('qbambulance:client:reviveRequested', performCPRForTarget)
 
 local function registerTargets()
-    exports.qbtarget:addGlobalType('player', {
+    exports.kora_target:addGlobalType('player', {
         {
             label = 'Perform CPR',
             icon = 'heart-pulse',
@@ -71,9 +71,9 @@ end
 
 registerTargets()
 
--- qbtarget restarting mid-session wipes its own global-type registry, so the
--- CPR option added above is gone from qbtarget's side even though this file
--- never stopped. Re-add it the moment qbtarget comes back up.
+-- kora_target restarting mid-session wipes its own global-type registry, so the
+-- CPR option added above is gone from kora_target's side even though this file
+-- never stopped. Re-add it the moment kora_target comes back up.
 AddEventHandler('onClientResourceStart', function(resourceName)
-    if resourceName == 'qbtarget' then registerTargets() end
+    if resourceName == 'kora_target' then registerTargets() end
 end)

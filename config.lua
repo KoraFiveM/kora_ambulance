@@ -1,13 +1,13 @@
 -- Single flat Config table, per-area sub-tables, a trailing comment on every
--- value -- matches qblib/qbcore's own config.lua convention.
+-- value -- matches kora_lib/qbcore's own config.lua convention.
 
 Config = Config or {}
 
 Config.job = {
-    name = 'ambulance',              -- must match the job record qbcore's shared/jobs.lua already seeds
+    name = 'ambulance',              -- must match the job record kora_core's shared/jobs.lua already seeds
     onDutyDoctorGrade = 1,            -- minimum grade (1-based) counted as an "on-duty doctor" for Core.doctors' self-heal gate
 
-    -- The qbcore job TYPE this resource dispatches to. Calls target the type,
+    -- The kora_core job TYPE this resource dispatches to. Calls target the type,
     -- not the job name, so a server adding a fire department or a second
     -- hospital with `type = 'ems'` gets them on the same radio with no change
     -- here.
@@ -298,5 +298,5 @@ Config.weaponClassMap = {
     fall      = { injuryChance = 0.50, bleedChance = 0.20, severityBias = 0 },
 }
 
--- Registers this resource-owned configuration with qblib without changing its public Config table.
+-- Registers this resource-owned configuration with kora_lib without changing its public Config table.
 if QB and QB.config and QB.config.adopt then Config = QB.config.adopt(Config) end

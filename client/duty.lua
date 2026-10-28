@@ -5,7 +5,7 @@
 -- the player into it.
 
 local function isOnDutyEMS()
-    local job = exports.qbcore:getJob()
+    local job = exports.kora_core:getJob()
     return job ~= nil and job.name == Config.job.name and job.onduty == true
 end
 
@@ -61,7 +61,7 @@ local function registerDutyTargets()
                 onSelect = storeVehicle,
             }
 
-            exports.qbtarget:addSphereZone({
+            exports.kora_target:addSphereZone({
                 coords = hospital.garage,
                 radius = 6.0,
                 options = options,
@@ -69,7 +69,7 @@ local function registerDutyTargets()
         end
 
         if hospital.duty then
-            exports.qbtarget:addSphereZone({
+            exports.kora_target:addSphereZone({
                 coords = hospital.duty,
                 radius = 2.0,
                 options = {
@@ -77,7 +77,7 @@ local function registerDutyTargets()
                         label = 'Toggle Duty',
                         icon = 'briefcase',
                         canInteract = function()
-                            local job = exports.qbcore:getJob()
+                            local job = exports.kora_core:getJob()
                             return job ~= nil and job.name == Config.job.name
                         end,
                         -- The command and target share the same server-side
@@ -92,7 +92,7 @@ end
 
 registerDutyTargets()
 AddEventHandler('onClientResourceStart', function(resource)
-    if resource == 'qbtarget' then registerDutyTargets() end
+    if resource == 'kora_target' then registerDutyTargets() end
 end)
 
 
@@ -100,6 +100,6 @@ end)
 -- a paramedic and an officer on the same server see different accents at the
 -- same moment, so it can never be a server setting.
 CreateThread(function()
-    Wait(1500) -- let qbdispatch's own frame mount before pushing tokens at it
-    exports.qbdispatch:setTheme(Config.dispatch.accent)
+    Wait(1500) -- let kora_dispatch's own frame mount before pushing tokens at it
+    exports.kora_dispatch:setTheme(Config.dispatch.accent)
 end)

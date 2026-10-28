@@ -1,16 +1,16 @@
 -- Items (server realm) -- the REAL gameplay effect of pharmacy items
 -- (closing a wound, the painkiller cooldown gate). Cosmetic playback
--- (screen fx, anim, hunger/thirst/stress) is entirely handled by qbcore's
+-- (screen fx, anim, hunger/thirst/stress) is entirely handled by kora_core's
 -- Core.consumables reading the `effect` table shared/items.lua registered --
 -- nothing here calls QB.fx/QB.status for cosmetics, only for the durable
 -- bleeding/limping state the wound actually being treated changes.
 
 Items = Items or {}
 
--- qbcore has no QB proxy of its own (see this resource's own AGENTS-style
+-- kora_core has no QB proxy of its own (see this resource's own AGENTS-style
 -- header note in the plan) -- every Core.<module>.<fn> call must cross the
--- exports boundary as a flat exports.qbcore:<fn>(...) call instead.
-local QBCore = exports.qbcore
+-- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
+local QBCore = exports.kora_core
 
 local lastPainkillerAt = {} -- src -> os.time()
 
@@ -35,8 +35,8 @@ local function treatWound(src, maxTier)
     return true
 end
 
--- qbinventory's own useItem does NOT auto-remove the item on use (verified
--- by reading qbinventory/server.lua's intentUse/useItem -- neither path
+-- kora_inventory's own useItem does NOT auto-remove the item on use (verified
+-- by reading kora_inventory/server.lua's intentUse/useItem -- neither path
 -- calls removePlayer) -- every handler below explicitly removes its own
 -- item on a successful use, otherwise these would be infinite-use.
 

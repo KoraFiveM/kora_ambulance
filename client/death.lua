@@ -1,5 +1,5 @@
 -- Death (client realm) -- reacts to the server-authoritative ALIVE/
--- LASTSTAND/DEAD transitions (server/death.lua) and qblib cache's fatal-
+-- LASTSTAND/DEAD transitions (server/death.lua) and kora_lib cache's fatal-
 -- injury edge, for an immediate local reaction that doesn't wait on the
 -- network round-trip.
 --

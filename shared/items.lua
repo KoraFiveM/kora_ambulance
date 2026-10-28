@@ -1,6 +1,6 @@
 -- Pharmacy item registry. Each item's `effect` table is the ONLY place its
 -- cosmetic consumption behaviour (screen fx, animation, hunger/thirst/stress
--- deltas) lives -- Core.consumables' generic bridge (qbcore) plays it back
+-- deltas) lives -- Core.consumables' generic bridge (kora_core) plays it back
 -- automatically via QB.status whenever the item is used, so nothing in this
 -- resource's own client/server code calls QB.fx/StartScreenEffect directly
 -- for these items. `effect` is registered TWICE, deliberately: once on the
@@ -16,11 +16,11 @@
 
 QBAmbulance = QBAmbulance or {}
 
--- Same `local QBCore = exports.qbcore` every sibling server/*.lua file in
+-- Same `local QBCore = exports.kora_core` every sibling server/*.lua file in
 -- this resource declares -- this file is shared (not server-only) since
 -- QBAmbulance.items itself is read by both realms, but the registerShared
 -- call below is IsDuplicityVersion()-gated to the server, same as those.
-local QBCore = exports.qbcore
+local QBCore = exports.kora_core
 
 QBAmbulance.items = {
     {
@@ -86,7 +86,7 @@ QBAmbulance.items = {
         unique = false,
         -- Deliberately NOT self-useable: reviving is inherently target-based
         -- (you defib a specific downed patient, never yourself), so this
-        -- item is consumed via client/revive.lua's qbtarget option on a
+        -- item is consumed via client/revive.lua's kora_target option on a
         -- laststand/dead player, not QBCore:createUseable.
         useable = false,
         shouldClose = false,

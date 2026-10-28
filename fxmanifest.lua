@@ -2,23 +2,25 @@ fx_version 'cerulean'
 game 'gta5'
 lua54 'yes'
 
-name 'qbambulance'
+name 'kora_ambulance'
+-- Keep the legacy resource name resolvable for exports['qbambulance'] callers.
+provide 'qbambulance'
 author 'Jamie'
 version '2.0.0'
 description 'Authoritative EMS care, anatomical injuries, hospital admissions, transport, dispatch and billing'
 
-dependency 'qblib'
-dependency 'qbcore'
-dependency 'qbdispatch'
-dependency 'qbinventory'
-dependency 'qbtarget'
+dependency 'kora_lib'
+dependency 'kora_core'
+dependency 'kora_dispatch'
+dependency 'kora_inventory'
+dependency 'kora_target'
 
--- qblib strictly before qbcore, same rule every consumer resource follows
--- (qbcore's own mirror extends the QB table qblib's init.lua creates).
--- qbinventory/qbtarget expose flat exports only (exports.qbinventory:*,
--- exports.qbtarget:*) -- neither needs a shared_script import.
-shared_script '@qblib/init.lua'
-shared_script '@qbcore/init.lua'
+-- kora_lib strictly before kora_core, same rule every consumer resource follows
+-- (kora_core's own mirror extends the QB table kora_lib's init.lua creates).
+-- kora_inventory/qbtarget expose flat exports only (exports.kora_inventory:*,
+-- exports.kora_target:*) -- neither needs a shared_script import.
+shared_script '@kora_lib/init.lua'
+shared_script '@kora_core/init.lua'
 
 -- config.lua first (everything below reads Config.*); shared/wounds.lua
 -- second since shared/items.lua's pharmacy effect table references
