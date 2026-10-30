@@ -5,7 +5,7 @@ dofile('config.lua')
 
 dofile('client/compat.lua')
 
-h.test('legacy pain effect retains and releases qblib handle identity', function()
+h.test('legacy pain effect retains and releases kora_lib handle identity', function()
     handle.fireEvent('hospital:client:SetPain', 0, 2)
     handle.fireEvent('hospital:client:SetPain', 0, 3)
 

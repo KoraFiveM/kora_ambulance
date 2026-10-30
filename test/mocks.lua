@@ -1,7 +1,7 @@
 -- Mocks for smoke-testing kora_ambulance modules under plain lua5.4 (no FiveM,
--- no DB, no kora_core/qblib actually running). Unlike kora_core/qblib's own test
+-- no DB, no kora_core/kora_lib actually running). Unlike kora_core/kora_lib's own test
 -- mocks (which mock FiveM natives to test THEIR real internals), kora_ambulance
--- is a CONSUMER resource -- everything it calls on kora_core/qblib crosses an
+-- is a CONSUMER resource -- everything it calls on kora_core/kora_lib crosses an
 -- exports boundary, so this only needs to fake that boundary: a colon-
 -- callable `exports.kora_core` backed by a tiny in-memory player store, and a
 -- `QB` table with the handful of kora_lib primitives kora_ambulance's server code

@@ -108,7 +108,7 @@ h.test('client death lifecycle never writes the server-owned emsDown state bag',
     h.assertEqual(clientStateWrites, 0)
 end)
 
-h.test('death screen effect retains and releases qblib handle identity', function()
+h.test('death screen effect retains and releases kora_lib handle identity', function()
     handle.fireEvent('qbambulance:client:markDead', 0, 1000)
     handle.fireEvent('qbambulance:client:markDead', 0, 1000)
 

@@ -1,6 +1,6 @@
 # kora_ambulance
 
-A modern, qblib-native ambulance resource for FiveM.
+A modern, kora_lib-native ambulance resource for FiveM.
 
 It provides a server-authoritative death state machine, persistent anatomical
 wounds, EMS patient assessment and treatment, CPR/defibrillator revives,

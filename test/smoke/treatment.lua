@@ -89,7 +89,7 @@ h.test('a cancelled treatment releases the patient and consumes nothing', functi
     h.assertTrue(secondToken ~= nil, 'the patient lock should be released on cancellation')
 end)
 
-h.test('treatment cannot be completed before its qblib action duration', function()
+h.test('treatment cannot be completed before its kora_lib action duration', function()
     makeMedic(14, { bandage = 1 })
     handle.ensurePlayer(15)
     Death.recordWound(15, 'left_foot', 1)

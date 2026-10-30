@@ -1,4 +1,4 @@
--- Treatment (client realm) -- qblib-powered patient assessment and one-wound
+-- Treatment (client realm) -- kora_lib-powered patient assessment and one-wound
 -- treatment actions. All authority stays in server/treatment.lua.
 
 local function isOnDutyEMS()

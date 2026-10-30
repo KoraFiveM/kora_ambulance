@@ -26,7 +26,7 @@ h.test('hospital markers use canonical category and facility names', function()
     h.assertEqual(#hospitalBlips, #Config.hospitals)
     h.assertEqual(hospitalBlips[1].category, 'Hospital')
     h.assertEqual(hospitalBlips[1].name, 'Pillbox Hill Medical')
-    h.assertEqual(hospitalBlips[1].label, nil, 'qblib composes the map label')
+    h.assertEqual(hospitalBlips[1].label, nil, 'kora_lib composes the map label')
 end)
 
 h.test('hospital check-in targets register again after qbtarget restarts', function()
