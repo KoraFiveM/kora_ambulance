@@ -235,6 +235,15 @@ both); set it to `false` for the old locked-camera behaviour. Movement and
 combat remain disabled in either mode, and chat, voice and pause controls are
 never disabled by this resource.
 
+`Config.death.screen` (`enabled = false` by default) swaps the plain countdown
+for a death screen: a `Downed` / `Dead` prompt at the top of the screen with the
+countdown, the key hints (`/911e` to call EMS, `/respawn` once allowed —
+`showHints`) and a screen dim, lighter while downed and darker when dead
+(`dim`). It uses a kora_lib textui prompt and a drawn overlay, never NUI focus,
+so camera look is unaffected. If the server only confirms a death late (health
+replicates slowly after a vehicle crash) the client keeps retrying for
+`Config.death.reportRetryWindow` ms (`0` = give up after the quick retries).
+
 **What a revive clears.** `Config.revive.clearBleeding` (default `true`) stops
 the bleeding on revive: the Bleeding status ends and `Death.isBleeding(src)`
 turns false, so any bleed-damage tick gated on it stops, while the wounds stay

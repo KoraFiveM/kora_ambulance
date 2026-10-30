@@ -21,6 +21,14 @@ Config.death = {
     reportRetryInterval = 100,         -- ms a dead client waits before retrying server ped-state corroboration
     reportRetryAttempts = 5,           -- quick retries (reportRetryInterval apart) for OneSync health replication
     reportRetryWindow = 15000,         -- ms the client then keeps retrying slowly while still fatally injured (vehicle crashes replicate health late); 0 gives up after reportRetryAttempts as before
+    -- Optional death screen, drawn while downed (laststand) and dead. Off by
+    -- default: the plain bleed-out / respawn countdown prompt is used. Neither
+    -- mode takes NUI focus, so camera look is never affected. Read at use time.
+    screen = {
+        enabled = false,               -- true replaces the plain countdown with a Downed / Dead prompt (state, countdown) at the top of the screen
+        dim = true,                    -- dim the screen while downed (lighter) and dead (darker); only used when enabled
+        showHints = true,              -- append the key hints (/911e to call EMS, /respawn once allowed); only used when enabled
+    },
     minimumRevive = 20,               -- % of max health a successful revive restores the patient to
     reviveInterval = 5000,            -- ms cooldown between CPR attempts on the same patient (prevents minigame-spam revives)
     reviveRange = 3.0,                -- metres the reviver must stay within the patient to keep the CPR session valid
@@ -221,6 +229,9 @@ function Config.validate()
     assert(type(Config.death.allowCameraMovement) == 'boolean', 'death allowCameraMovement must be boolean')
     assert(type(Config.death.reportRetryWindow) == 'number' and Config.death.reportRetryWindow >= 0,
         'death reportRetryWindow must be a non-negative number')
+    assert(type(Config.death.screen) == 'table' and type(Config.death.screen.enabled) == 'boolean'
+        and type(Config.death.screen.dim) == 'boolean' and type(Config.death.screen.showHints) == 'boolean',
+        'death screen enabled, dim and showHints must be boolean')
     assert(type(Config.revive.clearBleeding) == 'boolean' and type(Config.revive.clearWounds) == 'boolean',
         'revive clearBleeding and clearWounds must be boolean')
     assert(type(Config.hospitals) == 'table' and #Config.hospitals > 0, 'at least one hospital is required')

@@ -78,6 +78,22 @@ local function disableDownedControls()
     DisableControlAction(0, 2, true) -- LookUpDown
 end
 
+---@return table|nil screen Config.death.screen while the optional death screen is on (read at use time).
+local function screenSettings()
+    local screen = Config.death.screen
+    if type(screen) ~= 'table' or screen.enabled ~= true then return nil end
+    return screen
+end
+
+local DIM_ALPHA = { laststand = 70, dead = 150 }
+
+---@param state 'laststand'|'dead'
+local function drawScreenDim(state)
+    local screen = screenSettings()
+    if not screen or screen.dim == false then return end
+    DrawRect(0.5, 0.5, 1.0, 1.0, 0, 0, 0, DIM_ALPHA[state])
+end
+
 -- A resurrect or ragdoll clears the ped's tasks, which used to leave the
 -- player standing/lying idle with the downed animation gone for good.
 ---@param state 'laststand'|'dead'
@@ -90,8 +106,8 @@ local function reassertDownedAnimation(state)
 end
 
 ---One per-frame loop for both down states, fenced on the transition that
----started it. Keeps controls locked (camera look free when configured) and
----re-applies the animation after a ragdoll.
+---started it. Keeps controls locked (camera look free when configured), draws
+---the optional death screen dim and re-applies the animation after a ragdoll.
 ---@param generation integer
 ---@param state 'laststand'|'dead'
 local function runDownedLoop(generation, state)
@@ -99,6 +115,7 @@ local function runDownedLoop(generation, state)
         local nextAnimCheck = 0
         while downGeneration == generation and (state == 'dead' and State.isDead or state == 'laststand' and State.inLaststand) do
             disableDownedControls()
+            drawScreenDim(state)
             if state == 'laststand' then SetPedCanRagdoll(PlayerPedId(), true) end
 
             local now = GetGameTimer()
@@ -150,14 +167,38 @@ local function stopCountdown()
     countdown = nil
 end
 
+local SCREEN_TITLES = { laststand = 'Downed', dead = 'Dead' }
+local SCREEN_HINTS = { laststand = '/911e to call EMS', dead = '/respawn once the timer ends' }
+
+---Death screen presentation of a prompt: a state title, optionally the hint
+---keys, anchored top-centre. A plain textui entry -- no NUI focus, so mouse
+---look is never taken. Without the death screen the prompt is left as it was.
+---@param state 'laststand'|'dead'
 ---@param text string
 ---@param icon string
-local function showCountdown(text, icon)
-    if countdown and QB.textui.isVisible(countdown) and QB.textui.update(countdown, text, { icon = icon }) then return end
+---@param final? boolean The closing text already carries its own hint.
+---@return string text
+---@return table options
+local function promptFor(state, text, icon, final)
+    local screen = screenSettings()
+    if not screen then return text, { icon = icon } end
+
+    text = ('**%s** · %s'):format(SCREEN_TITLES[state], text)
+    if screen.showHints ~= false and not final then text = ('%s · %s'):format(text, SCREEN_HINTS[state]) end
+    return text, { icon = icon, position = 'top-center' }
+end
+
+---@param state 'laststand'|'dead'
+---@param text string
+---@param icon string
+---@param final? boolean
+local function showCountdown(state, text, icon, final)
+    local shown, options = promptFor(state, text, icon, final)
+    if countdown and QB.textui.isVisible(countdown) and QB.textui.update(countdown, shown, options) then return end
     -- Gone, or buried under a prompt another resource stacked on top (textui
     -- renders only the newest entry): put a fresh one on top.
     if countdown then QB.textui.hide(countdown) end
-    countdown = QB.textui.show(text, { icon = icon })
+    countdown = QB.textui.show(shown, options)
 end
 
 ---@param ms number
@@ -174,10 +215,11 @@ end
 ---@param endsAt integer GetGameTimer() value the clock runs out at.
 ---@param label string Prefixed to the clock, e.g. 'Bleeding out in'.
 ---@param finalText? string Replaces the clock once it hits zero.
-local function runCountdown(generation, endsAt, label, finalText)
+---@param state 'laststand'|'dead' Which down state the prompt describes (death screen title and hints).
+local function runCountdown(generation, endsAt, label, finalText, state)
     CreateThread(function()
         while downGeneration == generation and GetGameTimer() < endsAt do
-            showCountdown(('%s %s'):format(label, clockText(endsAt - GetGameTimer())), 'Clock')
+            showCountdown(state, ('%s %s'):format(label, clockText(endsAt - GetGameTimer())), 'Clock')
             Wait(1000)
         end
 
@@ -185,7 +227,7 @@ local function runCountdown(generation, endsAt, label, finalText)
         if downGeneration ~= generation then return end
 
         if finalText then
-            showCountdown(finalText, 'Heart')
+            showCountdown(state, finalText, 'Heart', true)
         else
             stopCountdown()
         end
@@ -239,7 +281,7 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
 
     -- The server's bleed-out sweep is coarse (5s), so when the clock runs out
     -- before markDead lands the prompt keeps saying so instead of vanishing.
-    runCountdown(myGeneration, GetGameTimer() + deathTimeMs, 'Bleeding out in', 'Bleeding out...')
+    runCountdown(myGeneration, GetGameTimer() + deathTimeMs, 'Bleeding out in', 'Bleeding out...', 'laststand')
     runDownedLoop(myGeneration, 'laststand')
 end)
 
@@ -256,7 +298,7 @@ RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
     respawnAvailableAt = GetGameTimer() + (tonumber(respawnTimeMs) or 0)
     runDownedLoop(downGeneration, 'dead')
     runCountdown(downGeneration, respawnAvailableAt, 'You can respawn in',
-        'Type /respawn to wake up at a hospital')
+        'Type /respawn to wake up at a hospital', 'dead')
 end)
 
 RegisterNetEvent('qbambulance:client:revived', function(healthPct)

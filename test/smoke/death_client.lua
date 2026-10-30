@@ -94,6 +94,8 @@ _G.GetEntityCoords = function() return coords end
 _G.IsPedRagdoll = function() return ragdolling end
 _G.IsPedInAnyVehicle = function() return false end
 _G.IsEntityPlayingAnim = function() return playingAnim end
+local dimAlphas = {}
+_G.DrawRect = function(_, _, _, _, _, _, _, alpha) dimAlphas[#dimAlphas + 1] = alpha end
 _G.EnableControlAction = function(_, control) enabledControls[control] = true end
 _G.GetEntityMaxHealth = function() return 200 end
 _G.ClearPedTasksImmediately = function() end
@@ -380,6 +382,71 @@ h.test('the downed animation comes back after a ragdoll or resurrect cleared it,
     h.assertTrue(#playedAnimations >= 1, 'writhe animation must be re-applied once the ragdoll ends')
     h.assertEqual(playedAnimations[1].clip, 'writhe_loop')
     handle.fireEvent('qbambulance:client:revived', 0, 20)
+    _G.Wait = realWait
+end)
+
+h.test('death screen off: plain countdown prompt, no dim, no title or hints', function()
+    resetWorld()
+    dimAlphas = {}
+    _G.Wait = frameWait
+    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    for _ = 1, 5 do handle.step() end
+    local prompt = visiblePrompt()
+    h.assertTrue(prompt.text:find('^Bleeding out in %d%d:%d%d$') ~= nil, 'unchanged prompt text: ' .. prompt.text)
+    h.assertEqual(prompt.opts.position, nil)
+    h.assertEqual(#dimAlphas, 0)
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    _G.Wait = realWait
+end)
+
+h.test('death screen on: Downed then Dead prompts with hints, dimming, and no mouse focus taken', function()
+    resetWorld()
+    dimAlphas = {}
+    local focusCalls = 0
+    _G.SetNuiFocus = function() focusCalls = focusCalls + 1 end
+    _G.Wait = frameWait
+    Config.death.screen.enabled = true
+
+    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    for _ = 1, 5 do handle.step() end
+    local prompt = visiblePrompt()
+    h.assertTrue(prompt.text:find('^%*%*Downed%*%* · Bleeding out in %d%d:%d%d · /911e to call EMS$') ~= nil, prompt.text)
+    h.assertEqual(prompt.opts.position, 'top-center')
+    h.assertTrue(#dimAlphas > 0 and dimAlphas[#dimAlphas] == 70, 'downed dim')
+
+    handle.fireEvent('qbambulance:client:markDead', 0, 60000)
+    dimAlphas = {}
+    for _ = 1, 5 do handle.step() end
+    prompt = visiblePrompt()
+    h.assertTrue(prompt.text:find('^%*%*Dead%*%* · You can respawn in %d%d:%d%d · /respawn once the timer ends$') ~= nil, prompt.text)
+    h.assertEqual(dimAlphas[#dimAlphas], 150, 'dead dim is darker')
+
+    for _ = 1, 8000 do handle.step() end
+    h.assertEqual(visiblePrompt().text, '**Dead** · Type /respawn to wake up at a hospital')
+    h.assertEqual(focusCalls, 0, 'the death screen must never take NUI focus')
+
+    h.assertFalse(disabledControls[1] or disabledControls[2], 'camera look stays free with the screen on')
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    h.assertEqual(visiblePrompt(), nil)
+    Config.death.screen.enabled = false
+    _G.Wait = realWait
+end)
+
+h.test('death screen options dim=false and showHints=false are honoured', function()
+    resetWorld()
+    dimAlphas = {}
+    _G.Wait = frameWait
+    Config.death.screen.enabled = true
+    Config.death.screen.dim = false
+    Config.death.screen.showHints = false
+
+    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    for _ = 1, 5 do handle.step() end
+    h.assertTrue(visiblePrompt().text:find('^%*%*Downed%*%* · Bleeding out in %d%d:%d%d$') ~= nil, visiblePrompt().text)
+    h.assertEqual(#dimAlphas, 0)
+
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    Config.death.screen.enabled, Config.death.screen.dim, Config.death.screen.showHints = false, true, true
     _G.Wait = realWait
 end)
 
