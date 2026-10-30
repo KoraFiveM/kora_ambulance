@@ -21,6 +21,10 @@ local respawnAvailableAt = 0
 local deathScreenHandle
 local downedAnimHandle
 
+-- Spacing of the slow retries: longer than the server callback's 2s rate-limit
+-- window, so a late retry is never rejected as spam.
+local LATE_RETRY_INTERVAL = 2500
+
 local DOWNED_ANIMS = {
     laststand = { dict = 'combat@damage@writhe', clip = 'writhe_loop' },
     dead = { dict = 'dead', clip = 'dead_a' },
@@ -62,17 +66,46 @@ local function disableDownedControls()
     end
     DisablePlayerFiring(PlayerId(), true)
 
-    if Config.death.allowCameraMovement then return end
+    if Config.death.allowCameraMovement then
+        -- Not merely "don't disable": re-enable every frame so a look lock
+        -- another script left on this frame can't freeze the camera while down.
+        EnableControlAction(0, 1, true) -- LookLeftRight
+        EnableControlAction(0, 2, true) -- LookUpDown
+        return
+    end
     DisableControlAction(0, 0, true) -- NextCamera
     DisableControlAction(0, 1, true) -- LookLeftRight
     DisableControlAction(0, 2, true) -- LookUpDown
 end
 
+-- A resurrect or ragdoll clears the ped's tasks, which used to leave the
+-- player standing/lying idle with the downed animation gone for good.
+---@param state 'laststand'|'dead'
+local function reassertDownedAnimation(state)
+    local ped = PlayerPedId()
+    if IsPedRagdoll(ped) or IsPedInAnyVehicle(ped, false) then return end
+    local animation = DOWNED_ANIMS[state]
+    if IsEntityPlayingAnim(ped, animation.dict, animation.clip, 3) then return end
+    playDownedAnimation(state)
+end
+
+---One per-frame loop for both down states, fenced on the transition that
+---started it. Keeps controls locked (camera look free when configured) and
+---re-applies the animation after a ragdoll.
 ---@param generation integer
-local function runDeadControlLock(generation)
+---@param state 'laststand'|'dead'
+local function runDownedLoop(generation, state)
     CreateThread(function()
-        while State.isDead and downGeneration == generation do
+        local nextAnimCheck = 0
+        while downGeneration == generation and (state == 'dead' and State.isDead or state == 'laststand' and State.inLaststand) do
             disableDownedControls()
+            if state == 'laststand' then SetPedCanRagdoll(PlayerPedId(), true) end
+
+            local now = GetGameTimer()
+            if now >= nextAnimCheck then
+                nextAnimCheck = now + 500
+                reassertDownedAnimation(state)
+            end
             Wait(0)
         end
     end)
@@ -83,16 +116,22 @@ function State.isAlive()
     return not State.inLaststand and not State.isDead
 end
 
--- Immediately keeps the ped from actually going through the native wasted
--- flow the instant the cache reports a death, ahead of the server's own
--- qbambulance:client:enterLaststand push landing a moment later -- without
--- this, the vanilla wasted screen can flash on screen first.
+-- Keeps the ped from staying in (or entering) the native wasted flow. A ped
+-- left fatally injured keeps GTA's death camera: the view freezes and look
+-- input is ignored whatever controls we leave enabled. So every path that
+-- puts the player into a down state -- the cache's death edge, the server's
+-- enterLaststand/markDead pushes (restore, legacy status events, sweeps) --
+-- ends here. A no-op for a ped that is not fatally injured.
+---@return boolean resurrected
 local function suppressVanillaWasted(coords)
     local ped = PlayerPedId()
+    if not IsPedFatallyInjured(ped) then return false end
+    coords = coords or GetEntityCoords(ped)
     local heading = GetEntityHeading(ped)
     NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, heading, true, false)
     SetEntityHealth(ped, 50)
     SetPedToRagdoll(ped, 5000, 5000, 0, false, false, false)
+    return true
 end
 
 -- Bleed-out / respawn countdown. Its own once-a-second thread rather than a
@@ -114,7 +153,10 @@ end
 ---@param text string
 ---@param icon string
 local function showCountdown(text, icon)
-    if countdown and QB.textui.update(countdown, text, { icon = icon }) then return end
+    if countdown and QB.textui.isVisible(countdown) and QB.textui.update(countdown, text, { icon = icon }) then return end
+    -- Gone, or buried under a prompt another resource stacked on top (textui
+    -- renders only the newest entry): put a fresh one on top.
+    if countdown then QB.textui.hide(countdown) end
     countdown = QB.textui.show(text, { icon = icon })
 end
 
@@ -156,17 +198,30 @@ QB.cache.onChange('isDead', function(isDead, wasDead)
     local coords = QB.cache.coords()
 
     -- Keep the ped fatally injured until the server has observed that state.
-    -- OneSync health can trail the client's cache edge briefly, so retry the
-    -- authenticated callback for a bounded window. Only after acceptance
-    -- do we resurrect locally to suppress GTA's wasted flow; otherwise a
-    -- forged report can no longer manufacture laststand from a healthy ped.
+    -- OneSync health can trail the client's cache edge, a lot so after a
+    -- vehicle crash, so retry the authenticated callback quickly for
+    -- reportRetryAttempts, then slowly until reportRetryWindow runs out. Giving
+    -- up after the quick burst left the ped natively dead with no timer and a
+    -- frozen death camera. Only after acceptance do we resurrect locally to
+    -- suppress GTA's wasted flow; a forged report can no longer manufacture
+    -- laststand from a healthy ped.
     CreateThread(function()
-        for attempt = 1, Config.death.reportRetryAttempts do
+        local startedAt = GetGameTimer()
+        local attempt = 0
+        while true do
+            attempt = attempt + 1
             if QB.callback.trigger('qbambulance:server:reportDeath', 'died') then
                 suppressVanillaWasted(coords)
                 return
             end
-            if attempt < Config.death.reportRetryAttempts then Wait(Config.death.reportRetryInterval) end
+
+            if attempt < Config.death.reportRetryAttempts then
+                Wait(Config.death.reportRetryInterval)
+            elseif GetGameTimer() - startedAt < Config.death.reportRetryWindow and QB.cache.isDead() then
+                Wait(LATE_RETRY_INTERVAL)
+            else
+                return
+            end
         end
     end)
 end)
@@ -179,22 +234,13 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
     local myGeneration = downGeneration
 
     QB.notify.send({ title = 'EMS', message = 'You are critically injured. Wait for help or you will bleed out.', type = 'error' })
+    suppressVanillaWasted()
     playDownedAnimation('laststand')
 
-    -- No final text: the server's bleed-out sweep is coarse (5s), so rather
-    -- than assert a death it hasn't confirmed yet, the clock just clears and
-    -- the markDead handler below puts its own prompt up.
-    runCountdown(myGeneration, GetGameTimer() + deathTimeMs, 'Bleeding out in')
-
-    CreateThread(function()
-        local ped = PlayerPedId()
-
-        while State.inLaststand and downGeneration == myGeneration do
-            disableDownedControls()
-            SetPedCanRagdoll(ped, true)
-            Wait(0)
-        end
-    end)
+    -- The server's bleed-out sweep is coarse (5s), so when the clock runs out
+    -- before markDead lands the prompt keeps saying so instead of vanishing.
+    runCountdown(myGeneration, GetGameTimer() + deathTimeMs, 'Bleeding out in', 'Bleeding out...')
+    runDownedLoop(myGeneration, 'laststand')
 end)
 
 RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
@@ -204,10 +250,11 @@ RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
 
     if not deathScreenHandle then deathScreenHandle = QB.fx.screenEffect('DeathFailOut', 0, true) end
     QB.notify.send({ title = 'EMS', message = 'You have died. Wait for the coroner or a medic.', type = 'error' })
+    suppressVanillaWasted()
     playDownedAnimation('dead')
 
     respawnAvailableAt = GetGameTimer() + (tonumber(respawnTimeMs) or 0)
-    runDeadControlLock(downGeneration)
+    runDownedLoop(downGeneration, 'dead')
     runCountdown(downGeneration, respawnAvailableAt, 'You can respawn in',
         'Type /respawn to wake up at a hospital')
 end)

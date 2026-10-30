@@ -13,6 +13,13 @@ h.test('validation rejects a non-boolean downed camera option', function()
     Config.death.allowCameraMovement = allowCameraMovement
 end)
 
+h.test('validation rejects a negative report retry window', function()
+    local window = Config.death.reportRetryWindow
+    Config.death.reportRetryWindow = -1
+    h.assertThrows(Config.validate)
+    Config.death.reportRetryWindow = window
+end)
+
 h.test('validation rejects an empty hospital list', function()
     local hospitals = Config.hospitals
     Config.hospitals = {}
