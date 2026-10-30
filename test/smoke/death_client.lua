@@ -158,4 +158,54 @@ h.test('downed camera movement can be disabled in config', function()
     handle.fireEvent('qbambulance:client:revived', 0, 20)
 end)
 
+h.test('the fully dead state keeps camera look free and still blocks movement and weapons', function()
+    disabledControls = {}
+    playerFiringDisabled = false
+    stopControlLoopAfterFrame = true
+
+    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.step()
+
+    stopControlLoopAfterFrame = false
+    h.assertFalse(disabledControls[0], 'camera switching must stay enabled while dead')
+    h.assertFalse(disabledControls[1], 'horizontal camera look must stay enabled while dead')
+    h.assertFalse(disabledControls[2], 'vertical camera look must stay enabled while dead')
+    h.assertTrue(disabledControls[30], 'horizontal movement must stay disabled while dead')
+    h.assertTrue(disabledControls[24], 'attack must stay disabled while dead')
+    h.assertTrue(playerFiringDisabled, 'weapon firing must stay disabled while dead')
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+end)
+
+h.test('laststand never blocks look, chat, voice or pause controls when camera movement is allowed', function()
+    -- 245 chat, 249 push-to-talk, 199/200 pause menu -- none may ever be disabled.
+    local mustStayFree = { 0, 1, 2, 199, 200, 245, 249 }
+    disabledControls = {}
+    stopControlLoopAfterFrame = true
+
+    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.step()
+
+    stopControlLoopAfterFrame = false
+    for _, control in ipairs(mustStayFree) do
+        h.assertFalse(disabledControls[control], ('control %d must stay enabled'):format(control))
+    end
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+end)
+
+h.test('the dead state honours the same option when camera movement is disabled', function()
+    local allowCameraMovement = Config.death.allowCameraMovement
+    Config.death.allowCameraMovement = false
+    disabledControls = {}
+    stopControlLoopAfterFrame = true
+
+    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.step()
+
+    stopControlLoopAfterFrame = false
+    Config.death.allowCameraMovement = allowCameraMovement
+    h.assertTrue(disabledControls[1])
+    h.assertTrue(disabledControls[2])
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+end)
+
 h.report('death_client')

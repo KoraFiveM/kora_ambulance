@@ -229,8 +229,11 @@ tick once a second on their own thread — the laststand loop that disables
 controls has to run every frame, and a clock does not.
 
 `Config.death.allowCameraMovement` controls whether mouse/controller look is
-left available while those downed controls are locked. Movement and combat
-remain disabled in either mode.
+left available while those downed controls are locked. It defaults to `true`
+and applies to both laststand and the fully dead state (one control loop serves
+both); set it to `false` for the old locked-camera behaviour. Movement and
+combat remain disabled in either mode, and chat, voice and pause controls are
+never disabled by this resource.
 
 **The respawn wait is enforced server-side**, in `Death.respawnAtHospital`,
 against the timestamp the server took when it marked the player dead:
