@@ -137,7 +137,7 @@ function Hospital.completeBedCare(src, token)
         return false, 'remain at your assigned bed'
     end
 
-    if Death.isLaststand(src) then Death.reviveInField(src, 100) end
+    if Death.isLaststand(src) then Death.reviveInField(src, 100, true) end
     Death.clearAllWounds(src)
     local cost = Billing.charge(src, Config.billing.checkInCost, 'EMS check-in care')
 

@@ -215,5 +215,5 @@ end)
 QB.callback.register('hospital:GetPlayerBleeding', function(src, targetSrc)
     local who = tonumber(targetSrc) or src
     if not mayReadPatient(src, who) then return nil, 'not authorized' end
-    return Wounds.isBleeding(Death.getWoundData(who))
+    return Death.isBleeding(who)
 end)

@@ -235,6 +235,19 @@ both); set it to `false` for the old locked-camera behaviour. Movement and
 combat remain disabled in either mode, and chat, voice and pause controls are
 never disabled by this resource.
 
+**What a revive clears.** `Config.revive.clearBleeding` (default `true`) stops
+the bleeding on revive: the Bleeding status ends and `Death.isBleeding(src)`
+turns false, so any bleed-damage tick gated on it stops, while the wounds stay
+on the ledger. `Config.revive.clearWounds` (default `false`, the previous
+behaviour) also closes every wound, ending limping. A new or worse wound after
+the revive bleeds again. Hospital check-in care, respawn at a hospital and
+`exports.kora_ambulance:fullRevive(src)` always clear everything. After every
+wound or revive change the server pushes `qbambulance:client:syncStatus`, and
+the client reconciles its bleeding/limping effects against it, so the HUD pill
+cannot go stale. A player flipped back to alive by another resource (admin
+`/revive`) is reconciled by the periodic sweep; admin tools should call
+`fullRevive` directly.
+
 **The respawn wait is enforced server-side**, in `Death.respawnAtHospital`,
 against the timestamp the server took when it marked the player dead:
 ```lua

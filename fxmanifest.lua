@@ -61,6 +61,7 @@ server_scripts {
 client_scripts {
     'client/death.lua',
     'client/damage.lua',
+    'client/status.lua',
     'client/hospital.lua',
     'client/duty.lua',
     'client/revive.lua',

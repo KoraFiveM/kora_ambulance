@@ -11,6 +11,7 @@ local woundData = {}
 local laststandAt = {}
 local deadAt = {}
 local observations = {}
+local bleedStopped = {} -- src -> true once a revive stopped the bleeding of wounds that stay on the ledger
 
 local VALID_TRANSITIONS = {
     alive = { died = 'laststand' },
@@ -60,6 +61,7 @@ local function persistMedical(src)
     QBCore:setMetaData(src, 'qbambulanceMedical', {
         version = MEDICAL_VERSION,
         wounds = copyWounds(src),
+        bleedStopped = bleedStopped[src] or nil,
         laststandAt = laststandAt[src],
         deadAt = deadAt[src],
     })
@@ -81,21 +83,47 @@ function Death.getWoundData(src)
 end
 
 ---@param src integer
+---@return boolean bleeding True while a wound is open and no revive has stopped the bleeding. Any bleed-damage tick must be gated on this, not on the bare wound ledger.
+function Death.isBleeding(src)
+    return not bleedStopped[src] and Wounds.isBleeding(Death.getWoundData(src))
+end
+
+-- QB.status.remove only pushes to the client when the server still tracks the
+-- effect, so a client whose pill went stale (admin revive, missed push,
+-- resource restart) would never be told. Push the authoritative state after
+-- every sync and let the client reconcile its local effects against it.
+local function pushStatus(src, bleedingTier, limpingTier)
+    TriggerClientEvent('qbambulance:client:syncStatus', src, bleedingTier or false, limpingTier or false)
+end
+
+---@param src integer
 function Death._syncStatus(src)
     local tier = Wounds.worstOpenTier(Death.getWoundData(src))
     if not tier then
+        bleedStopped[src] = nil
         QB.status.remove(src, 'bleeding')
         QB.status.remove(src, 'limping')
+        pushStatus(src)
         return
     end
 
-    QB.status.apply(src, 'bleeding', { severity = tier })
+    local bleedingTier
+    if bleedStopped[src] then
+        QB.status.remove(src, 'bleeding')
+    else
+        QB.status.apply(src, 'bleeding', { severity = tier })
+        bleedingTier = tier
+    end
+
+    local limpingTier
     local level = Wounds.woundLevelDef(tier)
     if level and not level.canWalk then
         QB.status.apply(src, 'limping', { severity = tier })
+        limpingTier = tier
     else
         QB.status.remove(src, 'limping')
     end
+    pushStatus(src, bleedingTier, limpingTier)
 end
 
 ---@param src integer
@@ -112,6 +140,7 @@ function Death.recordWound(src, bodyPart, tier)
     local existing = bucket[bodyPart]
     if existing and existing >= tier then return false end
     bucket[bodyPart] = tier
+    bleedStopped[src] = nil -- a new or worse wound bleeds, whatever an earlier revive stopped
     Death._syncStatus(src)
     persistMedical(src)
     return true
@@ -133,11 +162,27 @@ end
 ---@return boolean changed
 function Death.clearAllWounds(src)
     local hadWounds = next(Death.getWoundData(src)) ~= nil
+    local hadStoppedBleed = bleedStopped[src] ~= nil
     woundData[src] = {}
+    bleedStopped[src] = nil
     QB.status.remove(src, 'bleeding')
     QB.status.remove(src, 'limping')
-    if hadWounds then persistMedical(src) end
+    pushStatus(src)
+    if hadWounds or hadStoppedBleed then persistMedical(src) end
     return hadWounds
+end
+
+---Stops the bleeding without closing the wounds: the ledger (and so limping,
+---treatment and the hospital bill) is untouched, but the bleeding status and
+---anything gated on Death.isBleeding stop.
+---@param src integer
+---@return boolean changed
+function Death.stopBleeding(src)
+    if bleedStopped[src] or not Wounds.isBleeding(Death.getWoundData(src)) then return false end
+    bleedStopped[src] = true
+    Death._syncStatus(src)
+    persistMedical(src)
+    return true
 end
 
 ---@param src integer
@@ -185,10 +230,16 @@ function Death.markDead(src, effectiveDeadAt)
     return true
 end
 
+---Revives a downed player. What happens to their injuries is up to
+---Config.revive (read here, at use time): clearWounds closes every wound,
+---otherwise clearBleeding stops the bleeding but leaves the wounds (and so
+---limping) behind. `clearAll` ignores the config and always clears everything
+----- admin/full revives and hospital care.
 ---@param src integer
 ---@param healthPct? number
+---@param clearAll? boolean
 ---@return boolean
-function Death.reviveInField(src, healthPct)
+function Death.reviveInField(src, healthPct, clearAll)
     local state = Death.getState(src)
     if state ~= 'laststand' and state ~= 'dead' then return false end
     local _, changed = Death.transition(state, 'revived')
@@ -200,12 +251,43 @@ function Death.reviveInField(src, healthPct)
     deadAt[src] = nil
     persistMedical(src)
     publishDownState(src, 'alive')
-    QB.status.remove(src, 'bleeding')
+
+    if clearAll or Config.revive.clearWounds then
+        Death.clearAllWounds(src)
+    elseif Config.revive.clearBleeding then
+        if not Death.stopBleeding(src) then Death._syncStatus(src) end
+    else
+        Death._syncStatus(src)
+    end
 
     TriggerClientEvent('qbambulance:client:revived', src, healthPct or Config.death.minimumRevive)
     TriggerEvent('qbambulance:server:onPlayerRevived', src)
     return true
 end
+
+---Full revive for callers outside this resource (admin tools): always clears
+---every wound and the bleeding, whatever Config.revive says, and also covers a
+---player whose metadata was flipped back to alive without going through us.
+---@param src integer
+---@return boolean
+function Death.fullRevive(src)
+    if not QBCore:getPlayerData(src) then return false end
+    if Death.getState(src) ~= 'alive' then return Death.reviveInField(src, 100, true) end
+
+    local tracked = laststandAt[src] ~= nil or deadAt[src] ~= nil
+    laststandAt[src] = nil
+    deadAt[src] = nil
+    Death.clearAllWounds(src)
+    persistMedical(src)
+    publishDownState(src, 'alive')
+    if tracked then TriggerEvent('qbambulance:server:onPlayerRevived', src) end
+    return true
+end
+
+exports('fullRevive', function(src)
+    src = tonumber(src)
+    return src ~= nil and Death.fullRevive(src)
+end)
 
 ---@param src integer
 ---@return integer seconds
@@ -277,11 +359,14 @@ end
 local function medicalMatches(raw, clean)
     if type(raw) ~= 'table' or raw.version ~= MEDICAL_VERSION then return false end
     if raw.laststandAt ~= clean.laststandAt or raw.deadAt ~= clean.deadAt then return false end
+    if raw.bleedStopped ~= clean.bleedStopped then return false end
     if type(raw.wounds) ~= 'table' then return false end
     for bodyPart, tier in pairs(raw.wounds) do if clean.wounds[bodyPart] ~= tier then return false end end
     for bodyPart, tier in pairs(clean.wounds) do if raw.wounds[bodyPart] ~= tier then return false end end
     for key in pairs(raw) do
-        if key ~= 'version' and key ~= 'wounds' and key ~= 'laststandAt' and key ~= 'deadAt' then return false end
+        if key ~= 'version' and key ~= 'wounds' and key ~= 'bleedStopped' and key ~= 'laststandAt' and key ~= 'deadAt' then
+            return false
+        end
     end
     return true
 end
@@ -300,6 +385,8 @@ local function restorePlayer(src)
     }
 
     woundData[src] = clean.wounds
+    clean.bleedStopped = versioned and raw.bleedStopped == true and next(clean.wounds) ~= nil or nil
+    bleedStopped[src] = clean.bleedStopped
     local state = Death.getState(src)
     local expectedDead = state == 'dead'
     local expectedLaststand = state == 'laststand'
@@ -404,18 +491,34 @@ CreateThread(function()
     for _, src in ipairs(QBCore:getPlayers()) do restorePlayer(src) end
 end)
 
+---One pass of the periodic sweep. First reconcile players another resource
+---(admin /revive, /selfrevive) flipped back to alive behind our back: without
+---that their ledger keeps the bleeding pill up and the bleed-out clock would
+---still kill them. Then bleed out whoever's laststand clock has run out.
+function Death._sweep()
+    local externallyRevived = {}
+    for src in pairs(laststandAt) do externallyRevived[src] = true end
+    for src in pairs(deadAt) do externallyRevived[src] = true end
+    for src in pairs(externallyRevived) do
+        if QBCore:getPlayerData(src) and Death.getState(src) == 'alive' then Death.fullRevive(src) end
+    end
+
+    for src, startedAt in pairs(laststandAt) do
+        if os.time() - startedAt >= math.floor(Config.death.deathTime / 1000) then Death.markDead(src) end
+    end
+end
+
 CreateThread(function()
     while true do
         Wait(5000)
-        for src, startedAt in pairs(laststandAt) do
-            if os.time() - startedAt >= math.floor(Config.death.deathTime / 1000) then Death.markDead(src) end
-        end
+        Death._sweep()
     end
 end)
 
 AddEventHandler('playerDropped', function()
     local src = source
     woundData[src] = nil
+    bleedStopped[src] = nil
     laststandAt[src] = nil
     deadAt[src] = nil
     observations[src] = nil
@@ -431,6 +534,7 @@ local function getPatientStatus(src)
         version = MEDICAL_VERSION,
         state = Death.getState(src),
         wounds = copyWounds(src),
+        bleeding = Death.isBleeding(src),
         laststandAt = laststandAt[src],
         deadAt = deadAt[src],
     }

@@ -26,6 +26,15 @@ Config.death = {
     reviveActionTtl = 20000,          -- ms a server-issued CPR action remains valid
 }
 
+-- What a revive (CPR/defibrillator, the self-heal AI, hospital laststand care)
+-- does to injuries. Read at use time by Death.reviveInField. Admin/full revives
+-- (Death.fullRevive, the fullRevive export) and hospital check-in care always
+-- clear everything regardless of these two.
+Config.revive = {
+    clearBleeding = true,             -- a revive stops the bleeding: the Bleeding status ends and bleed damage stops, while wounds stay on the ledger
+    clearWounds = false,              -- a revive also closes every wound (limping ends, nothing left to treat or bill); false keeps non-bleeding injuries such as limping, as before
+}
+
 Config.doctors = {
     minimalDoctors = 1,               -- on-duty EMS (grade >= Config.job.onDutyDoctorGrade) below which the self-heal AI kicks in
     docCooldown = 600000,             -- ms cooldown before the self-heal AI will revive the SAME player again
@@ -209,6 +218,8 @@ end
 function Config.validate()
     local hospitalNames, beds, bones = {}, {}, {}
     assert(type(Config.death.allowCameraMovement) == 'boolean', 'death allowCameraMovement must be boolean')
+    assert(type(Config.revive.clearBleeding) == 'boolean' and type(Config.revive.clearWounds) == 'boolean',
+        'revive clearBleeding and clearWounds must be boolean')
     assert(type(Config.hospitals) == 'table' and #Config.hospitals > 0, 'at least one hospital is required')
     for _, hospital in ipairs(Config.hospitals) do
         assert(type(hospital.name) == 'string' and hospital.name ~= '' and not hospitalNames[hospital.name], 'hospital names must be unique')
