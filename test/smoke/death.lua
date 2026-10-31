@@ -1,6 +1,6 @@
 -- Death smoke test -- the ALIVE/LASTSTAND/DEAD state machine (pure
 -- transition table + the side-effecting wrappers) and the wound ledger's
--- bleeding/limping QB.status sync.
+-- bleeding/limping Kora.status sync.
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
 dofile('config.lua')
@@ -96,7 +96,7 @@ h.test('reviveInField only works from laststand/dead, stops bleeding, does not c
     h.assertTrue(Death.reviveInField(5, 30))
     h.assertTrue(Death.isAlive(5))
     h.assertEqual(handle.playerStates[5].emsDown, false)
-    h.assertFalse(handle.QB.status.isActive(5, 'bleeding'))
+    h.assertFalse(handle.Kora.status.isActive(5, 'bleeding'))
     -- Wound ledger itself is untouched -- only the visible bleeding status is cleared.
     h.assertEqual(Death.getWoundData(5).chest, 3)
 end)
@@ -264,7 +264,7 @@ h.test('a revive clears the death timestamp so a later death starts a fresh wait
 end)
 
 ------------------------------------------------------------------------------
--- Wound ledger -> QB.status sync
+-- Wound ledger -> Kora.status sync
 ------------------------------------------------------------------------------
 
 h.test('recordWound never downgrades an existing wound on the same body part', function()
@@ -282,32 +282,32 @@ h.test('recordWound rejects invalid compatibility input before status sync', fun
     Death.recordWound(13, 'chest', 99)
     Death.recordWound(13, 'not_a_real_part', 2)
     h.assertEqual(next(Death.getWoundData(13)), nil)
-    h.assertFalse(handle.QB.status.isActive(13, 'bleeding'))
+    h.assertFalse(handle.Kora.status.isActive(13, 'bleeding'))
 end)
 
 h.test('_syncStatus applies bleeding at the worst tier and limping only when that tier cannot walk', function()
     handle.ensurePlayer(9)
     Death.recordWound(9, 'left_hand', 1) -- tier 1: canWalk = true
-    h.assertTrue(handle.QB.status.isActive(9, 'bleeding'))
-    h.assertFalse(handle.QB.status.isActive(9, 'limping'))
+    h.assertTrue(handle.Kora.status.isActive(9, 'bleeding'))
+    h.assertFalse(handle.Kora.status.isActive(9, 'limping'))
 
     Death.recordWound(9, 'chest', 4) -- tier 4: canWalk = false
-    h.assertTrue(handle.QB.status.isActive(9, 'limping'))
-    h.assertEqual(handle.QB.status.applied[9].bleeding.severity, 4)
+    h.assertTrue(handle.Kora.status.isActive(9, 'limping'))
+    h.assertEqual(handle.Kora.status.applied[9].bleeding.severity, 4)
 end)
 
-h.test('clearWound / clearAllWounds remove the QB.status effects once no wound remains', function()
+h.test('clearWound / clearAllWounds remove the Kora.status effects once no wound remains', function()
     handle.ensurePlayer(10)
     Death.recordWound(10, 'chest', 2)
-    h.assertTrue(handle.QB.status.isActive(10, 'bleeding'))
+    h.assertTrue(handle.Kora.status.isActive(10, 'bleeding'))
 
     Death.clearWound(10, 'chest')
-    h.assertFalse(handle.QB.status.isActive(10, 'bleeding'))
+    h.assertFalse(handle.Kora.status.isActive(10, 'bleeding'))
 
     Death.recordWound(10, 'chest', 4)
     Death.clearAllWounds(10)
-    h.assertFalse(handle.QB.status.isActive(10, 'bleeding'))
-    h.assertFalse(handle.QB.status.isActive(10, 'limping'))
+    h.assertFalse(handle.Kora.status.isActive(10, 'bleeding'))
+    h.assertFalse(handle.Kora.status.isActive(10, 'limping'))
     h.assertEqual(next(Death.getWoundData(10)), nil)
 end)
 
@@ -317,7 +317,7 @@ end)
 
 h.test('qbambulance:server:reportDeath rejects an alive server ped', function()
     handle.ensurePlayer(11)
-    local reportDeath = handle.QB.callback.registry['qbambulance:server:reportDeath']
+    local reportDeath = handle.Kora.callback.registry['qbambulance:server:reportDeath']
     h.assertTrue(reportDeath ~= nil)
     h.assertFalse(reportDeath(11, 'died'))
     h.assertTrue(Death.isAlive(11))
@@ -326,7 +326,7 @@ end)
 h.test('qbambulance:server:reportDeath transitions a corroborated dead ped into laststand', function()
     handle.ensurePlayer(14)
     handle.setHealth(14, 0)
-    local reportDeath = handle.QB.callback.registry['qbambulance:server:reportDeath']
+    local reportDeath = handle.Kora.callback.registry['qbambulance:server:reportDeath']
     h.assertTrue(reportDeath(14, 'died'))
     h.assertTrue(Death.isLaststand(14))
     handle.setHealth(14, 200)
@@ -395,14 +395,14 @@ h.test('legacy doctor alert is accepted only at a configured hospital', function
 end)
 
 h.test('the legacy client-selected wound tier route is inaccessible', function()
-    h.assertEqual(handle.QB.events.registry['qbambulance:server:reportWound'], nil)
+    h.assertEqual(handle.Kora.events.registry['qbambulance:server:reportWound'], nil)
 end)
 
 h.test('hitObserved validates measurements, remaps known bones, and derives severity', function()
     local src = 12
     handle.ensurePlayer(src)
     handle.setHealth(src, 180)
-    local observed = handle.QB.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
     h.assertTrue(observed ~= nil)
 
     observed(src, nil)
@@ -417,7 +417,7 @@ h.test('hitObserved validates measurements, remaps known bones, and derives seve
 end)
 
 h.test('hitObserved accepts fallback only for a missing or unmapped bone', function()
-    local observed = handle.QB.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
 
     handle.ensurePlayer(29)
     handle.setHealth(29, 190)
@@ -438,7 +438,7 @@ h.test('hitObserved burns replayed and cooldown-rejected sequences', function()
     local src = 31
     handle.ensurePlayer(src)
     handle.setHealth(src, 180)
-    local observed = handle.QB.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
 
     observed(src, { sequence = 10, bone = 18905, bodyPart = 'left_hand', damage = 20, healthAfter = 180, fallback = false })
     h.assertEqual(Death.getWoundData(src).left_hand, 3)

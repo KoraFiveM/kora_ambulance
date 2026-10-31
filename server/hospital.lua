@@ -162,15 +162,15 @@ function Hospital.getSession(src)
     return sessions[src]
 end
 
-QB.callback.register('qbambulance:server:checkInRequested', function(src, hospitalName)
+Kora.callback.register('qbambulance:server:checkInRequested', function(src, hospitalName)
     return Hospital.requestCheckIn(src, hospitalName)
 end)
 
-QB.callback.register('qbambulance:server:bedCareCompleted', function(src, token)
+Kora.callback.register('qbambulance:server:bedCareCompleted', function(src, token)
     return Hospital.completeBedCare(src, token)
 end)
 
-QB.events.register('qbambulance:server:bedLeft', function(src, token)
+Kora.events.register('qbambulance:server:bedLeft', function(src, token)
     Hospital.leaveBed(src, token)
 end)
 

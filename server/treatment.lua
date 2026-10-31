@@ -16,7 +16,7 @@ end
 
 local function nearby(a, b)
     if not QBCore:getPlayerData(a) or not QBCore:getPlayerData(b) then return false end
-    return QB.world.resolveNearbyPlayer(a, b, { maxDistance = Config.treatment.range }) ~= nil
+    return Kora.world.resolveNearbyPlayer(a, b, { maxDistance = Config.treatment.range }) ~= nil
 end
 
 local function clearAction(medicSrc)
@@ -169,18 +169,18 @@ function Treatment.complete(medicSrc, patientSrc, token, completed)
     return true, nil
 end
 
-QB.callback.register('qbambulance:server:assessPatient', function(src, patientSrc)
+Kora.callback.register('qbambulance:server:assessPatient', function(src, patientSrc)
     patientSrc = tonumber(patientSrc)
     local allowed, reason = Treatment.canAccess(src, patientSrc)
     if not allowed then return nil, reason end
     return Treatment.assessment(patientSrc), nil
 end, { rateLimit = { max = 10, window = 10000 } })
 
-QB.callback.register('qbambulance:server:beginTreatment', function(src, patientSrc)
+Kora.callback.register('qbambulance:server:beginTreatment', function(src, patientSrc)
     return Treatment.begin(src, patientSrc)
 end, { rateLimit = { max = 5, window = 10000 } })
 
-QB.callback.register('qbambulance:server:completeTreatment', function(src, patientSrc, token, completed)
+Kora.callback.register('qbambulance:server:completeTreatment', function(src, patientSrc, token, completed)
     return Treatment.complete(src, patientSrc, token, completed == true)
 end, { rateLimit = { max = 5, window = 10000 } })
 

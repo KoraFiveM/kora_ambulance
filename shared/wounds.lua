@@ -2,7 +2,7 @@
 -- woundLevels/bleed. Shared realm so client/damage.lua (per-hit wound
 -- location while alive) and server/death.lua (bleed ticking, billing,
 -- SyncInjuries compat) call the exact same math. Every function here is a
--- plain value in, value out transform -- no natives, no Core/QB calls -- so
+-- plain value in, value out transform -- no natives, no Core/Kora calls -- so
 -- it's fully exercised by test/smoke/wounds.lua under plain lua5.4.
 
 Wounds = Wounds or {}
@@ -261,17 +261,17 @@ end
 
 Wounds.MAX_TIER = MAX_TIER
 
--- The two durable QB.status conditions the wound system drives. Registered
+-- The two durable Kora.status conditions the wound system drives. Registered
 -- here (shared realm) rather than in shared/items.lua -- these are wound
 -- states, not item-consumption cosmetics, even though they use the same
--- QB.status mechanism. `bleeding`'s fx is a fixed vignette/ptfx regardless of
--- severity (QB.status has no per-severity fx); `limping` intentionally
+-- Kora.status mechanism. `bleeding`'s fx is a fixed vignette/ptfx regardless of
+-- severity (Kora.status has no per-severity fx); `limping` intentionally
 -- carries NO fx/anim/movement of its own -- its per-tier movement penalty
 -- varies with Wounds.woundLevelDef(severity).movementMultiplier, which
--- QB.status's single static `movement.speedMultiplier` can't express, so
--- client/damage.lua applies it directly via QB.status.onChange instead (see
--- that file's header comment and QB.status's own movement-field caveat).
-QB.status.registerEffect('bleeding', {
+-- Kora.status's single static `movement.speedMultiplier` can't express, so
+-- client/damage.lua applies it directly via Kora.status.onChange instead (see
+-- that file's header comment and Kora.status's own movement-field caveat).
+Kora.status.registerEffect('bleeding', {
     stacking = 'replace',
     severityLevels = MAX_TIER,
     fx = {
@@ -279,7 +279,7 @@ QB.status.registerEffect('bleeding', {
     },
 })
 
-QB.status.registerEffect('limping', {
+Kora.status.registerEffect('limping', {
     stacking = 'replace',
     severityLevels = MAX_TIER,
 })

@@ -96,7 +96,7 @@ end
 ---@param src integer
 ---@param reason string
 local function notifyFailure(src, reason)
-    QB.notify.send(src, { title = 'Patient Transport', message = reason, type = 'error' })
+    Kora.notify.send(src, { title = 'Patient Transport', message = reason, type = 'error' })
 end
 
 ---@param record table
@@ -442,12 +442,12 @@ function Stretcher.removeForVehicle(vehicleNetworkId, reason)
     if record then removePhysical(record, reason or 'vehicle removed') end
 end
 
-QB.callback.register('qbambulance:server:stretcherDeployRequested', function(src, vehicleNetworkId)
+Kora.callback.register('qbambulance:server:stretcherDeployRequested', function(src, vehicleNetworkId)
     return Stretcher.deploy(src, vehicleNetworkId)
 end, { rateLimit = { max = 3, window = 10000 } })
 
 local function registerAction(name, action)
-    QB.events.register(name, function(src, ...)
+    Kora.events.register(name, function(src, ...)
         local ok, reason = action(src, ...)
         if not ok and reason then notifyFailure(src, reason) end
     end)
@@ -460,7 +460,7 @@ registerAction('qbambulance:server:patientUnloadedFromStretcher', Stretcher.unlo
 registerAction('qbambulance:server:stretcherStowed', Stretcher.stow)
 registerAction('qbambulance:server:stretcherUnstowed', Stretcher.unstow)
 
-QB.events.register('qbambulance:server:stretcherHeartbeatReceived', function(src, stretcherNetworkId)
+Kora.events.register('qbambulance:server:stretcherHeartbeatReceived', function(src, stretcherNetworkId)
     stretcherNetworkId = networkId(stretcherNetworkId)
     local record = stretcherNetworkId and stretchers[stretcherNetworkId]
     if not record or record.operator ~= src or record.mode ~= 'pushed' then return end
@@ -472,7 +472,7 @@ QB.events.register('qbambulance:server:stretcherHeartbeatReceived', function(src
 end)
 
 -- Emergency carry remains available when a physical stretcher is impractical.
-QB.events.register('qbambulance:server:stretcherPickup', function(src, targetSrc)
+Kora.events.register('qbambulance:server:stretcherPickup', function(src, targetSrc)
     targetSrc = tonumber(targetSrc)
     if not targetSrc or targetSrc % 1 ~= 0 or targetSrc == src then return end
     if not isOnDutyEMS(src) or not QBCore:getPlayerData(targetSrc) then return end
@@ -499,11 +499,11 @@ QB.events.register('qbambulance:server:stretcherPickup', function(src, targetSrc
     TriggerClientEvent('qbambulance:client:stretcherBegin', targetSrc, src, false)
 end)
 
-QB.events.register('qbambulance:server:stretcherRelease', function(src)
+Kora.events.register('qbambulance:server:stretcherRelease', function(src)
     releaseCarry(src, false)
 end)
 
-QB.events.register('qbambulance:server:stretcherHeartbeat', function(src)
+Kora.events.register('qbambulance:server:stretcherHeartbeat', function(src)
     local targetSrc = targetOf[src]
     if not targetSrc then return end
     local now = GetGameTimer()

@@ -1,6 +1,6 @@
 -- Items smoke test -- painkillerEligible (pure) and the full pharmacy
 -- createUseable flow: eligibility gate -> server-asks-client progress bar
--- (QB.callback.trigger's server->client direction) -> real wound treatment
+-- (Kora.callback.trigger's server->client direction) -> real wound treatment
 -- -> item consumption, exercised end-to-end against the mock's captured
 -- useable handlers and a stubbed client-side progress-bar response.
 local h = dofile('test/harness.lua')
@@ -22,7 +22,7 @@ end)
 
 -- Stub the client's progress-bar response for every test below: "completed"
 -- unless a test overrides it to simulate a cancel.
-handle.QB.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return true end
+handle.Kora.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return true end
 
 h.test('bandage: no wound at all -> refused, item not consumed', function()
     handle.ensurePlayer(1)
@@ -79,9 +79,9 @@ h.test('a cancelled progress bar (client reports false) treats nothing and consu
     handle.players[6].items.bandage = 1
     Death.recordWound(6, 'left_hand', 1)
 
-    handle.QB.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return false end
+    handle.Kora.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return false end
     handle.kora_core:useItem(6, 'bandage')
-    handle.QB.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return true end
+    handle.Kora.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return true end
 
     h.assertEqual(Death.getWoundData(6).left_hand, 1) -- untreated
     h.assertEqual(handle.players[6].items.bandage, 1) -- not consumed

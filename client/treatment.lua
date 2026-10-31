@@ -19,14 +19,14 @@ local function assessPatientById(patientSrc)
     patientSrc = tonumber(patientSrc)
     if not patientSrc or patientSrc < 1 or patientSrc % 1 ~= 0 then return end
 
-    local report, reason = QB.callback.trigger('qbambulance:server:assessPatient', patientSrc)
+    local report, reason = Kora.callback.trigger('qbambulance:server:assessPatient', patientSrc)
     if not report then
-        QB.notify.send({ title = 'Patient Assessment', message = reason or 'Unable to assess patient.', type = 'error' })
+        Kora.notify.send({ title = 'Patient Assessment', message = reason or 'Unable to assess patient.', type = 'error' })
         return
     end
 
     if #report.wounds == 0 then
-        QB.notify.send({ title = 'Patient Assessment', message = ('State: %s. No open wounds.'):format(report.state), type = 'success' })
+        Kora.notify.send({ title = 'Patient Assessment', message = ('State: %s. No open wounds.'):format(report.state), type = 'success' })
         return
     end
 
@@ -34,7 +34,7 @@ local function assessPatientById(patientSrc)
     for _, wound in ipairs(report.wounds) do
         findings[#findings + 1] = ('%s: %s'):format(wound.bodyPartLabel, wound.severityLabel)
     end
-    QB.notify.send({
+    Kora.notify.send({
         title = ('Patient Assessment (%s)'):format(report.state),
         message = table.concat(findings, ' | '),
         type = 'warning',
@@ -46,31 +46,31 @@ local function treatPatientById(patientSrc)
     patientSrc = tonumber(patientSrc)
     if not patientSrc or patientSrc < 1 or patientSrc % 1 ~= 0 then return end
 
-    local started, outcome = QB.actions.run({
+    local started, outcome = Kora.actions.run({
         label = 'Treating patient',
         duration = Config.treatment.duration,
         canCancel = true,
         disable = { move = true, combat = true, car = true },
         anim = { dict = 'amb@medic@standing@tendtodead@base', clip = 'base' },
         begin = function(targetSrc)
-            return QB.callback.trigger('qbambulance:server:beginTreatment', targetSrc)
+            return Kora.callback.trigger('qbambulance:server:beginTreatment', targetSrc)
         end,
         complete = function(result, targetSrc)
-            local treated, completeErr = QB.callback.trigger('qbambulance:server:completeTreatment',
+            local treated, completeErr = Kora.callback.trigger('qbambulance:server:completeTreatment',
                 targetSrc, result.token, result.completed)
             return { treated = treated == true, reason = completeErr }
         end,
     }, patientSrc)
 
     if not started then
-        QB.notify.send({ title = 'Patient Treatment', message = outcome or 'Unable to begin treatment.', type = 'error' })
+        Kora.notify.send({ title = 'Patient Treatment', message = outcome or 'Unable to begin treatment.', type = 'error' })
         return
     end
 
     if outcome and outcome.treated then
-        QB.notify.send({ title = 'Patient Treatment', message = 'One wound has been treated.', type = 'success' })
+        Kora.notify.send({ title = 'Patient Treatment', message = 'One wound has been treated.', type = 'success' })
     else
-        QB.notify.send({
+        Kora.notify.send({
             title = 'Patient Treatment',
             message = (outcome and outcome.reason) or 'Treatment was not completed.',
             type = 'warning',

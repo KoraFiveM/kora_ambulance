@@ -28,12 +28,12 @@ end
 
 h.test('check-in reserves the lowest available bed through its callback', function()
     placeAtCheckIn(1); injure(1)
-    local care = handle.QB.callback.registry['qbambulance:server:checkInRequested'](1, hospital.name)
+    local care = handle.Kora.callback.registry['qbambulance:server:checkInRequested'](1, hospital.name)
     h.assertEqual(care.bedIndex, 1)
     h.assertEqual(care.hospital, hospital.name)
     h.assertTrue(type(care.token) == 'string')
     h.assertEqual(Hospital.getSession(1).token, care.token)
-    handle.QB.events.registry['qbambulance:server:bedLeft'](1, care.token)
+    handle.Kora.events.registry['qbambulance:server:bedLeft'](1, care.token)
 end)
 
 h.test('check-in rejects remote, healthy, dead, duplicate, and full requests', function()

@@ -16,7 +16,7 @@ dependency 'kora_inventory'
 dependency 'kora_target'
 
 -- kora_lib strictly before kora_core, same rule every consumer resource follows
--- (kora_core's own mirror extends the QB table kora_lib's init.lua creates).
+-- (kora_core's own mirror extends the Kora table kora_lib's init.lua creates).
 -- kora_inventory/qbtarget expose flat exports only (exports.kora_inventory:*,
 -- exports.kora_target:*) -- neither needs a shared_script import.
 shared_script '@kora_lib/init.lua'
@@ -28,7 +28,8 @@ shared_script '@kora_core/init.lua'
 shared_scripts {
     'config.lua',
     'shared/wounds.lua',
-    'shared/items.lua'
+    'shared/items.lua',
+    'shared/downed.lua'
 }
 
 -- Explicit, never globbed -- matches every sibling resource's own rationale.

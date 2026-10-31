@@ -17,7 +17,10 @@ Config.job = {
 Config.death = {
     deathTime = 300000,               -- ms a player can stay in laststand before bleeding out to full death
     respawnTime = 60000,              -- ms a fully dead player waits before /respawn is accepted (enforced in Death.respawnAtHospital, not just counted down on screen)
-    allowCameraMovement = true,        -- lets downed players look around while movement, combat and other gameplay controls remain disabled
+    allowCameraMovement = true,        -- legacy switch: false locks the downed camera (same as cameraMode = 'fixed'); true defers to cameraMode
+    cameraMode = 'free',               -- 'free' = downed/dead players look around with the mouse; 'fixed' = camera look locked (old behaviour). Read at use time
+    downedHealth = 101,                -- health a downed ped is held at; must stay above 100 or GTA treats the ped as dead again (frozen death camera, no look input)
+    respawnHoldTime = 1500,            -- ms [E] must be held to respawn once the respawn timer has ended; 0 = a single press
     reportRetryInterval = 100,         -- ms a dead client waits before retrying server ped-state corroboration
     reportRetryAttempts = 5,           -- quick retries (reportRetryInterval apart) for OneSync health replication
     reportRetryWindow = 15000,         -- ms the client then keeps retrying slowly while still fatally injured (vehicle crashes replicate health late); 0 gives up after reportRetryAttempts as before
@@ -227,6 +230,11 @@ end
 function Config.validate()
     local hospitalNames, beds, bones = {}, {}, {}
     assert(type(Config.death.allowCameraMovement) == 'boolean', 'death allowCameraMovement must be boolean')
+    assert(Config.death.cameraMode == 'free' or Config.death.cameraMode == 'fixed', "death cameraMode must be 'free' or 'fixed'")
+    assert(type(Config.death.downedHealth) == 'number' and Config.death.downedHealth > 100,
+        'death downedHealth must be a number above 100')
+    assert(type(Config.death.respawnHoldTime) == 'number' and Config.death.respawnHoldTime >= 0,
+        'death respawnHoldTime must be a non-negative number')
     assert(type(Config.death.reportRetryWindow) == 'number' and Config.death.reportRetryWindow >= 0,
         'death reportRetryWindow must be a non-negative number')
     assert(type(Config.death.screen) == 'table' and type(Config.death.screen.enabled) == 'boolean'
@@ -324,4 +332,4 @@ Config.weaponClassMap = {
 }
 
 -- Registers this resource-owned configuration with kora_lib without changing its public Config table.
-if QB and QB.config and QB.config.adopt then Config = QB.config.adopt(Config) end
+if Kora and Kora.config and Kora.config.adopt then Config = Kora.config.adopt(Config) end

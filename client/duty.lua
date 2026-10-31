@@ -10,34 +10,34 @@ local function isOnDutyEMS()
 end
 
 local function resolveNetworkEntity(networkId)
-    QB.loops.controlled(function() return NetworkDoesEntityExistWithNetworkId(networkId) end, 50, 2500, 50)
+    Kora.loops.controlled(function() return NetworkDoesEntityExistWithNetworkId(networkId) end, 50, 2500, 50)
     return NetworkGetEntityFromNetworkId(networkId)
 end
 
 local function spawnVehicle(hospital, vehicleIndex)
-    local result = QB.callback.trigger('qbambulance:server:spawnDutyVehicle', hospital.name, vehicleIndex)
+    local result = Kora.callback.trigger('qbambulance:server:spawnDutyVehicle', hospital.name, vehicleIndex)
     if not result then
-        QB.notify.send({ title = 'EMS Garage', message = 'Could not check out a vehicle.', type = 'error' })
+        Kora.notify.send({ title = 'EMS Garage', message = 'Could not check out a vehicle.', type = 'error' })
         return
     end
 
     local veh = resolveNetworkEntity(result)
     if not veh or veh == 0 or not DoesEntityExist(veh) then return end
 
-    TaskWarpPedIntoVehicle(QB.cache.ped(), veh, -1)
-    QB.notify.send({ title = 'EMS Garage', message = 'Vehicle checked out.', type = 'success' })
+    TaskWarpPedIntoVehicle(Kora.cache.ped(), veh, -1)
+    Kora.notify.send({ title = 'EMS Garage', message = 'Vehicle checked out.', type = 'success' })
 end
 
 local function storeVehicle()
-    local veh = QB.cache.vehicle()
+    local veh = Kora.cache.vehicle()
     if not veh then
-        QB.notify.send({ title = 'EMS Garage', message = 'Get in the vehicle first.', type = 'error' })
+        Kora.notify.send({ title = 'EMS Garage', message = 'Get in the vehicle first.', type = 'error' })
         return
     end
 
-    TaskLeaveVehicle(QB.cache.ped(), veh, 0)
+    TaskLeaveVehicle(Kora.cache.ped(), veh, 0)
     Wait(1500)
-    QB.events.trigger('qbambulance:server:storeDutyVehicle')
+    Kora.events.trigger('qbambulance:server:storeDutyVehicle')
 end
 
 local function registerDutyTargets()

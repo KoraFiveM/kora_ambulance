@@ -5,7 +5,7 @@
 -- a CPR minigame + anim, then a secure server report. All real validation
 -- (job/duty, item, target eligibility, cooldown) happens server-side in
 -- server/revive.lua -- a client reporting `success = true` without actually
--- winning the minigame gains nothing, since QB.minigames' own pass/fail is
+-- winning the minigame gains nothing, since Kora.minigames' own pass/fail is
 -- already server-validated inside kora_lib.
 
 local CPR_ANIM = { dict = 'mini@cpr@char_a@cpr_str', clip = 'cpr_pumpchest' }
@@ -32,20 +32,20 @@ local function performCPRForTarget(targetSrc)
     targetSrc = tonumber(targetSrc)
     if not targetSrc or targetSrc < 1 or targetSrc % 1 ~= 0 then return end
 
-    local token, beginErr, authorization = QB.callback.trigger('qbambulance:server:beginRevive', targetSrc)
+    local token, beginErr, authorization = Kora.callback.trigger('qbambulance:server:beginRevive', targetSrc)
     if not token then
-        QB.notify.send({ title = 'EMS', message = beginErr or 'Unable to begin CPR.', type = 'error' })
+        Kora.notify.send({ title = 'EMS', message = beginErr or 'Unable to begin CPR.', type = 'error' })
         return
     end
 
     local ped = PlayerPedId()
-    QB.anim.play(ped, CPR_ANIM.dict, CPR_ANIM.clip, { flag = 1 })
+    Kora.anim.play(ped, CPR_ANIM.dict, CPR_ANIM.clip, { flag = 1 })
 
-    local ok, result = pcall(QB.minigames.play, 'mash', nil, authorization)
-    QB.anim.stop(ped)
+    local ok, result = pcall(Kora.minigames.play, 'mash', nil, authorization)
+    Kora.anim.stop(ped)
 
     local proof = ok and type(result) == 'table' and result.success == true and result.proof or nil
-    QB.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
+    Kora.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
 end
 
 local function performCPR(entity)

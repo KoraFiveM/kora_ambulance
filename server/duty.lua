@@ -6,7 +6,7 @@
 
 Duty = Duty or {}
 
--- kora_core has no QB proxy of its own (see this resource's own AGENTS-style
+-- kora_core has no Kora proxy of its own (see this resource's own AGENTS-style
 -- header note in the plan) -- every Core.<module>.<fn> call must cross the
 -- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
 local QBCore = exports.kora_core
@@ -153,7 +153,7 @@ local function clearDutyVehicle(src)
     currentVehicle[src] = nil
 end
 
-QB.callback.register('qbambulance:server:spawnDutyVehicle', function(src, hospitalName, vehicleIndex)
+Kora.callback.register('qbambulance:server:spawnDutyVehicle', function(src, hospitalName, vehicleIndex)
     if not isOnDutyEMS(src) then return false, 'not on duty' end
     if currentVehicle[src] then return false, 'you already have a duty vehicle checked out' end
     if not actionAllowed(src) then return false, 'please wait before trying again' end
@@ -196,7 +196,7 @@ QB.callback.register('qbambulance:server:spawnDutyVehicle', function(src, hospit
     return networkId
 end)
 
-QB.events.register('qbambulance:server:storeDutyVehicle', function(src)
+Kora.events.register('qbambulance:server:storeDutyVehicle', function(src)
     local active = currentVehicle[src]
     if not active or not isOnDutyEMS(src) or not actionAllowed(src) then return end
 
@@ -207,7 +207,7 @@ QB.events.register('qbambulance:server:storeDutyVehicle', function(src)
     if not nearGarage then return end
 
     clearDutyVehicle(src)
-    QB.notify.send(src, { title = 'EMS Garage', message = 'Vehicle returned to the fleet.', type = 'success' })
+    Kora.notify.send(src, { title = 'EMS Garage', message = 'Vehicle returned to the fleet.', type = 'success' })
 end)
 
 ---@param src integer
@@ -234,11 +234,11 @@ function Duty.vehicleRecord(networkId)
     return nil, nil
 end
 
-QB.commands.add('ems-duty', 'Toggle EMS duty at a hospital', {}, false, function(source)
+Kora.commands.add('ems-duty', 'Toggle EMS duty at a hospital', {}, false, function(source)
     local job = QBCore:getJob(source)
     local newDuty = job ~= nil and not job.onduty
     local changed, err = Duty.setDuty(source, newDuty)
-    QB.notify.send(source, {
+    Kora.notify.send(source, {
         message = changed and (newDuty and 'You are now on duty.' or 'You are now off duty.')
             or (err or 'Duty status could not be changed.'),
         type = changed and 'success' or 'error',

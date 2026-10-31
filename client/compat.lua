@@ -18,21 +18,21 @@ local painScreenHandle
 RegisterNetEvent('hospital:client:ambulanceAlert', function() end)
 
 RegisterNetEvent('hospital:client:Revive', function()
-    QB.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
+    Kora.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:RevivePlayer', function()
-    QB.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
+    Kora.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:SetPain', function(level)
     if tonumber(level) and tonumber(level) > 0 then
         if not painScreenHandle then
-            painScreenHandle = QB.fx.screenEffect('DrugsMichaelAliensFightIn', 0, true)
+            painScreenHandle = Kora.fx.screenEffect('DrugsMichaelAliensFightIn', 0, true)
         end
     else
         if painScreenHandle then
-            QB.fx.stopScreenEffect(painScreenHandle)
+            Kora.fx.stopScreenEffect(painScreenHandle)
             painScreenHandle = nil
         end
     end
@@ -44,11 +44,11 @@ RegisterNetEvent('hospital:client:KillPlayer', function()
 end)
 
 RegisterNetEvent('hospital:client:HealInjuries', function(_percent)
-    QB.notify.send({ title = 'Hospital', message = 'Use patient treatment or hospital check-in.', type = 'info' })
+    Kora.notify.send({ title = 'Hospital', message = 'Use patient treatment or hospital check-in.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:SendToBed', function(_bedIndex)
-    QB.notify.send({ title = 'Hospital', message = 'Use a check-in desk for a server-assigned bed.', type = 'info' })
+    Kora.notify.send({ title = 'Hospital', message = 'Use a check-in desk for a server-assigned bed.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:leaveBed', function()
@@ -56,11 +56,11 @@ RegisterNetEvent('hospital:client:leaveBed', function()
 end)
 
 RegisterNetEvent('hospital:client:SetBed', function(bedIndex)
-    QB.notify.send({ title = 'Hospital', message = ('Assigned to bed %s.'):format(tostring(bedIndex)), type = 'info' })
+    Kora.notify.send({ title = 'Hospital', message = ('Assigned to bed %s.'):format(tostring(bedIndex)), type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:SetBed2', function(bedIndex)
-    QB.notify.send({ title = 'Hospital', message = ('Assigned to bed %s.'):format(tostring(bedIndex)), type = 'info' })
+    Kora.notify.send({ title = 'Hospital', message = ('Assigned to bed %s.'):format(tostring(bedIndex)), type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:RespawnAtHospital', function()
@@ -68,7 +68,7 @@ RegisterNetEvent('hospital:client:RespawnAtHospital', function()
 end)
 
 RegisterNetEvent('hospital:client:SendBillEmail', function(amount)
-    QB.notify.send({ title = 'Hospital Bill', message = ('You were billed $%d.'):format(tonumber(amount) or 0), type = 'warning' })
+    Kora.notify.send({ title = 'Hospital Bill', message = ('You were billed $%d.'):format(tonumber(amount) or 0), type = 'warning' })
 end)
 
 RegisterNetEvent('hospital:client:SetDoctorCount', function(count)
@@ -76,17 +76,17 @@ RegisterNetEvent('hospital:client:SetDoctorCount', function(count)
 end)
 
 RegisterNetEvent('hospital:client:adminHeal', function()
-    QB.notify.send({ title = 'Hospital', message = 'Client-side admin healing is disabled.', type = 'error' })
+    Kora.notify.send({ title = 'Hospital', message = 'Client-side admin healing is disabled.', type = 'error' })
 end)
 
 RegisterNetEvent('hospital:client:CheckStatus', function()
-    local status = QB.callback.trigger('hospital:GetPlayerStatus')
+    local status = Kora.callback.trigger('hospital:GetPlayerStatus')
     if type(status) ~= 'table' then return end
 
     local woundCount = 0
     for _ in pairs(status.woundData or {}) do woundCount = woundCount + 1 end
 
-    QB.notify.send({
+    Kora.notify.send({
         title = 'status',
         message = ('Dead: %s | Laststand: %s | Open wounds: %d'):format(tostring(status.isdead), tostring(status.inlaststand), woundCount),
         type = 'info',
@@ -94,7 +94,7 @@ RegisterNetEvent('hospital:client:CheckStatus', function()
 end)
 
 RegisterNetEvent('hospital:client:TreatWounds', function()
-    QB.notify.send({ title = 'EMS', message = 'Target a patient to start validated treatment.', type = 'info' })
+    Kora.notify.send({ title = 'EMS', message = 'Target a patient to start validated treatment.', type = 'info' })
 end)
 
 -- SetEscortingState/isEscorted map onto our own stretcher system rather than
@@ -117,7 +117,7 @@ exports('CanHelp', function()
 end)
 
 RegisterNetEvent('hospital:client:HelpPerson', function()
-    QB.notify.send({ title = 'EMS', message = 'Target a downed player to perform CPR or apply first aid.', type = 'info' })
+    Kora.notify.send({ title = 'EMS', message = 'Target a downed player to perform CPR or apply first aid.', type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:UseFirstAid', function()

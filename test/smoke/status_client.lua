@@ -6,7 +6,7 @@ dofile('config.lua')
 
 local active = {}
 local applied, removed = {}, {}
-handle.QB.status = {
+handle.Kora.status = {
     getActive = function()
         local out = {}
         for name, severity in pairs(active) do out[#out + 1] = { name = name, severity = severity } end

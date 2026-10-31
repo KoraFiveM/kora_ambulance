@@ -1,5 +1,5 @@
 -- Wounds smoke test -- pure wound-severity/weapon-class/treatment logic,
--- no natives and no kora_core/kora_lib mocks needed beyond QB.status.registerEffect
+-- no natives and no kora_core/kora_lib mocks needed beyond Kora.status.registerEffect
 -- (called at shared/wounds.lua's own load time).
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); mocks.install()

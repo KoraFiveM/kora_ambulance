@@ -2,12 +2,12 @@
 -- (closing a wound, the painkiller cooldown gate). Cosmetic playback
 -- (screen fx, anim, hunger/thirst/stress) is entirely handled by kora_core's
 -- Core.consumables reading the `effect` table shared/items.lua registered --
--- nothing here calls QB.fx/QB.status for cosmetics, only for the durable
+-- nothing here calls Kora.fx/Kora.status for cosmetics, only for the durable
 -- bleeding/limping state the wound actually being treated changes.
 
 Items = Items or {}
 
--- kora_core has no QB proxy of its own (see this resource's own AGENTS-style
+-- kora_core has no Kora proxy of its own (see this resource's own AGENTS-style
 -- header note in the plan) -- every Core.<module>.<fn> call must cross the
 -- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
 local QBCore = exports.kora_core
@@ -31,7 +31,7 @@ local function treatWound(src, maxTier)
     if not bodyPart then return false end
 
     Death.clearWound(src, bodyPart)
-    QB.notify.send(src, { title = 'First Aid', message = ('Treated a wound (%s).'):format(Wounds.bodyPartDef(bodyPart) and Wounds.bodyPartDef(bodyPart).label or bodyPart), type = 'success' })
+    Kora.notify.send(src, { title = 'First Aid', message = ('Treated a wound (%s).'):format(Wounds.bodyPartDef(bodyPart) and Wounds.bodyPartDef(bodyPart).label or bodyPart), type = 'success' })
     return true
 end
 
@@ -42,7 +42,7 @@ end
 
 -- Client "feedback" step (client/pharmacy.lua's whole reason to exist,
 -- per the plan): the SERVER asks the ITEM USER's own client to run a
--- QB.progressbar, using QB.callback.trigger's server->client direction
+-- Kora.progressbar, using Kora.callback.trigger's server->client direction
 -- (the reverse of the usual client-asks-server shape), and awaits whether
 -- it completed. Reuses the SAME duration/anim already registered on the
 -- item's `effect` table (shared/items.lua) rather than duplicating it in a
@@ -54,7 +54,7 @@ local function runFeedback(src, itemName)
     local def = QBCore:getShared('items', itemName)
     local effect = def and def.effect or {}
 
-    local completed = QB.callback.trigger(src, 'qbambulance:client:pharmacyProgress', {
+    local completed = Kora.callback.trigger(src, 'qbambulance:client:pharmacyProgress', {
         label = def and def.label or itemName,
         duration = effect.duration or 2500,
         anim = effect.anim,
@@ -65,12 +65,12 @@ end
 
 QBCore:createUseable('bandage', function(src, item)
     if not Death.isAlive(src) then
-        QB.notify.send(src, { title = 'First Aid', message = 'Can\'t apply a bandage right now.', type = 'error' })
+        Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t apply a bandage right now.', type = 'error' })
         return
     end
 
     if not Wounds.pickTreatableWound(Death.getWoundData(src), 2) then
-        QB.notify.send(src, { title = 'First Aid', message = 'No wound a bandage can treat.', type = 'warning' })
+        Kora.notify.send(src, { title = 'First Aid', message = 'No wound a bandage can treat.', type = 'warning' })
         return
     end
 
@@ -84,12 +84,12 @@ end)
 
 QBCore:createUseable('ifak', function(src, item)
     if not Death.isAlive(src) then
-        QB.notify.send(src, { title = 'First Aid', message = 'Can\'t apply an IFAK right now.', type = 'error' })
+        Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t apply an IFAK right now.', type = 'error' })
         return
     end
 
     if not Wounds.pickTreatableWound(Death.getWoundData(src), Wounds.MAX_TIER) then
-        QB.notify.send(src, { title = 'First Aid', message = 'No open wound to treat.', type = 'warning' })
+        Kora.notify.send(src, { title = 'First Aid', message = 'No open wound to treat.', type = 'warning' })
         return
     end
 
@@ -104,7 +104,7 @@ end)
 QBCore:createUseable('painkillers', function(src, item)
     local now = os.time()
     if not Items.painkillerEligible(now, lastPainkillerAt[src]) then
-        QB.notify.send(src, { title = 'Painkillers', message = 'You took some recently -- wait before taking more.', type = 'warning' })
+        Kora.notify.send(src, { title = 'Painkillers', message = 'You took some recently -- wait before taking more.', type = 'warning' })
         return
     end
 
@@ -113,7 +113,7 @@ QBCore:createUseable('painkillers', function(src, item)
     local removed = QBCore:removeItem(src, 'painkillers', 1, item and item.slot, 'painkillers')
     if not removed then return end
     lastPainkillerAt[src] = now
-    QB.notify.send(src, { title = 'Painkillers', message = 'The pain dulls a little.', type = 'success' })
+    Kora.notify.send(src, { title = 'Painkillers', message = 'The pain dulls a little.', type = 'success' })
 end)
 
 AddEventHandler('playerDropped', function()

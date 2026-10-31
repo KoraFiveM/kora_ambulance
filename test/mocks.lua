@@ -4,7 +4,7 @@
 -- is a CONSUMER resource -- everything it calls on kora_core/kora_lib crosses an
 -- exports boundary, so this only needs to fake that boundary: a colon-
 -- callable `exports.kora_core` backed by a tiny in-memory player store, and a
--- `QB` table with the handful of kora_lib primitives kora_ambulance's server code
+-- `Kora` table with the handful of kora_lib primitives kora_ambulance's server code
 -- actually calls (status/notify/events/callback/commands). Follows the same
 -- install()/fireEvent() shape as kora_core's own test/mocks.lua so the smoke
 -- tests read the same way.
@@ -96,10 +96,10 @@ function M.install()
         }
     end
 
-    -- --- fake kora_lib QB ---
-    local QB = {}
+    -- --- fake kora_lib Kora ---
+    local Kora = {}
 
-    QB.world = {
+    Kora.world = {
         resolveNearbyPlayer = function(src, target, options)
             local sourcePed, targetPed = GetPlayerPed(src), GetPlayerPed(target)
             if sourcePed == 0 or targetPed == 0 then return nil, 'target_unavailable' end
@@ -114,75 +114,75 @@ function M.install()
         end,
     }
 
-    QB.status = {
+    Kora.status = {
         registry = {},
         applied = {},   -- src -> name -> {severity, expiresAt}
-        registerEffect = function(name, def) QB.status.registry[name] = def end,
-        getEffectDef = function(name) return QB.status.registry[name] end,
+        registerEffect = function(name, def) Kora.status.registry[name] = def end,
+        getEffectDef = function(name) return Kora.status.registry[name] end,
         apply = function(target, name, opts)
-            QB.status.applied[target] = QB.status.applied[target] or {}
-            QB.status.applied[target][name] = { severity = opts and opts.severity }
+            Kora.status.applied[target] = Kora.status.applied[target] or {}
+            Kora.status.applied[target][name] = { severity = opts and opts.severity }
             return true
         end,
         remove = function(target, name)
-            local bucket = QB.status.applied[target]
+            local bucket = Kora.status.applied[target]
             if not bucket or not bucket[name] then return false end
             bucket[name] = nil
             return true
         end,
         isActive = function(target, name)
-            local bucket = QB.status.applied[target]
+            local bucket = Kora.status.applied[target]
             return bucket ~= nil and bucket[name] ~= nil
         end,
         getActive = function(target)
-            local bucket = QB.status.applied[target] or {}
+            local bucket = Kora.status.applied[target] or {}
             local out = {}
             for name, entry in pairs(bucket) do out[#out + 1] = { name = name, severity = entry.severity } end
             return out
         end,
     }
 
-    QB.notify = { sent = {}, send = function(...) end }
-    function QB.notify.send(...)
-        table.insert(QB.notify.sent, { ... })
+    Kora.notify = { sent = {}, send = function(...) end }
+    function Kora.notify.send(...)
+        table.insert(Kora.notify.sent, { ... })
     end
 
-    QB.blips = {
+    Kora.blips = {
         create = function() return nil end,
         setInfo = function() end,
     }
 
-    QB.fx = { started = {}, stopped = {} }
-    function QB.fx.screenEffect(name, duration, looped)
-        local handle = { id = #QB.fx.started + 1, name = name }
-        QB.fx.started[#QB.fx.started + 1] = { handle = handle, duration = duration, looped = looped }
+    Kora.fx = { started = {}, stopped = {} }
+    function Kora.fx.screenEffect(name, duration, looped)
+        local handle = { id = #Kora.fx.started + 1, name = name }
+        Kora.fx.started[#Kora.fx.started + 1] = { handle = handle, duration = duration, looped = looped }
         return handle
     end
-    function QB.fx.stopScreenEffect(handle)
-        QB.fx.stopped[#QB.fx.stopped + 1] = handle
+    function Kora.fx.stopScreenEffect(handle)
+        Kora.fx.stopped[#Kora.fx.stopped + 1] = handle
         return true
     end
 
-    QB.events = {
+    Kora.events = {
         registry = {},        -- name -> handler(src, ...)
-        register = function(name, handler) QB.events.registry[name] = handler end,
+        register = function(name, handler) Kora.events.registry[name] = handler end,
         trigger = function() end,
         push = function(target, name, ...) table.insert(clientEvents, { name = 'push:' .. name, target = target, args = { ... } }) end,
         onPush = function() end,
     }
 
-    QB.callback = {
+    Kora.callback = {
         registry = {},         -- name -> handler(src, ...) [server-registered]
-        clientHandlers = {},   -- name -> handler(...) [test-stubbed, for server->client QB.callback.trigger]
-        register = function(name, handler) QB.callback.registry[name] = handler end,
+        clientHandlers = {},   -- name -> handler(...) [test-stubbed, for server->client Kora.callback.trigger]
+        register = function(name, handler) Kora.callback.registry[name] = handler end,
         trigger = function(target, name, ...)
-            local handler = QB.callback.clientHandlers[name]
+            local handler = Kora.callback.clientHandlers[name]
             if not handler then return nil end
             return handler(...)
         end,
     }
 
-    QB.minigames = {
+    Kora.minigames = {
         authorizeProof = function(src, gameType, opts)
             nextMinigameToken = nextMinigameToken + 1
             local token = ('authorization:%d'):format(nextMinigameToken)
@@ -198,15 +198,15 @@ function M.install()
         end,
     }
 
-    QB.commands = {
+    Kora.commands = {
         registry = {},
-        add = function(name, _, _, _, handler) QB.commands.registry[name] = handler end,
-        remove = function(name) QB.commands.registry[name] = nil end,
+        add = function(name, _, _, _, handler) Kora.commands.registry[name] = handler end,
+        remove = function(name) Kora.commands.registry[name] = nil end,
         refresh = function() end,
         list = function() return {} end,
     }
 
-    _G.QB = QB
+    _G.Kora = Kora
 
     -- --- fake exports.kora_core -- a colon-callable object backed by `players` ---
     local qbcore = {}
@@ -418,7 +418,7 @@ function M.install()
         clientEvents = clientEvents,
         serverEvents = serverEvents,
         resourceStates = resourceStates,
-        QB = QB,
+        Kora = Kora,
         kora_core = qbcore,
         kora_dispatch = qbdispatch,
         dispatchCalls = dispatchCalls,

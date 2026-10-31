@@ -88,7 +88,7 @@ function Death.isBleeding(src)
     return not bleedStopped[src] and Wounds.isBleeding(Death.getWoundData(src))
 end
 
--- QB.status.remove only pushes to the client when the server still tracks the
+-- Kora.status.remove only pushes to the client when the server still tracks the
 -- effect, so a client whose pill went stale (admin revive, missed push,
 -- resource restart) would never be told. Push the authoritative state after
 -- every sync and let the client reconcile its local effects against it.
@@ -101,27 +101,27 @@ function Death._syncStatus(src)
     local tier = Wounds.worstOpenTier(Death.getWoundData(src))
     if not tier then
         bleedStopped[src] = nil
-        QB.status.remove(src, 'bleeding')
-        QB.status.remove(src, 'limping')
+        Kora.status.remove(src, 'bleeding')
+        Kora.status.remove(src, 'limping')
         pushStatus(src)
         return
     end
 
     local bleedingTier
     if bleedStopped[src] then
-        QB.status.remove(src, 'bleeding')
+        Kora.status.remove(src, 'bleeding')
     else
-        QB.status.apply(src, 'bleeding', { severity = tier })
+        Kora.status.apply(src, 'bleeding', { severity = tier })
         bleedingTier = tier
     end
 
     local limpingTier
     local level = Wounds.woundLevelDef(tier)
     if level and not level.canWalk then
-        QB.status.apply(src, 'limping', { severity = tier })
+        Kora.status.apply(src, 'limping', { severity = tier })
         limpingTier = tier
     else
-        QB.status.remove(src, 'limping')
+        Kora.status.remove(src, 'limping')
     end
     pushStatus(src, bleedingTier, limpingTier)
 end
@@ -165,8 +165,8 @@ function Death.clearAllWounds(src)
     local hadStoppedBleed = bleedStopped[src] ~= nil
     woundData[src] = {}
     bleedStopped[src] = nil
-    QB.status.remove(src, 'bleeding')
-    QB.status.remove(src, 'limping')
+    Kora.status.remove(src, 'bleeding')
+    Kora.status.remove(src, 'limping')
     pushStatus(src)
     if hadWounds or hadStoppedBleed then persistMedical(src) end
     return hadWounds
@@ -430,7 +430,7 @@ local function restorePlayer(src)
     end
 end
 
-QB.callback.register('qbambulance:server:reportDeath', function(src, cause)
+Kora.callback.register('qbambulance:server:reportDeath', function(src, cause)
     if not QBCore:getPlayerData(src) then return false end
     if Death.isLaststand(src) then return true end
     local ped = GetPlayerPed(src)
@@ -454,7 +454,7 @@ local function resolveObservedBodyPart(payload)
     return payload.bodyPart
 end
 
-QB.events.register('qbambulance:server:hitObserved', function(src, payload)
+Kora.events.register('qbambulance:server:hitObserved', function(src, payload)
     if not QBCore:getPlayerData(src) or not Death.isAlive(src) then return end
     if type(payload) ~= 'table' then return end
 

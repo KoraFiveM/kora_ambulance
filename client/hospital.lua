@@ -17,20 +17,20 @@ local function startCare(care)
     local ped = PlayerPedId()
     SetEntityCoords(ped, bed.x, bed.y, bed.z, false, false, false, false)
     TaskStartScenarioAtPosition(ped, 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w or 0.0, 0, true, false)
-    QB.notify.send({ title = 'Hospital Check-in', message = 'Resting in your assigned bed.', type = 'info' })
+    Kora.notify.send({ title = 'Hospital Check-in', message = 'Resting in your assigned bed.', type = 'info' })
 
     CreateThread(function()
         local token = care.token
         local startedAt = GetGameTimer()
         while activeCare and activeCare.token == token do
             if IsControlJustPressed(0, 38) then
-                QB.events.trigger('qbambulance:server:bedLeft', token)
+                Kora.events.trigger('qbambulance:server:bedLeft', token)
                 return
             end
             if GetGameTimer() - startedAt >= care.duration then
-                local completed, reason = QB.callback.trigger('qbambulance:server:bedCareCompleted', token)
+                local completed, reason = Kora.callback.trigger('qbambulance:server:bedCareCompleted', token)
                 if not completed then
-                    QB.notify.send({ title = 'Hospital Check-in', message = reason or 'Care was not completed.', type = 'warning' })
+                    Kora.notify.send({ title = 'Hospital Check-in', message = reason or 'Care was not completed.', type = 'warning' })
                 end
                 return
             end
@@ -41,12 +41,12 @@ end
 
 local function requestCheckIn(hospital)
     if activeCare then
-        QB.notify.send({ title = 'Hospital Check-in', message = 'You already have a bed reserved.', type = 'warning' })
+        Kora.notify.send({ title = 'Hospital Check-in', message = 'You already have a bed reserved.', type = 'warning' })
         return
     end
-    local care, reason = QB.callback.trigger('qbambulance:server:checkInRequested', hospital.name)
+    local care, reason = Kora.callback.trigger('qbambulance:server:checkInRequested', hospital.name)
     if not care then
-        QB.notify.send({ title = 'Hospital Check-in', message = reason or 'Check-in is unavailable.', type = 'error' })
+        Kora.notify.send({ title = 'Hospital Check-in', message = reason or 'Check-in is unavailable.', type = 'error' })
         return
     end
     startCare(care)
@@ -62,9 +62,9 @@ RegisterNetEvent('qbambulance:client:bedReleased', function(reason)
     if reason == 'completed' then
         local ped = PlayerPedId()
         SetEntityHealth(ped, GetEntityMaxHealth(ped))
-        QB.notify.send({ title = 'Hospital Check-in', message = 'Care completed.', type = 'success' })
+        Kora.notify.send({ title = 'Hospital Check-in', message = 'Care completed.', type = 'success' })
     elseif reason ~= 'left-bed' then
-        QB.notify.send({ title = 'Hospital Check-in', message = 'Your bed reservation was released.', type = 'warning' })
+        Kora.notify.send({ title = 'Hospital Check-in', message = 'Your bed reservation was released.', type = 'warning' })
     end
 end)
 
@@ -116,9 +116,9 @@ local function registerHospitalTargets()
         end
 
         if hospital.blip then
-            local blip = QB.blips.create(hospital.coords, hospital.blip)
+            local blip = Kora.blips.create(hospital.coords, hospital.blip)
             if blip and not hospital.blip.info then
-                QB.blips.setInfo(blip, {
+                Kora.blips.setInfo(blip, {
                     title = hospital.label,
                     rows = { { kind = 'wrappedText', value = 'Medical services and EMS facilities are available here.' } },
                 })

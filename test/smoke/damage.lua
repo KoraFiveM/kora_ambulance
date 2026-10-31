@@ -12,14 +12,14 @@ local damageBone = 31086
 local reports = {}
 
 State = { isAlive = function() return true end }
-handle.QB.cache = {
+handle.Kora.cache = {
     ped = function() return ped end,
     onChange = function(key, handler)
         h.assertEqual(key, 'health')
         healthHandler = handler
     end,
 }
-handle.QB.events.trigger = function(name, payload)
+handle.Kora.events.trigger = function(name, payload)
     reports[#reports + 1] = { name = name, payload = payload }
 end
 GetPedLastDamageBone = function(target)

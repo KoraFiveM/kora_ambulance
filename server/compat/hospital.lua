@@ -13,7 +13,7 @@ end
 
 local function nearbyPlayers(a, b, range)
     if not QBCore:getPlayerData(a) or not QBCore:getPlayerData(b) then return false end
-    return QB.world.resolveNearbyPlayer(a, b, { maxDistance = range }) ~= nil
+    return Kora.world.resolveNearbyPlayer(a, b, { maxDistance = range }) ~= nil
 end
 
 local function nearbyHospital(src, checkInOnly)
@@ -86,7 +86,7 @@ end)
 
 RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospitalName)
     local ok, reason = Death.respawnAtHospital(source, hospitalName)
-    if not ok and reason then QB.notify.send(source, { title = 'EMS', message = reason, type = 'error' }) end
+    if not ok and reason then Kora.notify.send(source, { title = 'EMS', message = reason, type = 'error' }) end
 end)
 
 -- A legacy bed index is never trusted. The closest configured check-in picks
@@ -95,11 +95,11 @@ RegisterNetEvent('hospital:server:SendToBed', function(_bedIndex)
     local src = source
     local hospital = nearbyHospital(src, true)
     if not hospital then
-        QB.notify.send(src, { title = 'Hospital', message = 'Use a hospital check-in desk.', type = 'error' })
+        Kora.notify.send(src, { title = 'Hospital', message = 'Use a hospital check-in desk.', type = 'error' })
         return
     end
     local _, reason = Hospital.requestCheckIn(src, hospital.name)
-    if reason then QB.notify.send(src, { title = 'Hospital', message = reason, type = 'error' }) end
+    if reason then Kora.notify.send(src, { title = 'Hospital', message = reason, type = 'error' }) end
 end)
 
 RegisterNetEvent('hospital:server:LeaveBed', function()
@@ -198,11 +198,11 @@ registerDestructiveRemoval('hospital:server:removeBandage', 'bandage')
 registerDestructiveRemoval('hospital:server:removeIfaks', 'ifak')
 registerDestructiveRemoval('hospital:server:removePainkillers', 'painkillers')
 
-QB.callback.register('hospital:GetDoctors', function()
+Kora.callback.register('hospital:GetDoctors', function()
     return #QBCore:getPlayersByJob(Config.job.name, true)
 end)
 
-QB.callback.register('hospital:GetPlayerStatus', function(src, targetSrc)
+Kora.callback.register('hospital:GetPlayerStatus', function(src, targetSrc)
     local who = tonumber(targetSrc) or src
     if not mayReadPatient(src, who) then return nil, 'not authorized' end
     return {
@@ -212,7 +212,7 @@ QB.callback.register('hospital:GetPlayerStatus', function(src, targetSrc)
     }
 end)
 
-QB.callback.register('hospital:GetPlayerBleeding', function(src, targetSrc)
+Kora.callback.register('hospital:GetPlayerBleeding', function(src, targetSrc)
     local who = tonumber(targetSrc) or src
     if not mayReadPatient(src, who) then return nil, 'not authorized' end
     return Death.isBleeding(who)

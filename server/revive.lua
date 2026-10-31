@@ -1,12 +1,12 @@
 -- Revive (server realm) -- server-side validation for the defibrillator/CPR
 -- flow. The CPR skillcheck itself runs on the REVIVER's client
--- (client/revive.lua calls QB.minigames.play locally); this module only
+-- (client/revive.lua calls Kora.minigames.play locally); this module only
 -- decides whether a reported success is allowed to actually revive the
 -- target, and applies the real effect (Death.reviveInField) once it is.
 
 Revive = Revive or {}
 
--- kora_core has no QB proxy of its own (see this resource's own AGENTS-style
+-- kora_core has no Kora proxy of its own (see this resource's own AGENTS-style
 -- header note in the plan) -- every Core.<module>.<fn> call must cross the
 -- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
 local QBCore = exports.kora_core
@@ -16,7 +16,7 @@ local actionsBySrc, actionOwnerByTarget = {}, {}
 
 local function nearby(a, b)
     if not QBCore:getPlayerData(b) then return false end
-    return QB.world.resolveNearbyPlayer(a, b, { maxDistance = Config.death.reviveRange }) ~= nil
+    return Kora.world.resolveNearbyPlayer(a, b, { maxDistance = Config.death.reviveRange }) ~= nil
 end
 
 ---Pure eligibility check: is `targetState` revivable at all, and has enough
@@ -52,7 +52,7 @@ end
 ---Called once the reviver's OWN client reports a completed CPR minigame.
 ---Re-validates everything server-side (job/duty, item, target state, cooldown)
 ---rather than trusting the client's "I won the minigame" claim alone -- the
----minigame's pass/fail is already server-validated by QB.minigames itself,
+---minigame's pass/fail is already server-validated by Kora.minigames itself,
 ---but job/duty/item/target-state can all have changed in the meantime.
 ---@param src integer The reviver.
 ---@param targetSrc integer The patient.
@@ -71,7 +71,7 @@ function Revive.complete(src, targetSrc, success)
     lastAttemptAt[targetSrc] = os.time()
 
     if not success then
-        QB.notify.send(src, { title = 'EMS', message = 'CPR attempt failed.', type = 'error' })
+        Kora.notify.send(src, { title = 'EMS', message = 'CPR attempt failed.', type = 'error' })
         return false, 'minigame failed'
     end
 
@@ -79,7 +79,7 @@ function Revive.complete(src, targetSrc, success)
     if not removed then return false, removeErr or 'could not consume defibrillator' end
     Death.reviveInField(targetSrc, Config.death.minimumRevive)
 
-    QB.notify.send(src, { title = 'EMS', message = 'Patient stabilised.', type = 'success' })
+    Kora.notify.send(src, { title = 'EMS', message = 'Patient stabilised.', type = 'success' })
     TriggerEvent('qbambulance:server:onPlayerRevivedBy', targetSrc, src)
 
     return true, nil
@@ -92,7 +92,7 @@ local function clearAction(src)
     if actionOwnerByTarget[action.target] == src then actionOwnerByTarget[action.target] = nil end
 end
 
-QB.callback.register('qbambulance:server:beginRevive', function(src, targetSrc)
+Kora.callback.register('qbambulance:server:beginRevive', function(src, targetSrc)
     targetSrc = tonumber(targetSrc)
     if not targetSrc or targetSrc == src then return nil, 'invalid patient' end
 
@@ -113,7 +113,7 @@ QB.callback.register('qbambulance:server:beginRevive', function(src, targetSrc)
     if not eligible then return nil, reason end
 
     local token = ('%s:%s:%s:%s'):format(src, targetSrc, GetGameTimer(), math.random(100000, 999999))
-    local authorization = QB.minigames.authorizeProof(src, 'mash', {
+    local authorization = Kora.minigames.authorizeProof(src, 'mash', {
         requiredPresses = 15,
         timeLimit = 8000,
         attempts = 1,
@@ -130,13 +130,13 @@ QB.callback.register('qbambulance:server:beginRevive', function(src, targetSrc)
     return token, nil, authorization
 end)
 
-QB.events.register('qbambulance:server:completeRevive', function(src, targetSrc, token, proof)
+Kora.events.register('qbambulance:server:completeRevive', function(src, targetSrc, token, proof)
     local action = actionsBySrc[src]
     targetSrc = tonumber(targetSrc)
     if not action or action.target ~= targetSrc or action.token ~= token then return end
     clearAction(src)
     if action.expiresAt < GetGameTimer() then return end
-    if not QB.minigames.consumeProof(src, proof, 'mash', action.authorization) then
+    if not Kora.minigames.consumeProof(src, proof, 'mash', action.authorization) then
         lastAttemptAt[targetSrc] = os.time()
         return
     end

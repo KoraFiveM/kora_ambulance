@@ -160,38 +160,38 @@ exports.kora_core:addItem(source, 'bandage', 5)
 ## API reference
 
 Cross-resource hooks use ordinary `TriggerEvent`/`AddEventHandler` (server) or
-`RegisterNetEvent` (client) — no exports needed to listen. `QB.callback.trigger`/
-`QB.events.trigger` calls below are kora_lib's RPC/fire-and-forget primitives, used
+`RegisterNetEvent` (client) — no exports needed to listen. `Kora.callback.trigger`/
+`Kora.events.trigger` calls below are kora_lib's RPC/fire-and-forget primitives, used
 internally between kora_ambulance's own client and server realms.
 
 ### Duty & vehicles
 ```
 /ems-duty                                                    -- command: toggle EMS duty
-QB.callback.trigger('qbambulance:server:spawnDutyVehicle', hospitalName, vehicleIndex) -- -> networkId | false, err
-QB.events.trigger('qbambulance:server:storeDutyVehicle', snapshot)
+Kora.callback.trigger('qbambulance:server:spawnDutyVehicle', hospitalName, vehicleIndex) -- -> networkId | false, err
+Kora.events.trigger('qbambulance:server:storeDutyVehicle', snapshot)
 ```
 
 ### Revive
 ```
-QB.callback.trigger('qbambulance:server:beginRevive', targetSrc)      -- -> token | nil, err
-QB.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
+Kora.callback.trigger('qbambulance:server:beginRevive', targetSrc)      -- -> token | nil, err
+Kora.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
 qbambulance:server:onPlayerRevivedBy(targetSrc, reviverSrc)           -- hook
 qbambulance:server:onPlayerRevived(src)                               -- hook
 ```
 
 ### Patient assessment & treatment
 ```
-QB.callback.trigger('qbambulance:server:assessPatient', targetSrc) -- -> report | nil, err
-QB.callback.trigger('qbambulance:server:beginTreatment', targetSrc) -- -> token | nil, err
-QB.callback.trigger('qbambulance:server:completeTreatment', targetSrc, token, completed) -- -> treated, err
+Kora.callback.trigger('qbambulance:server:assessPatient', targetSrc) -- -> report | nil, err
+Kora.callback.trigger('qbambulance:server:beginTreatment', targetSrc) -- -> token | nil, err
+Kora.callback.trigger('qbambulance:server:completeTreatment', targetSrc, token, completed) -- -> treated, err
 qbambulance:server:onPatientTreated(patientSrc, medicSrc, bodyPart, tier, item) -- hook
 ```
 
 ### Hospital admission
 ```
-QB.callback.trigger('qbambulance:server:checkInRequested', hospitalName) -- -> care | false, reason
-QB.callback.trigger('qbambulance:server:bedCareCompleted', token)        -- -> true | false, reason
-QB.events.trigger('qbambulance:server:bedLeft', token)
+Kora.callback.trigger('qbambulance:server:checkInRequested', hospitalName) -- -> care | false, reason
+Kora.callback.trigger('qbambulance:server:bedCareCompleted', token)        -- -> true | false, reason
+Kora.events.trigger('qbambulance:server:bedLeft', token)
 qbambulance:server:onPatientCheckedIn(src, hospitalName, bedIndex)       -- hook
 qbambulance:server:onBedCareCompleted(src, hospitalName, bedIndex, cost) -- hook
 qbambulance:server:onBedReleased(src, hospitalName, bedIndex, reason)    -- hook
@@ -221,7 +221,7 @@ Wounds and down-state deadlines are stored in
 ledger, continues the bleed-out/respawn clocks, and republishes the server-owned
 `emsDown` state bag. Invalid or stale metadata fields are discarded.
 
-**Two visible timers.** A downed player sees a `QB.textui` clock counting the
+**Two visible timers.** A downed player sees a `Kora.textui` clock counting the
 bleed-out down (`Config.death.deathTime`), and once they die a second clock
 counting down to their respawn (`Config.death.respawnTime`), replaced by a
 `Type /respawn to wake up at a hospital` prompt as soon as that expires. Both
@@ -319,17 +319,17 @@ every still-open wound at respawn time.
 
 ### Patient transport
 ```
-QB.callback.trigger('qbambulance:server:stretcherDeployRequested', vehicleNetId)
-QB.events.trigger('qbambulance:server:stretcherPushRequested', stretcherNetId)
-QB.events.trigger('qbambulance:server:stretcherReleased', stretcherNetId)
-QB.events.trigger('qbambulance:server:patientLoadedOnStretcher', stretcherNetId, targetSrc)
-QB.events.trigger('qbambulance:server:patientUnloadedFromStretcher', stretcherNetId)
-QB.events.trigger('qbambulance:server:stretcherStowed', stretcherNetId, vehicleNetId)
-QB.events.trigger('qbambulance:server:stretcherUnstowed', vehicleNetId)
+Kora.callback.trigger('qbambulance:server:stretcherDeployRequested', vehicleNetId)
+Kora.events.trigger('qbambulance:server:stretcherPushRequested', stretcherNetId)
+Kora.events.trigger('qbambulance:server:stretcherReleased', stretcherNetId)
+Kora.events.trigger('qbambulance:server:patientLoadedOnStretcher', stretcherNetId, targetSrc)
+Kora.events.trigger('qbambulance:server:patientUnloadedFromStretcher', stretcherNetId)
+Kora.events.trigger('qbambulance:server:stretcherStowed', stretcherNetId, vehicleNetId)
+Kora.events.trigger('qbambulance:server:stretcherUnstowed', vehicleNetId)
 
 -- emergency-carry fallback
-QB.events.trigger('qbambulance:server:stretcherPickup', targetSrc)
-QB.events.trigger('qbambulance:server:stretcherRelease')
+Kora.events.trigger('qbambulance:server:stretcherPickup', targetSrc)
+Kora.events.trigger('qbambulance:server:stretcherRelease')
 ```
 All models, attachment offsets, duty-vehicle associations and relationship
 changes are resolved from server/config state. Network events are internal

@@ -3,7 +3,7 @@
 -- injury edge, for an immediate local reaction that doesn't wait on the
 -- network round-trip.
 --
--- QB.cache owns the shared 200ms IsPedFatallyInjured poll. This file presents
+-- Kora.cache owns the shared 200ms IsPedFatallyInjured poll. This file presents
 -- the transition (suppresses the vanilla wasted screen, then handles
 -- laststand crawl/ragdoll, death fade, and respawn) and reports it securely
 -- to the server; it does not start another detection loop.
@@ -40,13 +40,13 @@ local DOWNED_DISABLED_CONTROLS = {
 
 local function stopDeathScreen()
     if not deathScreenHandle then return end
-    QB.fx.stopScreenEffect(deathScreenHandle)
+    Kora.fx.stopScreenEffect(deathScreenHandle)
     deathScreenHandle = nil
 end
 
 local function stopDownedAnimation()
     if not downedAnimHandle then return end
-    QB.anim.stopHandle(downedAnimHandle)
+    Kora.anim.stopHandle(downedAnimHandle)
     downedAnimHandle = nil
 end
 
@@ -56,7 +56,7 @@ local function playDownedAnimation(state)
 
     stopDownedAnimation()
     local animation = DOWNED_ANIMS[state]
-    local handle = QB.anim.play(PlayerPedId(), animation.dict, animation.clip, { flag = 1 })
+    local handle = Kora.anim.play(PlayerPedId(), animation.dict, animation.clip, { flag = 1 })
     if handle then downedAnimHandle = handle end
 end
 
@@ -163,7 +163,7 @@ local countdown
 
 local function stopCountdown()
     if not countdown then return end
-    QB.textui.hide(countdown)
+    Kora.textui.hide(countdown)
     countdown = nil
 end
 
@@ -194,11 +194,11 @@ end
 ---@param final? boolean
 local function showCountdown(state, text, icon, final)
     local shown, options = promptFor(state, text, icon, final)
-    if countdown and QB.textui.isVisible(countdown) and QB.textui.update(countdown, shown, options) then return end
+    if countdown and Kora.textui.isVisible(countdown) and Kora.textui.update(countdown, shown, options) then return end
     -- Gone, or buried under a prompt another resource stacked on top (textui
     -- renders only the newest entry): put a fresh one on top.
-    if countdown then QB.textui.hide(countdown) end
-    countdown = QB.textui.show(shown, options)
+    if countdown then Kora.textui.hide(countdown) end
+    countdown = Kora.textui.show(shown, options)
 end
 
 ---@param ms number
@@ -234,10 +234,10 @@ local function runCountdown(generation, endsAt, label, finalText, state)
     end)
 end
 
-QB.cache.onChange('isDead', function(isDead, wasDead)
+Kora.cache.onChange('isDead', function(isDead, wasDead)
     if not isDead or wasDead or State.inLaststand or State.isDead then return end
 
-    local coords = QB.cache.coords()
+    local coords = Kora.cache.coords()
 
     -- Keep the ped fatally injured until the server has observed that state.
     -- OneSync health can trail the client's cache edge, a lot so after a
@@ -252,14 +252,14 @@ QB.cache.onChange('isDead', function(isDead, wasDead)
         local attempt = 0
         while true do
             attempt = attempt + 1
-            if QB.callback.trigger('qbambulance:server:reportDeath', 'died') then
+            if Kora.callback.trigger('qbambulance:server:reportDeath', 'died') then
                 suppressVanillaWasted(coords)
                 return
             end
 
             if attempt < Config.death.reportRetryAttempts then
                 Wait(Config.death.reportRetryInterval)
-            elseif GetGameTimer() - startedAt < Config.death.reportRetryWindow and QB.cache.isDead() then
+            elseif GetGameTimer() - startedAt < Config.death.reportRetryWindow and Kora.cache.isDead() then
                 Wait(LATE_RETRY_INTERVAL)
             else
                 return
@@ -275,7 +275,7 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
     downGeneration = downGeneration + 1
     local myGeneration = downGeneration
 
-    QB.notify.send({ title = 'EMS', message = 'You are critically injured. Wait for help or you will bleed out.', type = 'error' })
+    Kora.notify.send({ title = 'EMS', message = 'You are critically injured. Wait for help or you will bleed out.', type = 'error' })
     suppressVanillaWasted()
     playDownedAnimation('laststand')
 
@@ -290,8 +290,8 @@ RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
     State.isDead = true
     downGeneration = downGeneration + 1
 
-    if not deathScreenHandle then deathScreenHandle = QB.fx.screenEffect('DeathFailOut', 0, true) end
-    QB.notify.send({ title = 'EMS', message = 'You have died. Wait for the coroner or a medic.', type = 'error' })
+    if not deathScreenHandle then deathScreenHandle = Kora.fx.screenEffect('DeathFailOut', 0, true) end
+    Kora.notify.send({ title = 'EMS', message = 'You have died. Wait for the coroner or a medic.', type = 'error' })
     suppressVanillaWasted()
     playDownedAnimation('dead')
 
@@ -316,7 +316,7 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
 
     if wasDead then stopDeathScreen() end
 
-    QB.notify.send({ title = 'EMS', message = 'You have been stabilised.', type = 'success' })
+    Kora.notify.send({ title = 'EMS', message = 'You have been stabilised.', type = 'success' })
 end)
 
 RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
@@ -354,7 +354,7 @@ RegisterCommand('respawn', function()
 
     local remaining = respawnAvailableAt - GetGameTimer()
     if remaining > 0 then
-        QB.notify.send({ title = 'EMS', message = ('You cannot respawn for another %s.'):format(clockText(remaining)), type = 'error' })
+        Kora.notify.send({ title = 'EMS', message = ('You cannot respawn for another %s.'):format(clockText(remaining)), type = 'error' })
         return
     end
 

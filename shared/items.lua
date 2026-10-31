@@ -1,12 +1,12 @@
 -- Pharmacy item registry. Each item's `effect` table is the ONLY place its
 -- cosmetic consumption behaviour (screen fx, animation, hunger/thirst/stress
 -- deltas) lives -- Core.consumables' generic bridge (kora_core) plays it back
--- automatically via QB.status whenever the item is used, so nothing in this
--- resource's own client/server code calls QB.fx/StartScreenEffect directly
+-- automatically via Kora.status whenever the item is used, so nothing in this
+-- resource's own client/server code calls Kora.fx/StartScreenEffect directly
 -- for these items. `effect` is registered TWICE, deliberately: once on the
 -- item record itself (QBCore:registerShared, server-authoritative,
--- what Core.consumables' hook reads) and once directly into QB.status's own
--- registry (QB.status.registerEffect, shared realm) -- QB.status.apply only
+-- what Core.consumables' hook reads) and once directly into Kora.status's own
+-- registry (Kora.status.registerEffect, shared realm) -- Kora.status.apply only
 -- knows an effect BY NAME if it was separately registered there; the item
 -- record's `effect` field alone is not enough for playback to resolve it.
 --
@@ -96,7 +96,7 @@ QBAmbulance.items = {
 
 for _, item in ipairs(QBAmbulance.items) do
     if item.effect then
-        QB.status.registerEffect(item.name, item.effect)
+        Kora.status.registerEffect(item.name, item.effect)
     end
 end
 

@@ -67,7 +67,7 @@ end
 ---@param networkId integer
 ---@return integer|nil
 local function resolveEntity(networkId)
-    QB.loops.controlled(function()
+    Kora.loops.controlled(function()
         return NetworkDoesEntityExistWithNetworkId(networkId)
     end, 50, 2500, 50)
 
@@ -89,7 +89,7 @@ end
 local function stopPushingPresentation()
     if not pushingNetworkId then return end
     pushingNetworkId = nil
-    QB.anim.stop(PlayerPedId())
+    Kora.anim.stop(PlayerPedId())
 end
 
 local function stopPatientPresentation()
@@ -98,7 +98,7 @@ local function stopPatientPresentation()
     local ped = PlayerPedId()
     DetachEntity(ped, true, true)
     SetPedCanRagdoll(ped, true)
-    QB.anim.stop(ped)
+    Kora.anim.stop(ped)
 end
 
 ---@param state table
@@ -115,7 +115,7 @@ local function applyState(state)
     CreateThread(function()
         local stretcher = resolveEntity(state.networkId)
         if not stretcher then return end
-        QB.entities.requestControl(stretcher, 500)
+        Kora.entities.requestControl(stretcher, 500)
 
         if state.mode == 'vehicle' then
             local vehicle = resolveEntity(state.vehicleNetworkId)
@@ -139,10 +139,10 @@ local function applyState(state)
 
                 if pushingNetworkId ~= state.networkId then
                     pushingNetworkId = state.networkId
-                    QB.anim.play(operatorPed, PUSH_ANIM.dict, PUSH_ANIM.clip, { flag = PUSH_ANIM.flag })
+                    Kora.anim.play(operatorPed, PUSH_ANIM.dict, PUSH_ANIM.clip, { flag = PUSH_ANIM.flag })
                     CreateThread(function()
                         while pushingNetworkId == state.networkId do
-                            QB.events.trigger('qbambulance:server:stretcherHeartbeatReceived', state.networkId)
+                            Kora.events.trigger('qbambulance:server:stretcherHeartbeatReceived', state.networkId)
                             Wait(Config.transport.heartbeatInterval)
                         end
                     end)
@@ -161,7 +161,7 @@ local function applyState(state)
             local ped = PlayerPedId()
             loadedNetworkId = state.networkId
             SetPedCanRagdoll(ped, false)
-            QB.anim.play(ped, PATIENT_ANIM.dict, PATIENT_ANIM.clip, { flag = PATIENT_ANIM.flag })
+            Kora.anim.play(ped, PATIENT_ANIM.dict, PATIENT_ANIM.clip, { flag = PATIENT_ANIM.flag })
             AttachEntityToEntity(ped, stretcher, 0,
                 Config.transport.patientOffset.x, Config.transport.patientOffset.y, Config.transport.patientOffset.z,
                 Config.transport.patientRotation.x, Config.transport.patientRotation.y, Config.transport.patientRotation.z,
@@ -193,11 +193,11 @@ end
 
 local function startCarryDragger(targetSrc)
     carryDragging = { targetSrc = targetSrc }
-    QB.anim.play(PlayerPedId(), CARRY_ANIM.dict, CARRY_ANIM.clip, { flag = CARRY_ANIM.flag })
+    Kora.anim.play(PlayerPedId(), CARRY_ANIM.dict, CARRY_ANIM.clip, { flag = CARRY_ANIM.flag })
 
     CreateThread(function()
         while carryDragging and carryDragging.targetSrc == targetSrc do
-            QB.events.trigger('qbambulance:server:stretcherHeartbeat')
+            Kora.events.trigger('qbambulance:server:stretcherHeartbeat')
             Wait(2000)
         end
     end)
@@ -206,14 +206,14 @@ end
 local function stopCarryDragging()
     if not carryDragging then return end
     carryDragging = nil
-    QB.anim.stop(PlayerPedId())
+    Kora.anim.stop(PlayerPedId())
 end
 
 local function startCarryPatient(draggerSrc)
     carryDragged = { draggerSrc = draggerSrc }
     local ped = PlayerPedId()
     SetPedCanRagdoll(ped, false)
-    QB.anim.play(ped, 'get_up@multiplayer@transitions@prone_to_idle', 'prone_to_idle', { flag = 1 })
+    Kora.anim.play(ped, 'get_up@multiplayer@transitions@prone_to_idle', 'prone_to_idle', { flag = 1 })
 
     CreateThread(function()
         while carryDragged and carryDragged.draggerSrc == draggerSrc do
@@ -237,16 +237,16 @@ local function stopCarryPatient()
     carryDragged = nil
     local ped = PlayerPedId()
     SetPedCanRagdoll(ped, true)
-    QB.anim.stop(ped)
+    Kora.anim.stop(ped)
 end
 
 RegisterNetEvent('qbambulance:client:stretcherBegin', function(otherSrc, iAmDragger)
     if iAmDragger then
         startCarryDragger(otherSrc)
-        QB.notify.send({ title = 'EMS', message = 'Emergency carry started.', type = 'info' })
+        Kora.notify.send({ title = 'EMS', message = 'Emergency carry started.', type = 'info' })
     else
         startCarryPatient(otherSrc)
-        QB.notify.send({ title = 'EMS', message = 'You are being carried.', type = 'info' })
+        Kora.notify.send({ title = 'EMS', message = 'You are being carried.', type = 'info' })
     end
 end)
 
@@ -277,9 +277,9 @@ end
 local function deployStretcher(vehicle)
     local vehicleNetworkId = entityNetworkId(vehicle)
     if not vehicleNetworkId then return end
-    local stretcherNetworkId, reason = QB.callback.trigger(
+    local stretcherNetworkId, reason = Kora.callback.trigger(
         'qbambulance:server:stretcherDeployRequested', vehicleNetworkId)
-    QB.notify.send({
+    Kora.notify.send({
         title = 'Patient Transport',
         message = stretcherNetworkId and 'Stretcher deployed.' or (reason or 'Unable to deploy stretcher.'),
         type = stretcherNetworkId and 'success' or 'error',
@@ -297,7 +297,7 @@ local function registerTargets()
             end,
             onSelect = function(entity)
                 local targetSrc = targetServerId(entity)
-                if targetSrc then QB.events.trigger('qbambulance:server:stretcherPickup', targetSrc) end
+                if targetSrc then Kora.events.trigger('qbambulance:server:stretcherPickup', targetSrc) end
             end,
         },
         {
@@ -306,7 +306,7 @@ local function registerTargets()
             canInteract = function(entity)
                 return carryDragging ~= nil and targetServerId(entity) == carryDragging.targetSrc
             end,
-            onSelect = function() QB.events.trigger('qbambulance:server:stretcherRelease') end,
+            onSelect = function() Kora.events.trigger('qbambulance:server:stretcherRelease') end,
         },
         {
             label = 'Load onto Stretcher',
@@ -320,7 +320,7 @@ local function registerTargets()
                 local state = nearestStretcher(GetEntityCoords(entity))
                 local targetSrc = targetServerId(entity)
                 if state and targetSrc then
-                    QB.events.trigger('qbambulance:server:patientLoadedOnStretcher', state.networkId, targetSrc)
+                    Kora.events.trigger('qbambulance:server:patientLoadedOnStretcher', state.networkId, targetSrc)
                 end
             end,
         },
@@ -335,7 +335,7 @@ local function registerTargets()
                 return isOnDutyEMS() and state ~= nil and state.mode == 'world' and not Stretcher.isDragging()
             end,
             onSelect = function(entity)
-                QB.events.trigger('qbambulance:server:stretcherPushRequested', entityNetworkId(entity))
+                Kora.events.trigger('qbambulance:server:stretcherPushRequested', entityNetworkId(entity))
             end,
         },
         {
@@ -346,7 +346,7 @@ local function registerTargets()
                 return state ~= nil and state.mode == 'pushed' and state.operator == localServerId()
             end,
             onSelect = function(entity)
-                QB.events.trigger('qbambulance:server:stretcherReleased', entityNetworkId(entity))
+                Kora.events.trigger('qbambulance:server:stretcherReleased', entityNetworkId(entity))
             end,
         },
         {
@@ -357,7 +357,7 @@ local function registerTargets()
                 return isOnDutyEMS() and state ~= nil and state.mode ~= 'vehicle' and state.patient ~= nil
             end,
             onSelect = function(entity)
-                QB.events.trigger('qbambulance:server:patientUnloadedFromStretcher', entityNetworkId(entity))
+                Kora.events.trigger('qbambulance:server:patientUnloadedFromStretcher', entityNetworkId(entity))
             end,
         },
     }, Config.transport.interactionRange)
@@ -385,7 +385,7 @@ local function registerTargets()
                 local vehicleNetworkId = entityNetworkId(entity)
                 local state = nearestStretcher(GetEntityCoords(entity), vehicleNetworkId)
                 if state then
-                    QB.events.trigger('qbambulance:server:stretcherStowed', state.networkId, vehicleNetworkId)
+                    Kora.events.trigger('qbambulance:server:stretcherStowed', state.networkId, vehicleNetworkId)
                 end
             end,
         },
@@ -400,7 +400,7 @@ local function registerTargets()
                 return false
             end,
             onSelect = function(entity)
-                QB.events.trigger('qbambulance:server:stretcherUnstowed', entityNetworkId(entity))
+                Kora.events.trigger('qbambulance:server:stretcherUnstowed', entityNetworkId(entity))
             end,
         },
     }, Config.transport.interactionRange)

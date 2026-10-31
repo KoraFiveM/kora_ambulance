@@ -7,7 +7,7 @@ dofile('config.lua')
 Config.hospitals[1].pharmacy = nil
 Config.hospitals[1].stash = nil
 local hospitalBlips = {}
-QB.blips.create = function(_, options)
+Kora.blips.create = function(_, options)
     hospitalBlips[#hospitalBlips + 1] = options
     return #hospitalBlips
 end

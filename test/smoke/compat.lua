@@ -15,8 +15,8 @@ Config.compat.enabled = false
 dofile('server/compat/hospital.lua')
 
 h.test('compatibility endpoints are not registered when disabled', function()
-    h.assertEqual(handle.QB.callback.registry['hospital:GetDoctors'], nil)
-    h.assertEqual(handle.QB.callback.registry['hospital:GetPlayerStatus'], nil)
+    h.assertEqual(handle.Kora.callback.registry['hospital:GetDoctors'], nil)
+    h.assertEqual(handle.Kora.callback.registry['hospital:GetPlayerStatus'], nil)
 end)
 
 Config.compat.enabled = true
@@ -30,7 +30,7 @@ end
 h.test('GetDoctors returns a count rather than disclosing the player list', function()
     makeMedic(1)
     makeMedic(2)
-    local count = handle.QB.callback.registry['hospital:GetDoctors'](50)
+    local count = handle.Kora.callback.registry['hospital:GetDoctors'](50)
     h.assertEqual(type(count), 'number')
     h.assertTrue(count >= 2)
 end)
@@ -40,7 +40,7 @@ h.test('cross-player medical status is private except to nearby on-duty EMS', fu
     handle.ensurePlayer(4)
     Death.recordWound(4, 'chest', 2)
 
-    local callback = handle.QB.callback.registry['hospital:GetPlayerStatus']
+    local callback = handle.Kora.callback.registry['hospital:GetPlayerStatus']
     h.assertEqual(callback(3, 4), nil, 'a civilian cannot inspect another patient')
 
     local selfStatus = callback(4, 4)

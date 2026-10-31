@@ -43,7 +43,7 @@ h.test('stretcherPickup registers the relationship and pushes begin to both side
     handle.ensurePlayer(2)
     Death.enterLaststand(2)
 
-    local pickup = handle.QB.events.registry['qbambulance:server:stretcherPickup']
+    local pickup = handle.Kora.events.registry['qbambulance:server:stretcherPickup']
     pickup(1, 2)
 
     h.assertEqual(Stretcher.draggingTarget(1), 2)
@@ -58,7 +58,7 @@ h.test('stretcherPickup refuses a non-EMS dragger (relationship stays empty)', f
     handle.ensurePlayer(4)
     Death.enterLaststand(4)
 
-    local pickup = handle.QB.events.registry['qbambulance:server:stretcherPickup']
+    local pickup = handle.Kora.events.registry['qbambulance:server:stretcherPickup']
     pickup(3, 4)
 
     h.assertEqual(Stretcher.draggingTarget(3), nil)
@@ -71,7 +71,7 @@ h.test('stretcherPickup refuses a second dragger on an already-carried patient',
     handle.ensurePlayer(7)
     Death.enterLaststand(7)
 
-    local pickup = handle.QB.events.registry['qbambulance:server:stretcherPickup']
+    local pickup = handle.Kora.events.registry['qbambulance:server:stretcherPickup']
     pickup(5, 7)
     pickup(6, 7) -- should be refused -- 7 is already being dragged by 5
 
@@ -84,8 +84,8 @@ h.test('stretcherRelease clears the relationship and notifies both sides', funct
     handle.ensurePlayer(9)
     Death.enterLaststand(9)
 
-    local pickup = handle.QB.events.registry['qbambulance:server:stretcherPickup']
-    local release = handle.QB.events.registry['qbambulance:server:stretcherRelease']
+    local pickup = handle.Kora.events.registry['qbambulance:server:stretcherPickup']
+    local release = handle.Kora.events.registry['qbambulance:server:stretcherRelease']
 
     pickup(8, 9)
     release(8)
@@ -99,7 +99,7 @@ h.test('a playerDropped for the dragger also releases their patient', function()
     handle.ensurePlayer(11)
     Death.enterLaststand(11)
 
-    handle.QB.events.registry['qbambulance:server:stretcherPickup'](10, 11)
+    handle.Kora.events.registry['qbambulance:server:stretcherPickup'](10, 11)
     h.assertEqual(Stretcher.draggedBy(11), 10)
 
     handle.fireEvent('playerDropped', 10)
@@ -112,10 +112,10 @@ h.test('heartbeat releases a relationship that is no longer nearby', function()
     makeMedic(12)
     handle.ensurePlayer(13)
     Death.enterLaststand(13)
-    handle.QB.events.registry['qbambulance:server:stretcherPickup'](12, 13)
+    handle.Kora.events.registry['qbambulance:server:stretcherPickup'](12, 13)
     handle.setCoords(13, 100, 0, 0)
 
-    handle.QB.events.registry['qbambulance:server:stretcherHeartbeat'](12)
+    handle.Kora.events.registry['qbambulance:server:stretcherHeartbeat'](12)
 
     h.assertEqual(Stretcher.draggingTarget(12), nil)
     h.assertEqual(Stretcher.draggedBy(13), nil)
@@ -127,7 +127,7 @@ h.test('a missing carry heartbeat expires ownership so another medic can help', 
     handle.ensurePlayer(16)
     Death.enterLaststand(16)
 
-    local pickup = handle.QB.events.registry['qbambulance:server:stretcherPickup']
+    local pickup = handle.Kora.events.registry['qbambulance:server:stretcherPickup']
     pickup(14, 16)
     h.assertEqual(Stretcher.draggedBy(16), 14)
 
@@ -153,7 +153,7 @@ local function checkoutTransportVehicle(src, vehicleIndex)
     local hospital = Config.hospitals[1]
     makeMedic(src)
     handle.setCoords(src, hospital.garage.x, hospital.garage.y, hospital.garage.z)
-    return handle.QB.callback.registry['qbambulance:server:spawnDutyVehicle'](src, hospital.name, vehicleIndex or 1)
+    return handle.Kora.callback.registry['qbambulance:server:spawnDutyVehicle'](src, hospital.name, vehicleIndex or 1)
 end
 
 local function deployTransport(src)
@@ -223,7 +223,7 @@ h.test('alive patients and competing patient relationships are refused', functio
 
     h.assertFalse((Stretcher.loadPatient(25, stretcherNetworkId, 26)), 'an alive patient cannot be loaded')
     Death.enterLaststand(26)
-    handle.QB.events.registry['qbambulance:server:stretcherPickup'](25, 26)
+    handle.Kora.events.registry['qbambulance:server:stretcherPickup'](25, 26)
     h.assertFalse((Stretcher.loadPatient(25, stretcherNetworkId, 26)), 'a carried patient cannot also be loaded')
 end)
 
@@ -252,7 +252,7 @@ h.test('returning a duty vehicle removes its stretcher and releases its patient'
     local garage = Config.hospitals[1].garage
     handle.setCoords(28, garage.x, garage.y, garage.z)
     handle.advanceTime(Config.dutyGarage.actionCooldown)
-    handle.QB.events.registry['qbambulance:server:storeDutyVehicle'](28)
+    handle.Kora.events.registry['qbambulance:server:storeDutyVehicle'](28)
 
     h.assertEqual(Stretcher.vehicleStretcher(vehicleNetworkId), nil)
     h.assertEqual(Stretcher.patientStretcher(29), nil)

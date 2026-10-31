@@ -1,5 +1,5 @@
 -- Revive/status smoke test -- every revive path against the wound ledger, the
--- bleeding/limping QB.status pills and the client sync push, under both
+-- bleeding/limping Kora.status pills and the client sync push, under both
 -- Config.revive options.
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
@@ -11,7 +11,7 @@ dofile('server/hospital.lua')
 dofile('server/doctors.lua')
 dofile('server/revive.lua')
 
-local status = handle.QB.status
+local status = handle.Kora.status
 local nextSrc = 100
 
 ---A downed player with a tier-4 chest wound (bleeding AND limping).

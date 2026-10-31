@@ -20,7 +20,7 @@ end
 AddEventHandler('gameEventTriggered', function(name, args)
     if name ~= 'CEventNetworkEntityDamage' then return end
     if not (State and State.isAlive and State.isAlive()) then return end
-    if type(args) ~= 'table' or args[1] ~= QB.cache.ped() then return end
+    if type(args) ~= 'table' or args[1] ~= Kora.cache.ped() then return end
 
     local victimDied = args[4] == true or args[4] == 1
     if victimDied then return end
@@ -36,7 +36,7 @@ AddEventHandler('gameEventTriggered', function(name, args)
     }
 end)
 
-QB.cache.onChange('health', function(health, previousHealth)
+Kora.cache.onChange('health', function(health, previousHealth)
     local hit = pendingHit
     if not hit then return end
 
@@ -63,7 +63,7 @@ QB.cache.onChange('health', function(health, previousHealth)
     local fallback = bodyPart == nil
     if fallback then bodyPart = Wounds.pickBodyPart() end
 
-    QB.events.trigger('qbambulance:server:hitObserved', {
+    Kora.events.trigger('qbambulance:server:hitObserved', {
         sequence = nextSequence(),
         bone = hit.bone,
         bodyPart = bodyPart,

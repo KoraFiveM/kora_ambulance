@@ -26,7 +26,7 @@ local enabledControls = {}
 
 -- Minimal kora_lib textui: a stack where only the newest entry is visible.
 local textui = { entries = {}, order = {} }
-handle.QB.textui = {
+handle.Kora.textui = {
     show = function(text, opts)
         textui.n = (textui.n or 0) + 1
         local id = 1000 + textui.n
@@ -52,7 +52,7 @@ local function visiblePrompt()
     return id and textui.entries[id] or nil
 end
 
-handle.QB.cache = {
+handle.Kora.cache = {
     onChange = function(key, handler)
         h.assertEqual(key, 'isDead')
         deathHandler = handler
@@ -60,13 +60,13 @@ handle.QB.cache = {
     coords = function() return coords end,
     isDead = function() return fatal end,
 }
-handle.QB.callback.trigger = function(name, cause)
+handle.Kora.callback.trigger = function(name, cause)
     h.assertEqual(name, 'qbambulance:server:reportDeath')
     reportedCause = cause
     reportAttempts = reportAttempts + 1
     return acceptReport
 end
-handle.QB.anim = {
+handle.Kora.anim = {
     play = function(entity, dict, clip, options)
         local animation = { entity = entity, dict = dict, clip = clip, options = options }
         playedAnimations[#playedAnimations + 1] = animation
@@ -131,7 +131,7 @@ h.test('a death report the server only corroborates late keeps being retried ins
     reportAttempts = 0
     ragdolled = false
     local attemptsToRefuse = Config.death.reportRetryAttempts + 2
-    handle.QB.callback.trigger = function()
+    handle.Kora.callback.trigger = function()
         reportAttempts = reportAttempts + 1
         return reportAttempts > attemptsToRefuse
     end
@@ -141,7 +141,7 @@ h.test('a death report the server only corroborates late keeps being retried ins
 
     h.assertEqual(reportAttempts, attemptsToRefuse + 1, 'slow retries must continue past the quick burst')
     h.assertTrue(ragdolled, 'the late corroboration must still resurrect the ped')
-    handle.QB.callback.trigger = function(_, cause)
+    handle.Kora.callback.trigger = function(_, cause)
         reportedCause = cause
         reportAttempts = reportAttempts + 1
         return acceptReport
@@ -177,14 +177,14 @@ h.test('death screen effect retains and releases kora_lib handle identity', func
     handle.fireEvent('qbambulance:client:markDead', 0, 1000)
     handle.fireEvent('qbambulance:client:markDead', 0, 1000)
 
-    h.assertEqual(#handle.QB.fx.started, 1, 'repeated dead-state updates must not leak screen handles')
+    h.assertEqual(#handle.Kora.fx.started, 1, 'repeated dead-state updates must not leak screen handles')
     h.assertEqual(playedAnimations[#playedAnimations].clip, 'dead_a')
-    local startedHandle = handle.QB.fx.started[1].handle
+    local startedHandle = handle.Kora.fx.started[1].handle
     local activeDownedAnimation = playedAnimations[#playedAnimations]
 
     handle.fireEvent('qbambulance:client:revived', 0, 20)
 
-    h.assertEqual(handle.QB.fx.stopped[1], startedHandle,
+    h.assertEqual(handle.Kora.fx.stopped[1], startedHandle,
         'revive must release the opaque handle returned by screenEffect')
     h.assertEqual(stoppedAnimation, activeDownedAnimation,
         'revive must release the downed animation it started')
@@ -340,13 +340,13 @@ h.test('a prompt another resource stacks on top cannot hide the timer for good',
     _G.Wait = frameWait
     handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
     handle.step()
-    local other = handle.QB.textui.show('Leave property', { key = 'E' })
+    local other = handle.Kora.textui.show('Leave property', { key = 'E' })
     h.assertEqual(visiblePrompt().text, 'Leave property')
 
     -- the clock re-asserts itself on its next tick
     for _ = 1, 100 do handle.step() end
     h.assertTrue(visiblePrompt().text:find('Bleeding out in', 1, true) ~= nil)
-    handle.QB.textui.hide(other)
+    handle.Kora.textui.hide(other)
     handle.fireEvent('qbambulance:client:revived', 0, 20)
     h.assertEqual(visiblePrompt(), nil)
     _G.Wait = realWait
