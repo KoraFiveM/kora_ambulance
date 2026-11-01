@@ -56,8 +56,7 @@ local function playDownedAnimation(state)
 
     stopDownedAnimation()
     local animation = DOWNED_ANIMS[state]
-    local handle = Kora.anim.play(PlayerPedId(), animation.dict, animation.clip, { flag = 1 })
-    if handle then downedAnimHandle = handle end
+    downedAnimHandle = Kora.anim.play(PlayerPedId(), animation.dict, animation.clip, { flag = 1 })
 end
 
 local function disableDownedControls()

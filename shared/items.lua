@@ -16,10 +16,6 @@
 
 QBAmbulance = QBAmbulance or {}
 
--- Same `local QBCore = exports.kora_core` every sibling server/*.lua file in
--- this resource declares -- this file is shared (not server-only) since
--- QBAmbulance.items itself is read by both realms, but the registerShared
--- call below is IsDuplicityVersion()-gated to the server, same as those.
 local QBCore = exports.kora_core
 
 QBAmbulance.items = {
@@ -95,9 +91,7 @@ QBAmbulance.items = {
 }
 
 for _, item in ipairs(QBAmbulance.items) do
-    if item.effect then
-        Kora.status.registerEffect(item.name, item.effect)
-    end
+    if item.effect then Kora.status.registerEffect(item.name, item.effect) end
 end
 
 if IsDuplicityVersion() then

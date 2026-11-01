@@ -59,6 +59,7 @@ end
 
 ---@param src integer
 ---@param coords table|nil
+---@return table|nil
 local function coordsOf(src, coords)
     if coords then return coords end
     local ped = GetPlayerPed(src)
@@ -75,14 +76,15 @@ AddEventHandler('qbambulance:server:onPlayerDied', function(src, cause)
     if not cooldownElapsed(src) then return end
     lastAutoCallAt[src] = os.time()
 
+    local patient = patientName(src)
     Ambulance.dispatch.call({
         code = '10-52',
         title = 'Person Down',
-        message = ('%s is down and requires medical assistance.'):format(patientName(src)),
+        message = ('%s is down and requires medical assistance.'):format(patient),
         priority = 1,
         coords = coordsOf(src),
         icon = 'heart-pulse',
-        data = { patient = patientName(src), cause = cause, source = src },
+        data = { patient = patient, cause = cause, source = src },
     })
 end)
 
@@ -92,14 +94,15 @@ end)
 AddEventHandler('qbambulance:server:onPlayerDead', function(src)
     if not Config.dispatch.autoCall then return end
 
+    local patient = patientName(src)
     Ambulance.dispatch.call({
         code = '10-54',
         title = 'Possible Fatality',
-        message = ('%s has stopped breathing.'):format(patientName(src)),
+        message = ('%s has stopped breathing.'):format(patient),
         priority = 2,
         coords = coordsOf(src),
         icon = 'heart-pulse',
-        data = { patient = patientName(src), source = src },
+        data = { patient = patient, source = src },
     })
 end)
 

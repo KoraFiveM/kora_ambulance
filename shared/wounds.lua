@@ -59,7 +59,6 @@ function Wounds.severityFromDamage(damage, bodyPart)
     local part = bodyPartByName[bodyPart]
     if part and part.vital then tier = tier + 1 end
 
-    if tier < 1 then return 1 end
     if tier > MAX_TIER then return MAX_TIER end
     return tier
 end
@@ -153,7 +152,7 @@ end
 ---@return boolean injured
 function Wounds.rollInjury(weaponClass, rand)
     rand = rand or math.random
-    return (rand()) <= Wounds.classDef(weaponClass).injuryChance
+    return rand() <= Wounds.classDef(weaponClass).injuryChance
 end
 
 ---Rolls whether an injury from `weaponClass` bleeds.
@@ -162,7 +161,7 @@ end
 ---@return boolean bleeds
 function Wounds.rollBleed(weaponClass, rand)
     rand = rand or math.random
-    return (rand()) <= Wounds.classDef(weaponClass).bleedChance
+    return rand() <= Wounds.classDef(weaponClass).bleedChance
 end
 
 ---Rolls a 1..MAX_TIER severity for a new wound: a flat random base tier,

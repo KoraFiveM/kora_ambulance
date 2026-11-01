@@ -6,25 +6,15 @@
 
 Duty = Duty or {}
 
--- kora_core has no Kora proxy of its own (see this resource's own AGENTS-style
--- header note in the plan) -- every Core.<module>.<fn> call must cross the
--- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
+-- kora_core has no Kora proxy; calls cross the exports boundary directly.
 local QBCore = exports.kora_core
 
 local currentVehicle = {}  -- src -> { plate, networkId }
 local lastVehicleAction = {}
 local lastDutyChange = {}
 
--- Pharmacy shop + EMS stash per hospital. Safe to call unconditionally at
--- load time (unlike kora_core's own Core.consumables, which has to defer to
--- onResourceStart) -- kora_ambulance declares `dependency 'kora_inventory'`, so
--- FXServer already guarantees kora_inventory is running before this resource's
--- own scripts start. THAT guarantee only covers ordering on a fresh boot,
--- though -- a `dependency` declaration says nothing about a kora_inventory
--- RESTART mid-session, which wipes kora_inventory's own shop/stash tables
--- without touching kora_ambulance at all. So this is wrapped in a function,
--- called once at load (per the load-time guarantee above) AND again on
--- every kora_inventory onResourceStart, to survive that case too.
+-- Pharmacy shop + EMS stash per hospital. Called at load and again whenever
+-- kora_inventory restarts, since that wipes its shop/stash tables.
 local function registerHospitals()
     for _, hospital in ipairs(Config.hospitals) do
         if hospital.pharmacy then
@@ -146,10 +136,12 @@ end
 ---@param src integer
 local function clearDutyVehicle(src)
     local active = currentVehicle[src]
-    if active and Stretcher and Stretcher.removeForVehicle then
-        Stretcher.removeForVehicle(active.networkId, 'duty vehicle removed')
+    if active then
+        if Stretcher and Stretcher.removeForVehicle then
+            Stretcher.removeForVehicle(active.networkId, 'duty vehicle removed')
+        end
+        deleteNetworkVehicle(active.networkId)
     end
-    if active then deleteNetworkVehicle(active.networkId) end
     currentVehicle[src] = nil
 end
 
