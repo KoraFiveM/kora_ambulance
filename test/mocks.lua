@@ -96,7 +96,6 @@ function M.install()
         }
     end
 
-    -- --- fake kora_lib Kora ---
     local Kora = {}
 
     Kora.world = {
@@ -208,7 +207,6 @@ function M.install()
 
     _G.Kora = Kora
 
-    -- --- fake exports.kora_core -- a colon-callable object backed by `players` ---
     local qbcore = {}
 
     function qbcore:getJob(src) return ensure(src).job end
