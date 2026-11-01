@@ -95,6 +95,8 @@ Config.injuries = {
     minDamage = 3,                    -- smallest health loss considered an injury report
     maxDamage = 100,                  -- largest single health loss accepted by the client injury classifier
     severityThresholds = { 8, 20, 40 }, -- dense ascending damage cutoffs for wound severity tiers
+    clearWhenHealthy = true,          -- true: an alive player whose health is back at max (admin /heal, regen, any healing outside this resource) has every wound closed, so the Bleeding/Limping pills go away; false keeps wounds until treated, revived or checked in
+    healthyMargin = 0,                -- HP below max that still counts as fully healthy for clearWhenHealthy (0 = must be exactly at max)
 }
 
 Config.transport = {

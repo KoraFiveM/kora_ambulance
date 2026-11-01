@@ -491,7 +491,9 @@ CreateThread(function()
     for _, src in ipairs(QBCore:getPlayers()) do restorePlayer(src) end
 end)
 
----One pass of the periodic sweep. First reconcile players another resource
+---One pass of the periodic sweep. Players back at full health (healed by
+---something outside this resource, e.g. an admin /heal) lose their wounds
+---(Config.injuries.clearWhenHealthy), then reconcile players another resource
 ---(admin /revive, /selfrevive) flipped back to alive behind our back: without
 ---that their ledger keeps the bleeding pill up and the bleed-out clock would
 ---still kill them. Then bleed out whoever's laststand clock has run out.
@@ -501,6 +503,17 @@ function Death._sweep()
     for src in pairs(deadAt) do externallyRevived[src] = true end
     for src in pairs(externallyRevived) do
         if QBCore:getPlayerData(src) and Death.getState(src) == 'alive' then Death.fullRevive(src) end
+    end
+
+    if Config.injuries.clearWhenHealthy then
+        for src, bucket in pairs(woundData) do
+            if next(bucket) ~= nil and QBCore:getPlayerData(src) and Death.getState(src) == alive then
+                local ped = GetPlayerPed(src)
+                if ped and ped ~= 0 and GetEntityHealth(ped) >= GetEntityMaxHealth(ped) - Config.injuries.healthyMargin then
+                    Death.clearAllWounds(src)
+                end
+            end
+        end
     end
 
     for src, startedAt in pairs(laststandAt) do
