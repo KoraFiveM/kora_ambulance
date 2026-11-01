@@ -507,7 +507,7 @@ function Death._sweep()
 
     if Config.injuries.clearWhenHealthy then
         for src, bucket in pairs(woundData) do
-            if next(bucket) ~= nil and QBCore:getPlayerData(src) and Death.getState(src) == alive then
+            if next(bucket) ~= nil and QBCore:getPlayerData(src) and Death.getState(src) == 'alive' then
                 local ped = GetPlayerPed(src)
                 if ped and ped ~= 0 and GetEntityHealth(ped) >= GetEntityMaxHealth(ped) - Config.injuries.healthyMargin then
                     Death.clearAllWounds(src)

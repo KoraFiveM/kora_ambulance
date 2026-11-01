@@ -265,6 +265,9 @@ function Config.validate()
         'death screen enabled, dim and showHints must be boolean')
     assert(type(Config.revive.clearBleeding) == 'boolean' and type(Config.revive.clearWounds) == 'boolean',
         'revive clearBleeding and clearWounds must be boolean')
+    assert(type(Config.injuries.clearWhenHealthy) == 'boolean', 'injuries clearWhenHealthy must be boolean')
+    assert(type(Config.injuries.healthyMargin) == 'number' and Config.injuries.healthyMargin >= 0,
+        'injuries healthyMargin must be a non-negative number')
     assert(type(Config.hospitals) == 'table' and #Config.hospitals > 0, 'at least one hospital is required')
     for _, hospital in ipairs(Config.hospitals) do
         assert(type(hospital.name) == 'string' and hospital.name ~= '' and not hospitalNames[hospital.name], 'hospital names must be unique')
