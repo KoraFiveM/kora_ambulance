@@ -197,6 +197,8 @@ function M.install()
         end,
     }
 
+    Kora.logging = { events = {}, event = function(category, src, data) table.insert(Kora.logging.events, { category = category, src = src, data = data }) end }
+
     Kora.commands = {
         registry = {},
         add = function(name, _, _, _, handler) Kora.commands.registry[name] = handler end,
@@ -278,7 +280,10 @@ function M.install()
         for _, jobType in ipairs(payload.jobTypes or {}) do count = count + #qbcore:getPlayersByJobType(jobType, true) end
         return count
     end
-    function qbcore:addCommand(_name, _help, _args, _argsRequired, _handler, _permission) end
+    qbcore.commands = {}
+    function qbcore:addCommand(name, _help, _args, _argsRequired, handler, permission)
+        qbcore.commands[name] = { handler = handler, permission = permission }
+    end
     function qbcore:getShared(_name, _key) return nil end
     function qbcore:registerShared(_name, _key, _record) end
 

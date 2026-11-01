@@ -127,4 +127,70 @@ h.test('legacy SendToBed ignores the claimed index and uses Hospital allocation'
     h.assertEqual(Hospital.getSession(src), nil)
 end)
 
+h.test('GetDoctorCount export counts on-duty EMS only', function()
+    local before = handle.exports.GetDoctorCount()
+    makeMedic(20)
+    handle.ensurePlayer(21)
+    h.assertEqual(handle.exports.GetDoctorCount(), before + 1)
+end)
+
+h.test('RespawnAtHospital accepts a numeric hospital index and still requires being dead', function()
+    local savedWait = Config.death.respawnTime
+    Config.death.respawnTime = 0
+    handle.ensurePlayer(22)
+
+    handle.fireEvent('hospital:server:RespawnAtHospital', 22, 2)
+    h.assertEqual(handle.lastClient('qbambulance:client:respawnedAtHospital'), nil, 'alive players cannot respawn')
+
+    Death.markDead(22)
+    handle.fireEvent('hospital:server:RespawnAtHospital', 22, 2)
+    local event = handle.lastClient('qbambulance:client:respawnedAtHospital')
+    h.assertTrue(event ~= nil)
+    h.assertEqual(event.args[1], Config.hospitals[2].coords)
+
+    Death.markDead(22)
+    handle.fireEvent('hospital:server:RespawnAtHospital', 22, 99)
+    event = handle.lastClient('qbambulance:client:respawnedAtHospital')
+    h.assertEqual(event.args[1], Config.hospitals[1].coords, 'out-of-range index falls back to the first hospital')
+    Config.death.respawnTime = savedWait
+end)
+
+h.test('aheal is admin-gated, heals wounds and downed state, and is audit-logged', function()
+    local command = handle.kora_core.commands.aheal
+    h.assertEqual(command.permission, 'admin')
+
+    handle.ensurePlayer(23)
+    handle.ensurePlayer(24)
+    Death.recordWound(24, 'chest', 3)
+    Death.enterLaststand(24)
+
+    command.handler(23, { '24' })
+    h.assertEqual(next(Death.getWoundData(24)), nil)
+    h.assertTrue(Death.isAlive(24))
+    local entry = handle.Kora.logging.events[#handle.Kora.logging.events]
+    h.assertEqual(entry.category, 'ambulance:aheal')
+    h.assertEqual(entry.src, 23)
+    h.assertEqual(entry.data.target, 24)
+
+    Death.recordWound(23, 'head', 2)
+    command.handler(23, {})
+    h.assertEqual(next(Death.getWoundData(23)), nil)
+
+    local logged = #handle.Kora.logging.events
+    command.handler(23, { '999' })
+    h.assertEqual(#handle.Kora.logging.events, logged, 'unknown target is not healed or logged')
+end)
+
+h.test('status is EMS-only and asks the caller to render their own status', function()
+    local command = handle.kora_core.commands.status
+    handle.ensurePlayer(25)
+    command.handler(25, {})
+    h.assertEqual(handle.lastClient('hospital:client:CheckStatus'), nil)
+
+    makeMedic(26)
+    command.handler(26, {})
+    local event = handle.lastClient('hospital:client:CheckStatus')
+    h.assertEqual(event.target, 26)
+end)
+
 h.report('compat')

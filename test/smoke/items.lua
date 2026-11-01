@@ -74,6 +74,17 @@ h.test('ifak treats any tier, including one a bandage could not', function()
     h.assertEqual(handle.players[5].items.ifak, 0)
 end)
 
+h.test('ifaks is an alias of the ifak handler and consumes its own item', function()
+    handle.ensurePlayer(30)
+    handle.players[30].items.ifaks = 1
+    Death.recordWound(30, 'chest', 4)
+
+    handle.kora_core:useItem(30, 'ifaks')
+
+    h.assertEqual(Death.getWoundData(30).chest, nil)
+    h.assertEqual(handle.players[30].items.ifaks, 0)
+end)
+
 h.test('a cancelled progress bar (client reports false) treats nothing and consumes nothing', function()
     handle.ensurePlayer(6)
     handle.players[6].items.bandage = 1

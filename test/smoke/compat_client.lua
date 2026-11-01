@@ -18,4 +18,9 @@ h.test('legacy pain effect retains and releases kora_lib handle identity', funct
         'clearing pain must release the opaque handle returned by screenEffect')
 end)
 
+h.test('PainKillerLoop export exists and is inert', function()
+    h.assertEqual(type(handle.exports.PainKillerLoop), 'function')
+    h.assertEqual(handle.exports.PainKillerLoop(), nil)
+end)
+
 h.report('compat_client')
