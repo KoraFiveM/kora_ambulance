@@ -19,6 +19,7 @@ Config.death = {
     respawnTime = 60000,              -- ms a fully dead player waits before /respawn is accepted (enforced in Death.respawnAtHospital, not just counted down on screen)
     allowCameraMovement = true,        -- legacy switch: false locks the downed camera (same as cameraMode = 'fixed'); true defers to cameraMode
     cameraMode = 'free',               -- 'free' = downed/dead players look around with the mouse; 'fixed' = camera look locked (old behaviour). Read at use time
+    holdDownedHealth = true,           -- true keeps a downed ped above the fatal health line (checked every half second): a fall or bleed tick taking it to 100 or less re-kills the ped (thrown up, timer lost, death camera freezes look); false leaves health alone
     downedHealth = 101,                -- health a downed ped is held at; must stay above 100 or GTA treats the ped as dead again (frozen death camera, no look input)
     respawnHoldTime = 1500,            -- ms [E] must be held to respawn once the respawn timer has ended; 0 = a single press
     reportRetryInterval = 100,         -- ms a dead client waits before retrying server ped-state corroboration
@@ -50,6 +51,7 @@ Config.revive = {
 Config.doctors = {
     minimalDoctors = 1,               -- on-duty EMS (grade >= Config.job.onDutyDoctorGrade) below which the self-heal AI kicks in
     docCooldown = 600000,             -- ms cooldown before the self-heal AI will revive the SAME player again
+    selfHealEnabled = true,           -- false disables the self-heal AI entirely: a laststand player then stays down (timer running) until a real medic revives them or they bleed out
     selfHealDelay = 90000,            -- ms a laststand player waits (with no on-duty EMS) before the AI auto-revives them
 }
 
@@ -231,6 +233,8 @@ function Config.validate()
     local hospitalNames, beds, bones = {}, {}, {}
     assert(type(Config.death.allowCameraMovement) == 'boolean', 'death allowCameraMovement must be boolean')
     assert(Config.death.cameraMode == 'free' or Config.death.cameraMode == 'fixed', "death cameraMode must be 'free' or 'fixed'")
+    assert(type(Config.death.holdDownedHealth) == 'boolean', 'death holdDownedHealth must be boolean')
+    assert(type(Config.doctors.selfHealEnabled) == 'boolean', 'doctors selfHealEnabled must be boolean')
     assert(type(Config.death.downedHealth) == 'number' and Config.death.downedHealth > 100,
         'death downedHealth must be a number above 100')
     assert(type(Config.death.respawnHoldTime) == 'number' and Config.death.respawnHoldTime >= 0,

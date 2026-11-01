@@ -5,6 +5,7 @@
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
 dofile('config.lua')
+dofile('shared/downed.lua')
 
 local deathHandler
 local coords = { x = 10.0, y = 20.0, z = 30.0 }
@@ -98,6 +99,9 @@ local dimAlphas = {}
 _G.DrawRect = function(_, _, _, _, _, _, _, alpha) dimAlphas[#dimAlphas + 1] = alpha end
 _G.EnableControlAction = function(_, control) enabledControls[control] = true end
 _G.GetEntityMaxHealth = function() return 200 end
+local groundZ = false
+_G.GetGroundZFor_3dCoord = function() return groundZ ~= false, groundZ or 0.0 end
+_G.GetEntityHealth = function() return health or 200 end
 _G.ClearPedTasksImmediately = function() end
 _G.SetPedCanRagdoll = function() end
 _G.DisableControlAction = function(_, control)
@@ -161,7 +165,7 @@ h.test('a corroborated death report suppresses native wasted after server accept
     h.assertEqual(resurrectedAt.y, 20.0)
     h.assertEqual(resurrectedAt.z, 30.0)
     h.assertEqual(resurrectedAt.heading, 90.0)
-    h.assertEqual(health, 50)
+    h.assertEqual(health, 101, 'downed health stays above the fatal line (<=100 is dead to GTA)')
     h.assertTrue(ragdolled)
 
 end)
@@ -291,7 +295,7 @@ h.test('laststand entered on a still fatally injured ped (vehicle crash, legacy 
     fatal = true
     handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
     h.assertTrue(resurrectedAt ~= nil, 'a natively dead ped keeps the frozen death camera until resurrected')
-    h.assertEqual(health, 50)
+    h.assertEqual(health, 101)
     h.assertTrue(ragdolled)
     handle.fireEvent('qbambulance:client:revived', 0, 20)
 end)
@@ -451,3 +455,26 @@ h.test('death screen options dim=false and showHints=false are honoured', functi
 end)
 
 h.report('death_client')
+
+h.test('a ped below the ground probe is lifted, one resting on uneven ground is not moved', function()
+    h.assertEqual(Downed.groundedZ(30.0, 40.0), 41.0)
+    h.assertEqual(Downed.groundedZ(30.0, 29.0), 30.0)
+    h.assertEqual(Downed.groundedZ(30.0, nil), 30.0)
+    h.assertEqual(Downed.groundedZ(30.0, false), 30.0)
+end)
+
+h.test('revive health is above the fatal line so the revived ped is not re-killed', function()
+    h.assertTrue(Downed.revivedHealth(20, 200) > 100)
+    h.assertTrue(Downed.revivedHealth(0, 200) > 100)
+end)
+
+h.test('revive resurrects a still fatally injured ped and restores survivable health', function()
+    fatal = true
+    resurrectedAt = nil
+    health = nil
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    h.assertTrue(resurrectedAt ~= nil, 'a fatally injured ped must be resurrected first')
+    h.assertTrue(health > 100)
+    h.assertEqual(resurrectedAt.z, 30.0)
+    fatal = false
+end)

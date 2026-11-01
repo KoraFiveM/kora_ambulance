@@ -49,6 +49,21 @@ function Downed.cameraFree(death)
     return death.cameraMode ~= 'fixed'
 end
 
+---Z to place a resurrected/revived ped at. A ped that landed on uneven ground
+---(a fall from height) can sit below the surface the ground probe finds;
+---repositioning it there launches it, so only an underground ped is lifted.
+---A ped in mid-air (or no probe result) keeps its own Z.
+---@param z number Ped Z.
+---@param groundZ? number|false Result of the ground probe, nil/false when none was found.
+---@param standOffset? number Ped origin height above ground (default 1.0).
+---@return number
+function Downed.groundedZ(z, groundZ, standOffset)
+    if type(groundZ) ~= 'number' then return z end
+    local minimum = groundZ + (tonumber(standOffset) or 1.0)
+    if z < minimum then return minimum end
+    return z
+end
+
 ---@param heldMs number
 ---@param needMs number
 ---@return boolean complete
