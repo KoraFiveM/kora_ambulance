@@ -52,6 +52,7 @@ end
 ---@param src integer
 ---@return boolean healed
 function Doctors.trySelfHeal(src)
+    if Config.doctors.selfHealEnabled == false then return false end
     if not Death.isLaststand(src) then return false end
     if Death.laststandElapsed(src) < math.floor(Config.doctors.selfHealDelay / 1000) then return false end
 

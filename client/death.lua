@@ -105,6 +105,28 @@ local function reassertDownedAnimation(state)
     playDownedAnimation(state)
 end
 
+-- Resurrects at the ped's own position. Z is only lifted when the ped sits
+-- below the ground probe, so a fall onto uneven ground never relocates it.
+-- NetworkResurrectLocalPlayer hands back a new ped handle: callers re-fetch it.
+local function resurrectInPlace(coords)
+    local ped = PlayerPedId()
+    coords = coords or GetEntityCoords(ped)
+    local found, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, coords.z + 1.0, false)
+    local z = Downed.groundedZ(coords.z, found and groundZ or nil)
+    NetworkResurrectLocalPlayer(coords.x, coords.y, z, GetEntityHeading(ped), true, false)
+end
+
+-- A fall or bleed tick can take a downed ped to the fatal line (100). The ped
+-- then dies again natively: it is flung, the death camera ignores look input and
+-- the cache edge fires a second death. Keep it above the line while down.
+local function holdDownedHealth()
+    if Config.death.holdDownedHealth == false then return end
+    if IsPedFatallyInjured(PlayerPedId()) then resurrectInPlace() end
+    local ped = PlayerPedId()
+    local held = Downed.downedHealth(Config.death.downedHealth, GetEntityMaxHealth(ped))
+    if GetEntityHealth(ped) < held then SetEntityHealth(ped, held) end
+end
+
 ---One per-frame loop for both down states, fenced on the transition that
 ---started it. Keeps controls locked (camera look free when configured), draws
 ---the optional death screen dim and re-applies the animation after a ragdoll.
@@ -121,6 +143,7 @@ local function runDownedLoop(generation, state)
             local now = GetGameTimer()
             if now >= nextAnimCheck then
                 nextAnimCheck = now + 500
+                holdDownedHealth()
                 reassertDownedAnimation(state)
             end
             Wait(0)
@@ -143,11 +166,9 @@ end
 local function suppressVanillaWasted(coords)
     local ped = PlayerPedId()
     if not IsPedFatallyInjured(ped) then return false end
-    coords = coords or GetEntityCoords(ped)
-    local heading = GetEntityHeading(ped)
-    NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, heading, true, false)
-    SetEntityHealth(ped, 50)
-    SetPedToRagdoll(ped, 5000, 5000, 0, false, false, false)
+    resurrectInPlace(coords)
+    SetEntityHealth(PlayerPedId(), Downed.downedHealth(Config.death.downedHealth, GetEntityMaxHealth(PlayerPedId())))
+    SetPedToRagdoll(PlayerPedId(), 5000, 5000, 0, false, false, false)
     return true
 end
 
@@ -308,10 +329,12 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
     downGeneration = downGeneration + 1
     stopCountdown()
 
-    local ped = PlayerPedId()
     stopDownedAnimation()
+    -- Health below the fatal line (20% of 200 = 40) re-killed the revived ped.
+    if IsPedFatallyInjured(PlayerPedId()) then resurrectInPlace() end
+    local ped = PlayerPedId()
     ClearPedTasksImmediately(ped)
-    SetEntityHealth(ped, math.floor(GetEntityMaxHealth(ped) * ((tonumber(healthPct) or 20) / 100)))
+    SetEntityHealth(ped, Downed.revivedHealth(healthPct, GetEntityMaxHealth(ped)))
     SetPedCanRagdoll(ped, true)
 
     if wasDead then stopDeathScreen() end
