@@ -151,6 +151,7 @@ h.test('self-heal AI revive honours both options', function()
     local src = downedPatient()
     handle.advanceTime(0)
     local saved = Config.doctors.selfHealDelay
+    Config.doctors.selfHealEnabled = true
     Config.doctors.selfHealDelay = 0
     h.assertTrue(Doctors.trySelfHeal(src))
     Config.doctors.selfHealDelay = saved
@@ -165,6 +166,7 @@ h.test('self-heal AI revive honours both options', function()
         h.assertFalse(status.isActive(other, 'limping'))
         h.assertEqual(next(Death.getWoundData(other)), nil)
     end)
+    Config.doctors.selfHealEnabled = false
 end)
 
 h.test('hospital check-in revive clears everything even with both options off', function()

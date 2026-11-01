@@ -36,14 +36,35 @@ h.test('trySelfHeal refuses a player who is not in laststand', function()
     h.assertFalse(Doctors.trySelfHeal(10))
 end)
 
+h.test('trySelfHeal is off by default and when selfHealEnabled is nil, and the player stays down', function()
+    h.assertEqual(Config.doctors.selfHealEnabled, false)
+    handle.ensurePlayer(13)
+    local fakeNow = os.time()
+    local realTime = os.time
+    os.time = function() return fakeNow end
+    Death.enterLaststand(13)
+    fakeNow = fakeNow + math.floor(Config.doctors.selfHealDelay / 1000) + 1
+    h.assertFalse(Doctors.trySelfHeal(13))
+    h.assertTrue(Death.isLaststand(13))
+    local saved = Config.doctors.selfHealEnabled
+    Config.doctors.selfHealEnabled = nil
+    h.assertFalse(Doctors.trySelfHeal(13))
+    h.assertTrue(Death.isLaststand(13))
+    Config.doctors.selfHealEnabled = saved
+    os.time = realTime
+end)
+
 h.test('trySelfHeal refuses before selfHealDelay has elapsed since going down', function()
     handle.ensurePlayer(11)
+    Config.doctors.selfHealEnabled = true
     Death.enterLaststand(11)
     h.assertFalse(Doctors.trySelfHeal(11)) -- laststandElapsed() is ~0, selfHealDelay has not passed
+    Config.doctors.selfHealEnabled = false
 end)
 
 h.test('trySelfHeal revives once selfHealDelay has elapsed, and re-applies its own docCooldown', function()
     handle.ensurePlayer(12)
+    Config.doctors.selfHealEnabled = true
 
     local fakeNow = os.time()
     local realTime = os.time
@@ -61,6 +82,7 @@ h.test('trySelfHeal revives once selfHealDelay has elapsed, and re-applies its o
     fakeNow = fakeNow + math.floor(Config.doctors.selfHealDelay / 1000) + 1
     h.assertFalse(Doctors.trySelfHeal(12))
 
+    Config.doctors.selfHealEnabled = false
     os.time = realTime
 end)
 

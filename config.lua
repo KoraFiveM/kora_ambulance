@@ -51,9 +51,9 @@ Config.revive = {
 }
 
 Config.doctors = {
-    minimalDoctors = 1,               -- on-duty EMS (grade >= Config.job.onDutyDoctorGrade) below which the self-heal AI kicks in
+    minimalDoctors = 1,               -- on-duty EMS (grade >= Config.job.onDutyDoctorGrade) below which the self-heal AI kicks in (only when selfHealEnabled = true)
     docCooldown = 600000,             -- ms cooldown before the self-heal AI will revive the SAME player again
-    selfHealEnabled = true,           -- false disables the self-heal AI entirely: a laststand player then stays down (timer running) until a real medic revives them or they bleed out
+    selfHealEnabled = false,          -- default false (nil counts as false): a laststand player stays down with the bleed-out timer running until a real medic revives them or the timer runs out. Set true to let an AI doctor revive players when not enough EMS are on duty (see minimalDoctors / selfHealDelay)
     selfHealDelay = 90000,            -- ms a laststand player waits (with no on-duty EMS) before the AI auto-revives them
 }
 
@@ -237,7 +237,7 @@ function Config.validate()
     assert(type(Config.death.allowCameraMovement) == 'boolean', 'death allowCameraMovement must be boolean')
     assert(Config.death.cameraMode == 'free' or Config.death.cameraMode == 'fixed', "death cameraMode must be 'free' or 'fixed'")
     assert(type(Config.death.holdDownedHealth) == 'boolean', 'death holdDownedHealth must be boolean')
-    assert(type(Config.doctors.selfHealEnabled) == 'boolean', 'doctors selfHealEnabled must be boolean')
+    assert(Config.doctors.selfHealEnabled == nil or type(Config.doctors.selfHealEnabled) == 'boolean', 'doctors selfHealEnabled must be boolean')
     assert(type(Config.death.downedHealth) == 'number' and Config.death.downedHealth > 100,
         'death downedHealth must be a number above 100')
     assert(type(Config.death.respawnHoldTime) == 'number' and Config.death.respawnHoldTime >= 0,

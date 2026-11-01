@@ -48,11 +48,12 @@ end
 ---Runs the self-heal AI pass for one laststand player: revives in the field
 ---(no bill -- an AI paramedic doesn't invoice) if enough time has both
 ---elapsed since they went down (Config.doctors.selfHealDelay) and since
----their last AI heal (Config.doctors.docCooldown).
+---their last AI heal (Config.doctors.docCooldown). Does nothing unless
+---Config.doctors.selfHealEnabled is true (default false; nil counts as off).
 ---@param src integer
 ---@return boolean healed
 function Doctors.trySelfHeal(src)
-    if Config.doctors.selfHealEnabled == false then return false end
+    if Config.doctors.selfHealEnabled ~= true then return false end -- off by default; nil counts as off
     if not Death.isLaststand(src) then return false end
     if Death.laststandElapsed(src) < math.floor(Config.doctors.selfHealDelay / 1000) then return false end
 
