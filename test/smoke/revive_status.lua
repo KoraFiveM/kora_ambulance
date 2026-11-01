@@ -270,4 +270,32 @@ h.test('the bleed gate and the bare wound ledger disagree after a bleed-stopping
     h.assertTrue(Wounds.isBleeding(Death.getWoundData(src)), 'ledger still has the open wound')
 end)
 
+h.test('the sweep closes wounds on an alive player healed to full outside this resource', function()
+    nextSrc = nextSrc + 1
+    local src = nextSrc
+    handle.ensurePlayer(src)
+    Death.recordWound(src, 'chest', 4)
+    handle.players[src].health = 150
+    Death._sweep()
+    h.assertTrue(status.isActive(src, 'bleeding'), 'still hurt, pill stays')
+
+    handle.players[src].health = 200 -- admin /heal
+    Death._sweep()
+    h.assertEqual(next(Death.getWoundData(src)), nil)
+    h.assertFalse(status.isActive(src, 'bleeding'))
+    h.assertFalse(status.isActive(src, 'limping'))
+    h.assertEqual(lastSync(src)[1], false)
+end)
+
+h.test('clearWhenHealthy = false keeps wounds on a full-health player', function()
+    nextSrc = nextSrc + 1
+    local src = nextSrc
+    handle.ensurePlayer(src)
+    Death.recordWound(src, 'chest', 4)
+    Config.injuries.clearWhenHealthy = false
+    Death._sweep()
+    Config.injuries.clearWhenHealthy = true
+    h.assertTrue(status.isActive(src, 'bleeding'))
+end)
+
 h.report('revive_status')
