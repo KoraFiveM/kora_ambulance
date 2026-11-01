@@ -101,7 +101,6 @@ AddEventHandler('onClientResourceStart', function(resource)
     if resource == 'kora_target' then registerDutyTargets() end
 end)
 
-
 -- EMS red for this player's dispatch UI. Client-side because it is per-player:
 -- a paramedic and an officer on the same server see different accents at the
 -- same moment, so it can never be a server setting.

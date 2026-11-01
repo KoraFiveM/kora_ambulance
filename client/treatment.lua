@@ -97,13 +97,13 @@ local function registerTargets()
         {
             label = 'Assess Patient',
             icon = 'stethoscope',
-            canInteract = function() return isOnDutyEMS() end,
+            canInteract = isOnDutyEMS,
             onSelect = assessPatient,
         },
         {
             label = 'Treat Wound',
             icon = 'bandage',
-            canInteract = function() return isOnDutyEMS() end,
+            canInteract = isOnDutyEMS,
             onSelect = treatPatient,
         },
     }, Config.treatment.range)

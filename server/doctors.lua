@@ -6,9 +6,7 @@
 
 Doctors = Doctors or {}
 
--- kora_core has no Kora proxy of its own (see this resource's own AGENTS-style
--- header note in the plan) -- every Core.<module>.<fn> call must cross the
--- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
+-- kora_core has no Kora proxy; calls cross the exports boundary directly.
 local QBCore = exports.kora_core
 
 local lastSelfHealAt = {} -- src -> os.time() of the last AI self-heal on this player

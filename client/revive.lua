@@ -63,8 +63,8 @@ local function registerTargets()
         {
             label = 'Perform CPR',
             icon = 'heart-pulse',
-            canInteract = function(entity) return isDowned(entity) end,
-            onSelect = function(entity) performCPR(entity) end,
+            canInteract = isDowned,
+            onSelect = performCPR,
         },
     }, 2.0)
 end
