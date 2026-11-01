@@ -40,52 +40,58 @@ local function storeVehicle()
     Kora.events.trigger('qbambulance:server:storeDutyVehicle')
 end
 
+local function garageOptions(hospital)
+    local options = {}
+
+    for index, vehicleDef in ipairs(Config.dutyVehicles) do
+        options[#options + 1] = {
+            label = ('Check out %s'):format(vehicleDef.label),
+            icon = 'car',
+            canInteract = isOnDutyEMS,
+            onSelect = function() spawnVehicle(hospital, index) end,
+        }
+    end
+
+    options[#options + 1] = {
+        label = 'Return Vehicle',
+        icon = 'undo',
+        canInteract = isOnDutyEMS,
+        onSelect = storeVehicle,
+    }
+
+    return options
+end
+
+local dutyHandlers = {
+    isEMS = function()
+        local job = exports.kora_core:getJob()
+        return job ~= nil and job.name == Config.job.name
+    end,
+    -- The command and target share the same server-side location and
+    -- employment validation.
+    duty = function() ExecuteCommand('ems-duty') end,
+    garageOptions = garageOptions,
+}
+
+local dutyKinds = { duty = true, garage = true }
+
+local function registerDutyTarget(hospital)
+    for _, zone in ipairs(HospitalMenu.build(hospital, dutyHandlers)) do
+        if dutyKinds[zone.kind] then
+            exports.kora_target:addSphereZone({ coords = zone.coords, radius = zone.radius, options = zone.options })
+        end
+    end
+end
+
 local function registerDutyTargets()
     for _, hospital in ipairs(Config.hospitals) do
-        if hospital.garage then
-            local options = {}
-
-            for index, vehicleDef in ipairs(Config.dutyVehicles) do
-                options[#options + 1] = {
-                    label = ('Check out %s'):format(vehicleDef.label),
-                    icon = 'car',
-                    canInteract = isOnDutyEMS,
-                    onSelect = function() spawnVehicle(hospital, index) end,
-                }
+        if Config.hospitalMenu.isolateErrors then
+            local ok, err = pcall(registerDutyTarget, hospital)
+            if not ok then
+                print(('[kora_ambulance] could not register duty targets for hospital %s: %s'):format(tostring(hospital.name), tostring(err)))
             end
-
-            options[#options + 1] = {
-                label = 'Return Vehicle',
-                icon = 'undo',
-                canInteract = isOnDutyEMS,
-                onSelect = storeVehicle,
-            }
-
-            exports.kora_target:addSphereZone({
-                coords = hospital.garage,
-                radius = 6.0,
-                options = options,
-            })
-        end
-
-        if hospital.duty then
-            exports.kora_target:addSphereZone({
-                coords = hospital.duty,
-                radius = 2.0,
-                options = {
-                    {
-                        label = 'Toggle Duty',
-                        icon = 'briefcase',
-                        canInteract = function()
-                            local job = exports.kora_core:getJob()
-                            return job ~= nil and job.name == Config.job.name
-                        end,
-                        -- The command and target share the same server-side
-                        -- location and employment validation.
-                        onSelect = function() ExecuteCommand('ems-duty') end,
-                    },
-                },
-            })
+        else
+            registerDutyTarget(hospital)
         end
     end
 end

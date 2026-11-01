@@ -74,6 +74,20 @@ Config.hospitalCare = {
     allowBedless = true,              -- true: a hospital with no beds still gets its pharmacy/stash/duty/garage options and check-in shows a notice; false: config load fails (strict)
 }
 
+-- Hospital interaction menu (see shared/hospital_menu.lua). Each hospital entry
+-- builds its own zones from whichever fields it has; a missing field only drops
+-- that feature.
+Config.hospitalMenu = {
+    isolateErrors = true,             -- true: a hospital whose targets fail to register is skipped (and logged) without stopping the remaining hospitals; false: the error propagates
+    radius = {                        -- metres around each hospital point in which its options show; checkIn defaults to Config.hospitalCare.interactionRange
+        checkIn = nil,
+        pharmacy = 3.0,
+        stash = 3.0,
+        duty = 2.0,
+        garage = 6.0,
+    },
+}
+
 Config.injuries = {
     captureWindow = 500,              -- ms client damage observations may be correlated before reporting a wound
     reportCooldown = 300,             -- ms between client injury reports for one observed hit

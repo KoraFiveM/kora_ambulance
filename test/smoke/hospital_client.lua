@@ -3,6 +3,7 @@
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
 dofile('config.lua')
+dofile("shared/hospital_menu.lua")
 
 Config.hospitals[1].pharmacy = nil
 Config.hospitals[1].stash = nil

@@ -72,64 +72,55 @@ RegisterNetEvent('qbambulance:client:bedReleased', function(reason)
     end
 end)
 
+local function isEMS()
+    local job = exports.kora_core:getJob()
+    return job ~= nil and job.name == Config.job.name
+end
+
+local hospitalHandlers = {
+    isEMS = isEMS,
+    checkIn = requestCheckIn,
+    pharmacy = function(hospital)
+        exports.kora_inventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
+    end,
+    stash = function(hospital)
+        exports.kora_inventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
+    end,
+}
+
+local facilityKinds = { checkIn = true, pharmacy = true, stash = true }
+
+local function registerHospital(hospital)
+    if Config.Debug then
+        print(('[kora_ambulance] registering targets for hospital %s (beds: %d)'):format(hospital.name, #(hospital.beds or {})))
+    end
+
+    for _, zone in ipairs(HospitalMenu.build(hospital, hospitalHandlers)) do
+        if facilityKinds[zone.kind] then
+            exports.kora_target:addSphereZone({ coords = zone.coords, radius = zone.radius, options = zone.options })
+        end
+    end
+
+    if hospital.blip then
+        local blip = Kora.blips.create(hospital.coords, hospital.blip)
+        if blip and not hospital.blip.info then
+            Kora.blips.setInfo(blip, {
+                title = hospital.label,
+                rows = { { kind = 'wrappedText', value = 'Medical services and EMS facilities are available here.' } },
+            })
+        end
+    end
+end
+
 local function registerHospitalTargets()
     for _, hospital in ipairs(Config.hospitals) do
-        if Config.Debug then
-            print(('[kora_ambulance] registering targets for hospital %s (beds: %d)'):format(hospital.name, #(hospital.beds or {})))
-        end
-        exports.kora_target:addSphereZone({
-            coords = hospital.checkIn or hospital.coords,
-            radius = Config.hospitalCare.interactionRange,
-            options = {
-                {
-                    label = 'Check In for Care', icon = 'bed',
-                    onSelect = function() requestCheckIn(hospital) end,
-                },
-            },
-        })
-
-        if hospital.pharmacy then
-            exports.kora_target:addSphereZone({
-                coords = hospital.pharmacy,
-                radius = 3.0,
-                options = {
-                    {
-                        label = 'Browse Pharmacy', icon = 'pill',
-                        onSelect = function()
-                            exports.kora_inventory:openInventory('shop', ('ambulance_pharmacy_%s'):format(hospital.name))
-                        end,
-                    },
-                },
-            })
-        end
-
-        if hospital.stash and hospital.stash.coords then
-            exports.kora_target:addSphereZone({
-                coords = hospital.stash.coords,
-                radius = 3.0,
-                options = {
-                    {
-                        label = 'EMS Stash', icon = 'box',
-                        canInteract = function()
-                            local job = exports.kora_core:getJob()
-                            return job ~= nil and job.name == Config.job.name
-                        end,
-                        onSelect = function()
-                            exports.kora_inventory:openInventory('stash', ('ambulance_stash_%s'):format(hospital.name))
-                        end,
-                    },
-                },
-            })
-        end
-
-        if hospital.blip then
-            local blip = Kora.blips.create(hospital.coords, hospital.blip)
-            if blip and not hospital.blip.info then
-                Kora.blips.setInfo(blip, {
-                    title = hospital.label,
-                    rows = { { kind = 'wrappedText', value = 'Medical services and EMS facilities are available here.' } },
-                })
+        if Config.hospitalMenu.isolateErrors then
+            local ok, err = pcall(registerHospital, hospital)
+            if not ok then
+                print(('[kora_ambulance] could not register targets for hospital %s: %s'):format(tostring(hospital.name), tostring(err)))
             end
+        else
+            registerHospital(hospital)
         end
     end
 end

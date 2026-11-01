@@ -29,7 +29,8 @@ shared_scripts {
     'config.lua',
     'shared/wounds.lua',
     'shared/items.lua',
-    'shared/downed.lua'
+    'shared/downed.lua',
+    'shared/hospital_menu.lua'
 }
 
 -- Explicit, never globbed -- matches every sibling resource's own rationale.
