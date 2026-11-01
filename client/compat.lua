@@ -135,3 +135,5 @@ end)
 RegisterNetEvent('hospital:client:UsePainkillers', function()
     TriggerServerEvent('hospital:server:UsePainkillers')
 end)
+
+exports('PainKillerLoop', function() end)

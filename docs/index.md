@@ -379,6 +379,14 @@ not a promise to reproduce insecure client authority:
 - legacy injury ingestion and direct item-removal events are disabled by
   default through `Config.compat`;
 - locally callable admin-heal/kill shortcuts are inert;
+- `RespawnAtHospital` takes a hospital name or a 1-based `Config.hospitals`
+  index (out of range falls back to the first); it still requires being dead
+  and past the respawn timer;
+- `aheal [id]` (admin permission, audit-logged via `Kora.logging`) reuses the
+  server revive path; `status` (EMS job) shows the caller's own status;
+- the resource also `provide`s `qb-ambulancejob`; `GetDoctorCount` (server)
+  and an inert `PainKillerLoop` (client) exports are available, and the
+  `ifaks` item is an alias of `ifak`;
 - respawn, alerts, duty aliases, usable items and reduce-only armour/weapon
   modifiers retain guarded mappings.
 

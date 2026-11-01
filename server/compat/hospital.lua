@@ -84,8 +84,12 @@ RegisterNetEvent('hospital:server:SendDoctorAlert', function()
     exports.kora_dispatch:createPlayerCall(src, 'qbambulance:doctor')
 end)
 
-RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospitalName)
-    local ok, reason = Death.respawnAtHospital(source, hospitalName)
+RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospital)
+    if type(hospital) == 'number' then
+        local entry = Config.hospitals[math.floor(hospital)]
+        hospital = entry and entry.name or nil
+    end
+    local ok, reason = Death.respawnAtHospital(source, hospital)
     if not ok and reason then Kora.notify.send(source, { title = 'EMS', message = reason, type = 'error' }) end
 end)
 
@@ -216,4 +220,36 @@ Kora.callback.register('hospital:GetPlayerBleeding', function(src, targetSrc)
     local who = tonumber(targetSrc) or src
     if not mayReadPatient(src, who) then return nil, 'not authorized' end
     return Death.isBleeding(who)
+end)
+
+exports('GetDoctorCount', function()
+    return #QBCore:getPlayersByJob(Config.job.name, true)
+end)
+
+QBCore:addCommand('aheal', 'Heal a player (admin)', {
+    { name = 'id', help = 'Player ID (optional)' },
+}, false, function(source, args)
+    local target = args[1] and tonumber(args[1]) or source
+    if not target or target <= 0 or not QBCore:getPlayerData(target) then
+        TriggerClientEvent('QBCore:Notify', source, 'Player not online.', 'error')
+        return
+    end
+
+    if Death.getState(target) == 'alive' then
+        Death.fullRevive(target)
+        TriggerClientEvent('qbambulance:client:revived', target, 100)
+    else
+        Death.reviveInField(target, 100, true)
+    end
+    Kora.logging.event('ambulance:aheal', source, { target = target })
+    TriggerClientEvent('QBCore:Notify', source, ('Healed player %d.'):format(target), 'success')
+end, 'admin')
+
+QBCore:addCommand('status', 'Check your health status (EMS)', {}, false, function(source)
+    local job = QBCore:getJob(source)
+    if not job or job.name ~= Config.job.name then
+        TriggerClientEvent('QBCore:Notify', source, 'You are not EMS.', 'error')
+        return
+    end
+    TriggerClientEvent('hospital:client:CheckStatus', source)
 end)

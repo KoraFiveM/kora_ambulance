@@ -82,24 +82,30 @@ QBCore:createUseable('bandage', function(src, item)
     end
 end)
 
-QBCore:createUseable('ifak', function(src, item)
-    if not Death.isAlive(src) then
-        Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t apply an IFAK right now.', type = 'error' })
-        return
-    end
-
-    if not Wounds.pickTreatableWound(Death.getWoundData(src), Wounds.MAX_TIER) then
-        Kora.notify.send(src, { title = 'First Aid', message = 'No open wound to treat.', type = 'warning' })
-        return
-    end
-
-    if runFeedback(src, 'ifak') then
-        local removed = QBCore:removeItem(src, 'ifak', 1, item and item.slot, 'first-aid')
-        if removed and not treatWound(src, Wounds.MAX_TIER) then
-            QBCore:addItem(src, 'ifak', 1, item and item.slot, item and item.info or {}, 'first-aid-rollback')
+---@param itemName string
+local function registerIfak(itemName)
+    QBCore:createUseable(itemName, function(src, item)
+        if not Death.isAlive(src) then
+            Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t apply an IFAK right now.', type = 'error' })
+            return
         end
-    end
-end)
+
+        if not Wounds.pickTreatableWound(Death.getWoundData(src), Wounds.MAX_TIER) then
+            Kora.notify.send(src, { title = 'First Aid', message = 'No open wound to treat.', type = 'warning' })
+            return
+        end
+
+        if runFeedback(src, itemName) then
+            local removed = QBCore:removeItem(src, itemName, 1, item and item.slot, 'first-aid')
+            if removed and not treatWound(src, Wounds.MAX_TIER) then
+                QBCore:addItem(src, itemName, 1, item and item.slot, item and item.info or {}, 'first-aid-rollback')
+            end
+        end
+    end)
+end
+
+registerIfak('ifak')
+registerIfak('ifaks')
 
 QBCore:createUseable('painkillers', function(src, item)
     local now = os.time()

@@ -5,6 +5,7 @@ lua54 'yes'
 name 'kora_ambulance'
 -- Keep the legacy resource name resolvable for exports['qbambulance'] callers.
 provide 'qbambulance'
+provide 'qb-ambulancejob'
 author 'Jamie'
 version '2.0.0'
 description 'Authoritative EMS care, anatomical injuries, hospital admissions, transport, dispatch and billing'
