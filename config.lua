@@ -18,7 +18,7 @@ Config.job = {
 
 Config.death = {
     deathTime = 300000,               -- ms a player can stay in laststand before bleeding out to full death
-    respawnTime = 60000,              -- ms a fully dead player waits before /respawn is accepted (enforced in Death.respawnAtHospital, not just counted down on screen)
+    respawnTime = 60000,              -- ms a fully dead player waits before /respawn is accepted; 0 = immediately. The death screen counts it down, and the server enforces it in Death.respawnAtHospital (an early hospital:server:RespawnAtHospital is refused)
     allowCameraMovement = true,        -- legacy switch: false locks the downed camera (same as cameraMode = 'fixed'); true defers to cameraMode
     cameraMode = 'free',               -- 'free' = downed/dead players look around with the mouse; 'fixed' = camera look locked (old behaviour). Read at use time
     holdDownedHealth = true,           -- true keeps a downed ped above the fatal health line (checked every half second): a fall or bleed tick taking it to 100 or less re-kills the ped (thrown up, timer lost, death camera freezes look); false leaves health alone
@@ -33,7 +33,30 @@ Config.death = {
     screen = {
         enabled = false,               -- true replaces the plain countdown with a Downed / Dead prompt (state, countdown) at the top of the screen
         dim = true,                    -- dim the screen while downed (lighter) and dead (darker); only used when enabled
-        showHints = true,              -- append the key hints (/911e to call EMS, /respawn once allowed); only used when enabled
+        showHints = true,              -- append the key hints (/911e to call EMS, the alert key, /respawn once allowed); only used when enabled
+    },
+    -- While fully dead the player can press a key to send an EMS call with their
+    -- location (raised through kora_dispatch to on-duty EMS). The key is a real
+    -- key mapping, so players can rebind it in FiveM settings. The prompt shows
+    -- the hint; the server enforces enabled, dead-only and the cooldown.
+    alertEms = {
+        enabled = true,                -- false removes the key and the hint
+        key = 'G',                     -- default key (kora_lib keybind / RegisterKeyMapping)
+        cooldown = 60000,              -- ms between alerts from the same player
+    },
+    -- What /respawn (respawn at hospital) does besides the hospital bill.
+    respawn = {
+        clearInventory = false,        -- true wipes the player inventory server-side on /respawn (kora_inventory clearInventory)
+        keepItems = {},                -- item names that survive the wipe, e.g. { 'phone', 'id_card' }; only used when clearInventory = true
+        -- Refuse /respawn while enough medics are on duty, so a dead player waits for a
+        -- real revive. Counted server-side (on-duty players of `jobs`, the dead player
+        -- excluded) and re-checked on every attempt; the death screen says so and
+        -- re-enables by itself when the count drops below minOnDuty.
+        blockWhenMedics = {
+            enabled = false,           -- default off: /respawn is only gated by respawnTime
+            minOnDuty = 3,             -- respawn is disabled while this many (or more) medics are on duty
+            jobs = { 'ambulance' },    -- job names counted as medics
+        },
     },
     minimumRevive = 20,               -- % of max health a successful revive restores the patient to
     reviveInterval = 5000,            -- ms cooldown between CPR attempts on the same patient (prevents minigame-spam revives)
@@ -263,6 +286,19 @@ function Config.validate()
     assert(type(Config.death.screen) == 'table' and type(Config.death.screen.enabled) == 'boolean'
         and type(Config.death.screen.dim) == 'boolean' and type(Config.death.screen.showHints) == 'boolean',
         'death screen enabled, dim and showHints must be boolean')
+    local alertEms, respawn = Config.death.alertEms, Config.death.respawn
+    assert(type(alertEms) == 'table' and type(alertEms.enabled) == 'boolean'
+        and type(alertEms.key) == 'string' and alertEms.key ~= ''
+        and type(alertEms.cooldown) == 'number' and alertEms.cooldown >= 0,
+        'death alertEms needs boolean enabled, a key and a non-negative cooldown')
+    assert(type(respawn) == 'table' and type(respawn.clearInventory) == 'boolean' and type(respawn.keepItems) == 'table',
+        'death respawn needs boolean clearInventory and a keepItems list')
+    local block = respawn.blockWhenMedics
+    assert(type(block) == 'table' and type(block.enabled) == 'boolean'
+        and type(block.minOnDuty) == 'number' and block.minOnDuty >= 1 and type(block.jobs) == 'table',
+        'death respawn blockWhenMedics needs boolean enabled, minOnDuty >= 1 and a jobs list')
+    assert(type(Config.death.respawnTime) == 'number' and Config.death.respawnTime >= 0,
+        'death respawnTime must be a non-negative number')
     assert(type(Config.revive.clearBleeding) == 'boolean' and type(Config.revive.clearWounds) == 'boolean',
         'revive clearBleeding and clearWounds must be boolean')
     assert(type(Config.injuries.clearWhenHealthy) == 'boolean', 'injuries clearWhenHealthy must be boolean')

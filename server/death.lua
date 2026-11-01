@@ -226,6 +226,7 @@ function Death.markDead(src, effectiveDeadAt)
     publishDownState(src, 'dead')
 
     TriggerClientEvent('qbambulance:client:markDead', src, Death.respawnWaitRemaining(src) * 1000)
+    Death._syncRespawnBlock(src, true)
     TriggerEvent('qbambulance:server:onPlayerDead', src)
     return true
 end
@@ -297,6 +298,44 @@ function Death.respawnWaitRemaining(src)
     return math.max(0, math.floor(Config.death.respawnTime / 1000) - (os.time() - diedAt))
 end
 
+---@param src integer The dead player; never counted as a medic.
+---@return integer count On-duty players of Config.death.respawn.blockWhenMedics.jobs.
+function Death.medicsOnDuty(src)
+    local seen, count = {}, 0
+    for _, jobName in ipairs(Config.death.respawn.blockWhenMedics.jobs) do
+        for _, medic in ipairs(QBCore:getPlayersByJob(jobName, true)) do
+            if medic ~= src and not seen[medic] then
+                seen[medic] = true
+                count = count + 1
+            end
+        end
+    end
+    return count
+end
+
+---@param src integer
+---@return boolean blocked True while Config.death.respawn.blockWhenMedics is on and enough medics are on duty.
+---@return integer minOnDuty The configured threshold.
+function Death.respawnBlocked(src)
+    local block = Config.death.respawn.blockWhenMedics
+    if block.enabled ~= true then return false, block.minOnDuty end
+    return Death.medicsOnDuty(src) >= block.minOnDuty, block.minOnDuty
+end
+
+local sentBlock = {} -- src -> last minOnDuty|false pushed to the client
+
+---Tells a dead client whether /respawn is currently disabled (minOnDuty while it
+---is, false otherwise) so its prompt can say so. Only pushes on change unless forced.
+---@param src integer
+---@param force? boolean
+function Death._syncRespawnBlock(src, force)
+    local blocked, minOnDuty = Death.respawnBlocked(src)
+    local value = blocked and minOnDuty or false
+    if not force and sentBlock[src] == value then return end
+    sentBlock[src] = value
+    TriggerClientEvent('qbambulance:client:respawnBlock', src, value)
+end
+
 ---@param src integer
 ---@param hospitalName? string
 ---@return boolean, string|nil
@@ -306,6 +345,11 @@ function Death.respawnAtHospital(src, hospitalName)
 
     local remaining = Death.respawnWaitRemaining(src)
     if remaining > 0 then return false, ('You cannot respawn for another %ds.'):format(remaining) end
+
+    local blocked, minOnDuty = Death.respawnBlocked(src)
+    if blocked then
+        return false, ('Respawn is disabled while %d or more medics are on duty.'):format(minOnDuty)
+    end
 
     local hospital
     for _, candidate in ipairs(Config.hospitals) do
@@ -325,6 +369,14 @@ function Death.respawnAtHospital(src, hospitalName)
     persistMedical(src)
     publishDownState(src, 'alive')
     QBCore:reset(src)
+
+    sentBlock[src] = nil
+    if Config.death.respawn.clearInventory then
+        local cleared, reason = exports.kora_inventory:clearInventory(src, Config.death.respawn.keepItems)
+        if not cleared then
+            print(('[kora_ambulance] respawn inventory wipe failed for %d: %s'):format(src, tostring(reason)))
+        end
+    end
 
     TriggerClientEvent('qbambulance:client:respawnedAtHospital', src, hospital.coords)
     TriggerEvent('qbambulance:server:onPlayerRespawned', src, hospital.name)
@@ -427,6 +479,7 @@ local function restorePlayer(src)
         TriggerClientEvent('qbambulance:client:enterLaststand', src, remaining * 1000)
     elseif state == 'dead' then
         TriggerClientEvent('qbambulance:client:markDead', src, Death.respawnWaitRemaining(src) * 1000)
+        Death._syncRespawnBlock(src, true)
     end
 end
 
@@ -516,6 +569,10 @@ function Death._sweep()
         end
     end
 
+    if Config.death.respawn.blockWhenMedics.enabled then
+        for src in pairs(deadAt) do Death._syncRespawnBlock(src) end
+    end
+
     for src, startedAt in pairs(laststandAt) do
         if os.time() - startedAt >= math.floor(Config.death.deathTime / 1000) then Death.markDead(src) end
     end
@@ -535,6 +592,7 @@ AddEventHandler('playerDropped', function()
     laststandAt[src] = nil
     deadAt[src] = nil
     observations[src] = nil
+    sentBlock[src] = nil
 end)
 
 ---Returns a detached medical snapshot. Mutating it cannot alter the ledger.

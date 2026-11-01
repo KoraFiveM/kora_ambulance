@@ -81,7 +81,13 @@ handle.Kora.anim = {
 
 local clientStateWrites = 0
 _G.LocalPlayer = { state = { set = function() clientStateWrites = clientStateWrites + 1 end } }
-_G.RegisterCommand = function() end
+local commands = {}
+_G.RegisterCommand = function(name, handler) commands[name] = handler end
+local serverEvents = {}
+_G.TriggerServerEvent = function(name, ...) serverEvents[#serverEvents + 1] = { name = name, args = { ... } } end
+local keybinds = {}
+handle.Kora.keybind = { add = function(definition) keybinds[definition.name] = definition end }
+handle.Kora.world = { getStreetNames = function() return 'Alta Street', 'Strawberry Ave' end }
 _G.PlayerId = function() return 1 end
 _G.PlayerPedId = function() return 77 end
 _G.GetEntityHeading = function() return 90.0 end
@@ -330,7 +336,7 @@ h.test('the bleed-out timer shows through laststand, survives its own expiry and
     handle.step()
     h.assertTrue(visiblePrompt().text:find('You can respawn in', 1, true) ~= nil)
     for _ = 1, 400 do handle.step() end
-    h.assertEqual(visiblePrompt().text, 'Type /respawn to wake up at a hospital')
+    h.assertEqual(visiblePrompt().text, 'Type /respawn to wake up at a hospital · [G] Alert EMS')
 
     handle.fireEvent('qbambulance:client:revived', 0, 20)
     h.assertEqual(visiblePrompt(), nil, 'revive clears the prompt')
@@ -420,11 +426,11 @@ h.test('death screen on: Downed then Dead prompts with hints, dimming, and no mo
     dimAlphas = {}
     for _ = 1, 5 do handle.step() end
     prompt = visiblePrompt()
-    h.assertTrue(prompt.text:find('^%*%*Dead%*%* · You can respawn in %d%d:%d%d · /respawn once the timer ends$') ~= nil, prompt.text)
+    h.assertTrue(prompt.text:find('^%*%*Dead%*%* · You can respawn in %d%d:%d%d · %[G%] Alert EMS · /respawn once the timer ends$') ~= nil, prompt.text)
     h.assertEqual(dimAlphas[#dimAlphas], 150, 'dead dim is darker')
 
     for _ = 1, 8000 do handle.step() end
-    h.assertEqual(visiblePrompt().text, '**Dead** · Type /respawn to wake up at a hospital')
+    h.assertEqual(visiblePrompt().text, '**Dead** · Type /respawn to wake up at a hospital · [G] Alert EMS')
     h.assertEqual(focusCalls, 0, 'the death screen must never take NUI focus')
 
     h.assertFalse(disabledControls[1] or disabledControls[2], 'camera look stays free with the screen on')
@@ -449,6 +455,46 @@ h.test('death screen options dim=false and showHints=false are honoured', functi
 
     handle.fireEvent('qbambulance:client:revived', 0, 20)
     Config.death.screen.enabled, Config.death.screen.dim, Config.death.screen.showHints = false, true, true
+    _G.Wait = realWait
+end)
+
+h.test('alert key: registered from Config.death.alertEms, sends the street only while dead', function()
+    local bind = keybinds.qbambulance_alert_ems
+    h.assertTrue(bind ~= nil, 'keybind registered')
+    h.assertEqual(bind.defaultKey, Config.death.alertEms.key)
+
+    resetWorld()
+    serverEvents = {}
+    bind.onPressed()
+    h.assertEqual(#serverEvents, 0, 'alive players send nothing')
+
+    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    bind.onPressed()
+    h.assertEqual(#serverEvents, 1)
+    h.assertEqual(serverEvents[1].name, 'qbambulance:server:alertEms')
+    h.assertEqual(serverEvents[1].args[1], 'Alta Street')
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+end)
+
+h.test('respawn disabled while medics are on duty: prompt says so, /respawn refuses, and it clears on its own', function()
+    resetWorld()
+    serverEvents = {}
+    _G.Wait = frameWait
+    handle.fireEvent('qbambulance:client:markDead', 0, 0)
+    handle.fireEvent('qbambulance:client:respawnBlock', 0, 3)
+    for _ = 1, 100 do handle.step() end
+    h.assertEqual(visiblePrompt().text, 'Respawn is disabled while 3 medics are on duty · [G] Alert EMS')
+
+    commands.respawn()
+    h.assertEqual(#serverEvents, 0, 'no round-trip while blocked')
+
+    handle.fireEvent('qbambulance:client:respawnBlock', 0, false)
+    for _ = 1, 100 do handle.step() end
+    h.assertEqual(visiblePrompt().text, 'Type /respawn to wake up at a hospital · [G] Alert EMS')
+    commands.respawn()
+    h.assertEqual(serverEvents[1].name, 'hospital:server:RespawnAtHospital')
+
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
     _G.Wait = realWait
 end)
 

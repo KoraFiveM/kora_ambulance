@@ -97,4 +97,37 @@ h.test('a call names the patient rather than exposing a source id', function()
         'dispatch reads out a name: ' .. tostring(call.message))
 end)
 
+h.test('alert key: a dead player sends their street to EMS, with a cooldown and dead-only enforcement', function()
+    local now = 5000
+    os.time = function() return now end
+    local before = callsBefore()
+
+    handle.ensurePlayer(60)
+    handle.fireEvent('qbambulance:server:alertEms', 60, 'Alta Street')
+    h.assertEqual(#handle.dispatchCalls, before, 'an alive player is ignored')
+
+    Death.markDead(60)
+    before = callsBefore() -- markDead itself raises the automatic fatality call
+    handle.fireEvent('qbambulance:server:alertEms', 60, 'Alta Street\n')
+    h.assertEqual(#handle.dispatchCalls, before + 1)
+    local call = handle.lastDispatchCall()
+    h.assertEqual(call.jobTypes[1], Config.job.type)
+    h.assertTrue(call.message:find('Alta Street', 1, true) ~= nil, call.message)
+    h.assertEqual(call.data.source, 60)
+
+    now = now + 10
+    handle.fireEvent('qbambulance:server:alertEms', 60, 'Alta Street')
+    h.assertEqual(#handle.dispatchCalls, before + 1, 'cooldown holds')
+
+    now = now + math.floor(Config.death.alertEms.cooldown / 1000)
+    handle.fireEvent('qbambulance:server:alertEms', 60, 123)
+    h.assertEqual(#handle.dispatchCalls, before + 2, 'allowed again once the cooldown lapsed; bad street input is dropped')
+
+    Config.death.alertEms.enabled = false
+    now = now + 1000
+    handle.fireEvent('qbambulance:server:alertEms', 60, 'x')
+    h.assertEqual(#handle.dispatchCalls, before + 2, 'Config.death.alertEms.enabled = false disables it')
+    Config.death.alertEms.enabled = true
+end)
+
 h.report('dispatch')

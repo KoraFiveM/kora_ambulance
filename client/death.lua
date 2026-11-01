@@ -190,6 +190,17 @@ end
 local SCREEN_TITLES = { laststand = 'Downed', dead = 'Dead' }
 local SCREEN_HINTS = { laststand = '/911e to call EMS', dead = '/respawn once the timer ends' }
 
+-- minOnDuty while the server has /respawn disabled because enough medics are on
+-- duty (Config.death.respawn.blockWhenMedics), nil otherwise. Display only.
+local respawnBlockedBy
+
+---@return string|nil hint The alert-key hint while Config.death.alertEms is on.
+local function alertHint()
+    local alert = Config.death.alertEms
+    if type(alert) ~= 'table' or alert.enabled ~= true then return nil end
+    return ('[%s] Alert EMS'):format(alert.key)
+end
+
 ---Death screen presentation of a prompt: a state title, optionally the hint
 ---keys, anchored top-centre. A plain textui entry -- no NUI focus, so mouse
 ---look is never taken. Without the death screen the prompt is left as it was.
@@ -201,10 +212,22 @@ local SCREEN_HINTS = { laststand = '/911e to call EMS', dead = '/respawn once th
 ---@return table options
 local function promptFor(state, text, icon, final)
     local screen = screenSettings()
-    if not screen then return text, { icon = icon } end
+    local alert = state == 'dead' and alertHint() or nil
+    if not screen then
+        if alert then text = ('%s · %s'):format(text, alert) end
+        return text, { icon = icon }
+    end
 
     text = ('**%s** · %s'):format(SCREEN_TITLES[state], text)
-    if screen.showHints ~= false and not final then text = ('%s · %s'):format(text, SCREEN_HINTS[state]) end
+    if screen.showHints ~= false then
+        if alert and not final then
+            text = ('%s · %s · %s'):format(text, alert, SCREEN_HINTS.dead)
+        elseif alert then
+            text = ('%s · %s'):format(text, alert)
+        elseif not final then
+            text = ('%s · %s'):format(text, SCREEN_HINTS[state])
+        end
+    end
     return text, { icon = icon, position = 'top-center' }
 end
 
@@ -250,6 +273,26 @@ local function runCountdown(generation, endsAt, label, finalText, state)
             showCountdown(state, finalText, 'Heart', true)
         else
             stopCountdown()
+        end
+    end)
+end
+
+---Dead prompt: the respawn clock, then either "disabled while N medics are on
+---duty" or the /respawn instruction. Re-evaluated every second, so a medic
+---going on or off duty changes it without a new death event.
+---@param generation integer
+local function runDeadPrompt(generation)
+    CreateThread(function()
+        while downGeneration == generation and State.isDead do
+            local remaining = respawnAvailableAt - GetGameTimer()
+            if remaining > 0 then
+                showCountdown('dead', ('You can respawn in %s'):format(clockText(remaining)), 'Clock')
+            elseif respawnBlockedBy then
+                showCountdown('dead', ('Respawn is disabled while %d medics are on duty'):format(respawnBlockedBy), 'Heart', true)
+            else
+                showCountdown('dead', 'Type /respawn to wake up at a hospital', 'Heart', true)
+            end
+            Wait(1000)
         end
     end)
 end
@@ -317,8 +360,11 @@ RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
 
     respawnAvailableAt = GetGameTimer() + (tonumber(respawnTimeMs) or 0)
     runDownedLoop(downGeneration, 'dead')
-    runCountdown(downGeneration, respawnAvailableAt, 'You can respawn in',
-        'Type /respawn to wake up at a hospital', 'dead')
+    runDeadPrompt(downGeneration)
+end)
+
+RegisterNetEvent('qbambulance:client:respawnBlock', function(minOnDuty)
+    respawnBlockedBy = tonumber(minOnDuty) or nil
 end)
 
 RegisterNetEvent('qbambulance:client:revived', function(healthPct)
@@ -326,6 +372,7 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
     State.inLaststand = false
     State.isDead = false
     downGeneration = downGeneration + 1
+    respawnBlockedBy = nil
     stopCountdown()
 
     stopDownedAnimation()
@@ -358,6 +405,7 @@ RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
     State.isDead = false
     State.inLaststand = false
     downGeneration = downGeneration + 1
+    respawnBlockedBy = nil
     stopCountdown()
     stopDeathScreen()
 
@@ -380,5 +428,24 @@ RegisterCommand('respawn', function()
         return
     end
 
+    if respawnBlockedBy then
+        Kora.notify.send({ title = 'EMS', message = ('Respawn is disabled while %d medics are on duty.'):format(respawnBlockedBy), type = 'error' })
+        return
+    end
+
     TriggerServerEvent('hospital:server:RespawnAtHospital')
 end, false)
+
+-- Alert EMS while dead (Config.death.alertEms). A real key mapping, rebindable in
+-- FiveM settings; the server re-checks dead state, cooldown and location.
+if alertHint() then
+    Kora.keybind.add({
+        name = 'qbambulance_alert_ems',
+        description = 'EMS: alert paramedics while dead',
+        defaultKey = Config.death.alertEms.key,
+        onPressed = function()
+            if not State.isDead then return end
+            TriggerServerEvent('qbambulance:server:alertEms', (Kora.world.getStreetNames()))
+        end,
+    })
+end

@@ -437,4 +437,85 @@ h.test('hitObserved burns replayed and cooldown-rejected sequences', function()
     h.assertEqual(Death.getWoundData(src).right_foot, nil)
 end)
 
+-- Config.death.respawn: inventory wipe and the medic gate (both default off).
+local blockPushes = {} -- src -> last qbambulance:client:respawnBlock value
+local baseTriggerClientEvent = _G.TriggerClientEvent
+_G.TriggerClientEvent = function(name, target, ...)
+    if name == 'qbambulance:client:respawnBlock' then blockPushes[target] = (...) end
+    return baseTriggerClientEvent(name, target, ...)
+end
+
+local function medic(src)
+    handle.ensurePlayer(src)
+    handle.players[src].job = { name = 'ambulance', onduty = true, grade = { level = 1 } }
+end
+
+h.test('respawn leaves the inventory alone by default and wipes it, keeping the keep-list, when configured', function()
+    local calls = {}
+    handle.kora_inventory.clearInventory = function(_, src, keep) calls[#calls + 1] = { src = src, keep = keep }; return true end
+
+    handle.ensurePlayer(30); Death.markDead(30); waitOutRespawn()
+    h.assertTrue(Death.respawnAtHospital(30))
+    h.assertEqual(#calls, 0, 'default off')
+
+    Config.death.respawn.clearInventory = true
+    Config.death.respawn.keepItems = { 'phone' }
+    handle.ensurePlayer(31); Death.markDead(31); waitOutRespawn()
+    h.assertTrue(Death.respawnAtHospital(31))
+    h.assertEqual(#calls, 1)
+    h.assertEqual(calls[1].src, 31)
+    h.assertEqual(calls[1].keep[1], 'phone')
+
+    handle.ensurePlayer(32)
+    h.assertFalse((Death.respawnAtHospital(32)), 'a living player is refused before anything is wiped')
+    h.assertEqual(#calls, 1)
+    Config.death.respawn.clearInventory = false
+    Config.death.respawn.keepItems = {}
+end)
+
+h.test('respawnTime = 0 allows an immediate respawn', function()
+    local saved = Config.death.respawnTime
+    Config.death.respawnTime = 0
+    handle.ensurePlayer(33); Death.markDead(33)
+    h.assertEqual(Death.respawnWaitRemaining(33), 0)
+    h.assertTrue(Death.respawnAtHospital(33))
+    Config.death.respawnTime = saved
+end)
+
+h.test('blockWhenMedics is off by default and never refuses', function()
+    h.assertFalse(Config.death.respawn.blockWhenMedics.enabled)
+    for i = 40, 45 do medic(i) end
+    handle.ensurePlayer(46); Death.markDead(46); waitOutRespawn()
+    h.assertTrue(Death.respawnAtHospital(46))
+    for i = 40, 45 do handle.players[i].job.onduty = false end
+end)
+
+h.test('blockWhenMedics refuses /respawn while minOnDuty medics are on duty and re-enables when they drop', function()
+    local block = Config.death.respawn.blockWhenMedics
+    for _, player in pairs(handle.players) do player.job.onduty = false end -- earlier tests leave medics on duty
+    block.enabled = true; block.minOnDuty = 2
+    medic(50); medic(51)
+    handle.ensurePlayer(52); Death.markDead(52); waitOutRespawn()
+
+    h.assertEqual(blockPushes[52], 2, 'client told respawn is disabled')
+
+    local ok, reason = Death.respawnAtHospital(52)
+    h.assertFalse(ok)
+    h.assertEqual(reason, 'Respawn is disabled while 2 or more medics are on duty.')
+    h.assertTrue(Death.isDead(52), 'still dead')
+
+    handle.players[51].job.onduty = false
+    Death._sweep()
+    h.assertEqual(blockPushes[52], false, 'sweep re-enables the client prompt')
+    h.assertTrue(Death.respawnAtHospital(52))
+
+    -- an off-duty or other-job player does not count, and neither does the dead player
+    handle.players[50].job.onduty = true; handle.players[51].job.onduty = false
+    handle.ensurePlayer(53); handle.players[53].job = { name = 'police', onduty = true, grade = { level = 1 } }
+    h.assertEqual(Death.medicsOnDuty(50), 0)
+    h.assertEqual(Death.medicsOnDuty(99), 1)
+    block.enabled = false; block.minOnDuty = 3
+    handle.players[50].job.onduty = false
+end)
+
 h.report('death')

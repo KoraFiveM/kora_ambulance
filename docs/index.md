@@ -204,6 +204,8 @@ qbambulance:client:enterLaststand(deathTimeMs)    -- client event
 qbambulance:client:markDead(respawnTimeMs)        -- client event
 qbambulance:client:revived(healthPct)             -- client event
 qbambulance:client:respawnedAtHospital(coords)    -- client event
+qbambulance:client:respawnBlock(minOnDuty|false)  -- client event: /respawn disabled by on-duty medics (Config.death.respawn.blockWhenMedics)
+qbambulance:server:alertEms(street?)              -- net event: dead player's alert key (Config.death.alertEms); the server re-checks dead state and cooldown
 qbambulance:server:onPlayerDied(src, cause)       -- hook
 qbambulance:server:onPlayerDead(src)              -- hook
 qbambulance:server:onPlayerRespawned(src, hospitalName) -- hook
@@ -237,7 +239,7 @@ never disabled by this resource.
 
 `Config.death.screen` (`enabled = false` by default) swaps the plain countdown
 for a death screen: a `Downed` / `Dead` prompt at the top of the screen with the
-countdown, the key hints (`/911e` to call EMS, `/respawn` once allowed —
+countdown, the key hints (`/911e` to call EMS, the alert-EMS key, `/respawn` once allowed —
 `showHints`) and a screen dim, lighter while downed and darker when dead
 (`dim`). It uses a kora_lib textui prompt and a drawn overlay, never NUI focus,
 so camera look is unaffected. If the server only confirms a death late (health
@@ -269,6 +271,34 @@ The client-side check on `/respawn` only saves a round-trip; a player who fires
 `hospital:server:RespawnAtHospital` by hand is refused with the same reason,
 notified back to them rather than failing silently. Refusal happens before any
 side effect, so a rejected attempt is never billed.
+
+**Death screen options** (all under `Config.death`, read at use time):
+
+| Option | Default | Effect |
+|---|---|---|
+| `respawnTime` | `60000` | ms a dead player waits before `/respawn` works; `0` = immediately. Shown as a countdown, then `Type /respawn to wake up at a hospital`. |
+| `alertEms.enabled` | `true` | While dead, a key sends the player's location to on-duty EMS through `kora_dispatch` (`createCall`, EMS job type). The prompt shows `[G] Alert EMS`. `false` removes the key and hint. |
+| `alertEms.key` | `'G'` | Default key; registered with `Kora.keybind.add`, so players can rebind it in FiveM key settings. |
+| `alertEms.cooldown` | `60000` | ms between alerts per player, enforced on the server. The reply notify says whether EMS was reached or nobody is on duty. |
+| `respawn.clearInventory` | `false` | `true` wipes the inventory on a successful `/respawn` (`exports.kora_inventory:clearInventory`, server-side). |
+| `respawn.keepItems` | `{}` | Item names that survive the wipe, e.g. `{ 'phone', 'id_card' }`. kora_inventory also always keeps its own physical-cash item when that mode is active. |
+| `respawn.blockWhenMedics.enabled` | `false` | `true` refuses `/respawn` while enough medics are on duty. |
+| `respawn.blockWhenMedics.minOnDuty` | `3` | Respawn is disabled while this many (or more) on-duty medics exist. |
+| `respawn.blockWhenMedics.jobs` | `{ 'ambulance' }` | Job names counted as medics (on-duty only; the dead player is never counted). |
+
+The alert key only works while dead (`/911e` still covers laststand). The
+server ignores it for a living player, applies the cooldown and reads the
+coordinates itself; the client only supplies a street label, which is trimmed
+and used as display text. The call lands in the dispatch feed with
+`data.source` set to the patient, so a revive closes it like the automatic calls.
+
+The medic block is evaluated server-side on every `/respawn` attempt (in
+`Death.respawnAtHospital`, so firing `hospital:server:RespawnAtHospital` by hand
+is refused too). While it is enabled the server also tells each dead client via
+`qbambulance:client:respawnBlock` (on death and whenever the state changes, checked
+by the 5 s sweep), and the prompt reads `Respawn is disabled while N medics are on
+duty`. It returns to the `/respawn` instruction by itself when the count drops
+below `minOnDuty`. `Death.medicsOnDuty(src)` and `Death.respawnBlocked(src)` expose the count.
 
 A dead player who reconnects keeps the original persisted respawn deadline. A
 legacy dead record with no medical timestamp remains immediately respawnable so

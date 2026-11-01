@@ -122,6 +122,61 @@ AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
     end
 end)
 
+-- Dead-player alert key (Config.death.alertEms). The client only asks; the server
+-- decides whether the player is really dead, enforces the cooldown and reads the
+-- coordinates itself. The street name is the client's own label, so it is only
+-- ever used as bounded display text.
+local lastKeyAlertAt = {}
+
+---@param street any
+---@return string|nil
+local function cleanStreet(street)
+    if type(street) ~= 'string' then return nil end
+    street = street:gsub('%c', ''):sub(1, 60):match('^%s*(.-)%s*$')
+    return street ~= '' and street or nil
+end
+
+RegisterNetEvent('qbambulance:server:alertEms', function(street)
+    local src = source
+    local alert = Config.death.alertEms
+    if not alert or alert.enabled ~= true or not Death.isDead(src) then return end
+
+    local now = os.time()
+    local last = lastKeyAlertAt[src]
+    local cooldown = math.floor(alert.cooldown / 1000)
+    if last and now - last < cooldown then
+        Kora.notify.send(src, {
+            title = 'EMS',
+            message = ('You already alerted EMS. Try again in %ds.'):format(cooldown - (now - last)),
+            type = 'error',
+        })
+        return
+    end
+    lastKeyAlertAt[src] = now
+
+    local patient = patientName(src)
+    local coords = coordsOf(src)
+    street = cleanStreet(street)
+    local where = street or (coords and ('%.0f, %.0f'):format(coords.x, coords.y)) or 'an unknown location'
+
+    local _, count = Ambulance.dispatch.call({
+        code = '10-52',
+        title = 'Person Down -- Assistance Requested',
+        message = ('%s is down and is asking for a medic at %s.'):format(patient, where),
+        priority = 1,
+        coords = coords,
+        icon = 'heart-pulse',
+        data = { patient = patient, source = src, street = street },
+    })
+    count = tonumber(count) or 0
+    Kora.notify.send(src, {
+        title = 'EMS',
+        message = count > 0 and 'Your location has been sent to EMS.' or 'No paramedics are currently on duty.',
+        type = count > 0 and 'success' or 'error',
+    })
+end)
+
 AddEventHandler('playerDropped', function()
     lastAutoCallAt[source] = nil
+    lastKeyAlertAt[source] = nil
 end)
