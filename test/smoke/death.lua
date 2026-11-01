@@ -22,10 +22,6 @@ local function waitOutRespawn()
     now = now + respawnWaitSeconds
 end
 
-------------------------------------------------------------------------------
--- Pure FSM
-------------------------------------------------------------------------------
-
 h.test('transition: alive -> laststand on died, nothing else from alive', function()
     local next1, changed1 = Death.transition('alive', 'died')
     h.assertEqual(next1, 'laststand')
@@ -49,10 +45,6 @@ h.test('transition: dead -> alive via respawned or revived, nothing else', funct
     h.assertEqual(next3, 'dead')
     h.assertFalse(changed3)
 end)
-
-------------------------------------------------------------------------------
--- Side-effecting wrappers
-------------------------------------------------------------------------------
 
 h.test('enterLaststand sets metadata, pushes the client event, and getState reflects it', function()
     handle.ensurePlayer(1)
@@ -132,10 +124,8 @@ h.test('respawnAtHospital defaults to the first configured hospital for an unkno
     h.assertTrue(Death.respawnAtHospital(7, 'not-a-real-hospital'))
 end)
 
-------------------------------------------------------------------------------
 -- Server-enforced respawn wait. The client countdown is display only, so
 -- everything a bypassing player could skip has to be refused here.
-------------------------------------------------------------------------------
 
 h.test('respawnAtHospital refuses a freshly dead player and says how long is left', function()
     handle.ensurePlayer(20)
@@ -263,10 +253,6 @@ h.test('a revive clears the death timestamp so a later death starts a fresh wait
     h.assertEqual(Death.respawnWaitRemaining(25), respawnWaitSeconds)
 end)
 
-------------------------------------------------------------------------------
--- Wound ledger -> Kora.status sync
-------------------------------------------------------------------------------
-
 h.test('recordWound never downgrades an existing wound on the same body part', function()
     handle.ensurePlayer(8)
     Death.recordWound(8, 'chest', 3)
@@ -310,10 +296,6 @@ h.test('clearWound / clearAllWounds remove the Kora.status effects once no wound
     h.assertFalse(handle.Kora.status.isActive(10, 'limping'))
     h.assertEqual(next(Death.getWoundData(10)), nil)
 end)
-
-------------------------------------------------------------------------------
--- Cache death report + bleed-out timeout
-------------------------------------------------------------------------------
 
 h.test('qbambulance:server:reportDeath rejects an alive server ped', function()
     handle.ensurePlayer(11)

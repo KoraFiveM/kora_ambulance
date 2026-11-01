@@ -277,8 +277,6 @@ h.test('the dead state honours the same option when camera movement is disabled'
     handle.fireEvent('qbambulance:client:revived', 0, 20)
 end)
 
--- --- entry paths, prompt visibility and camera, one frame per step() ---------
-
 local realWait = _G.Wait
 local function frameWait() if coroutine.isyieldable() then coroutine.yield() end end
 

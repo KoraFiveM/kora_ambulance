@@ -1,15 +1,12 @@
 -- HouseCall (server realm) -- two distinct EMS dispatch paths sharing one
 -- file:
 --   1. /911e -- an immediate, one-shot QBCore:alert broadcast to
---      every on-duty EMS (this is the "dispatch via the alert export + a
---      /911e-equivalent command" scope item).
---   2. The house-call QUEUE -- a genuine new differentiator (confirmed
---      absent from qb-ambulancejob/qbx_ambulancejob): a non-emergency
---      request sits in a shared, EMS-browsable queue until a paramedic
---      explicitly accepts it, rather than firing a single alert everyone
---      either reacts to or ignores. Queue mutation is pure (test/smoke/
---      housecall.lua exercises submitToQueue/acceptFromQueue directly);
---      only the command/event wiring below has side effects.
+--      every on-duty EMS.
+--   2. The house-call QUEUE -- a non-emergency request sits in a shared,
+--      EMS-browsable queue until a paramedic explicitly accepts it. Queue
+--      mutation is pure (test/smoke/housecall.lua exercises
+--      submitToQueue/acceptFromQueue directly); only the command/event
+--      wiring below has side effects.
 
 HouseCall = HouseCall or {}
 
