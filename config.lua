@@ -3,6 +3,8 @@
 
 Config = Config or {}
 
+Config.Debug = false                  -- print hospital setup diagnostics (skipped/bedless hospitals) to the console
+
 Config.job = {
     name = 'ambulance',              -- must match the job record kora_core's shared/jobs.lua already seeds
     onDutyDoctorGrade = 1,            -- minimum grade (1-based) counted as an "on-duty doctor" for Core.doctors' self-heal gate
@@ -69,6 +71,7 @@ Config.hospitalCare = {
     duration = 15000,                 -- ms a check-in treatment takes once the server has reserved a bed
     actionTtl = 45000,                -- ms a reserved care action can remain unfinished before its bed is released
     requireInjury = true,             -- healthy players cannot occupy a treatment bed
+    allowBedless = true,              -- true: a hospital with no beds still gets its pharmacy/stash/duty/garage options and check-in shows a notice; false: config load fails (strict)
 }
 
 Config.injuries = {
@@ -252,7 +255,11 @@ function Config.validate()
         hospitalNames[hospital.name] = true
         assert(isVector3(hospital.coords), 'hospital coords must be vectors')
         assert(isVector3(hospital.checkIn or hospital.coords), 'hospital check-in must be a vector')
-        assert(type(hospital.beds) == 'table' and #hospital.beds > 0, 'each hospital requires at least one bed')
+        if type(hospital.beds) ~= 'table' or #hospital.beds == 0 then
+            assert(Config.hospitalCare.allowBedless == true, 'each hospital requires at least one bed')
+            hospital.beds = {}
+            if Config.Debug then print(('[kora_ambulance] hospital %s has no beds configured; check-in disabled there'):format(hospital.name)) end
+        end
         for _, bed in ipairs(hospital.beds) do
             assert(isVector3(bed), 'hospital beds must be vectors')
             local key = ('%.3f:%.3f:%.3f'):format(bed.x, bed.y, bed.z)

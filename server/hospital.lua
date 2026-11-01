@@ -73,6 +73,10 @@ function Hospital.requestCheckIn(src, hospitalName)
     local hospital = getHospital(hospitalName)
     if not hospital then return false, 'unknown hospital' end
     if sessions[src] then return false, 'you already have a bed reserved' end
+    if not hospital.beds or #hospital.beds == 0 then
+        if Config.Debug then print(('[kora_ambulance] check-in refused: hospital %s has no beds'):format(hospital.name)) end
+        return false, 'this hospital has no beds available'
+    end
     if Death.isDead(src) then return false, 'dead patients must use hospital respawn' end
     if not isNear(src, hospital.checkIn or hospital.coords, Config.hospitalCare.interactionRange) then
         return false, 'use this hospital check-in desk'

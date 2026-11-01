@@ -40,6 +40,10 @@ local function startCare(care)
 end
 
 local function requestCheckIn(hospital)
+    if not hospital.beds or #hospital.beds == 0 then
+        Kora.notify.send({ title = 'Hospital Check-in', message = 'This hospital has no beds available.', type = 'warning' })
+        return
+    end
     if activeCare then
         Kora.notify.send({ title = 'Hospital Check-in', message = 'You already have a bed reserved.', type = 'warning' })
         return
@@ -70,6 +74,9 @@ end)
 
 local function registerHospitalTargets()
     for _, hospital in ipairs(Config.hospitals) do
+        if Config.Debug then
+            print(('[kora_ambulance] registering targets for hospital %s (beds: %d)'):format(hospital.name, #(hospital.beds or {})))
+        end
         exports.kora_target:addSphereZone({
             coords = hospital.checkIn or hospital.coords,
             radius = Config.hospitalCare.interactionRange,
