@@ -139,10 +139,10 @@ RegisterNetEvent('hospital:server:RestoreWeaponDamage', function(weaponHash)
 end)
 
 RegisterNetEvent('hospital:server:SetArmor', function(armor)
-    local ped = GetPlayerPed(source)
-    if not ped or ped == 0 then return end
+    -- SetPedArmour is client-only: the owning client applies it, reduce-only
+    -- (client/compat.lua).
     local requested = math.max(0, math.min(100, math.floor(tonumber(armor) or 0)))
-    if requested <= GetPedArmour(ped) then SetPedArmour(ped, requested) end
+    TriggerClientEvent('qbambulance:client:setArmour', source, requested)
 end)
 
 RegisterNetEvent('hospital:server:resetHungerThirst', function()

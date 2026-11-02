@@ -68,11 +68,14 @@ end)
 
 h.test('legacy armor and weapon modifiers remain reduce-only', function()
     handle.ensurePlayer(7)
-    handle.players[7].armour = 50
+    -- SetPedArmour is client-only: the server clamps and forwards, the client
+    -- (client/compat.lua) applies it reduce-only.
     handle.fireEvent('hospital:server:SetArmor', 7, 90)
-    h.assertEqual(handle.players[7].armour, 50)
-    handle.fireEvent('hospital:server:SetArmor', 7, 20)
-    h.assertEqual(handle.players[7].armour, 20)
+    local armour = handle.lastClient('qbambulance:client:setArmour')
+    h.assertEqual(armour.target, 7)
+    h.assertEqual(armour.args[1], 90)
+    handle.fireEvent('hospital:server:SetArmor', 7, -5)
+    h.assertEqual(handle.lastClient('qbambulance:client:setArmour').args[1], 0)
 
     handle.fireEvent('hospital:server:SetWeaponDamage', 7, 12345, 9.0)
     local event = handle.lastClient('hospital:client:SetWeaponDamage')

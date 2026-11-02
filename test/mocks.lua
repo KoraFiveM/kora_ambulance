@@ -407,9 +407,10 @@ function M.install()
     end
     function _G.GetEntityHealth(ped) return players[ped] and players[ped].health or 0 end
     function _G.GetEntityMaxHealth(ped) return players[ped] and (players[ped].maxHealth or 200) or 200 end
-    function _G.SetEntityHealth(ped, value) if players[ped] then players[ped].health = value end end
     function _G.GetPedArmour(ped) return players[ped] and players[ped].armour or 0 end
-    function _G.SetPedArmour(ped, value) if players[ped] then players[ped].armour = value end end
+    -- SetEntityHealth / SetPedArmour are client-only natives, deliberately NOT
+    -- mocked in the server realm: server code calling them must fail the tests
+    -- the way it fails in-game (nil global).
 
     return {
         players = players,

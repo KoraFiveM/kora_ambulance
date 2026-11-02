@@ -132,10 +132,52 @@ h.test('painkillers: a promise-returning trigger (same-VM) is awaited; health bo
     handle.kora_core:useItem(30, 'painkillers')
     handle.Kora.callback.trigger = realTrigger
     h.assertEqual(handle.players[30].items.painkillers, 1)
-    h.assertEqual(handle.players[30].health, 150 + Config.painkillers.healthAmount)
+    -- Server never writes health (SetEntityHealth is client-only): it tells the client.
+    h.assertEqual(handle.players[30].health, 150)
+    local benefit = handle.lastClient('qbambulance:client:painkillerBenefit')
+    h.assertEqual(benefit.target, 30)
+    h.assertEqual(benefit.args[1], Config.painkillers.healthAmount)
     h.assertEqual(calls[2].duration, Config.painkillers.animDuration)
     h.assertEqual(calls[2].anim.dict, Config.painkillers.animDict)
     h.assertEqual(calls[2].anim.clip, Config.painkillers.animClip)
+end)
+
+h.test('painkillers: success never raises a script error (no client-only natives on the server)', function()
+    h.assertEqual(SetEntityHealth, nil)
+    h.assertEqual(SetPedArmour, nil)
+    handle.ensurePlayer(31)
+    handle.players[31].items.painkillers = 1
+    local ok, err = pcall(function() handle.kora_core:useItem(31, 'painkillers') end)
+    h.assertTrue(ok, tostring(err))
+    h.assertEqual(handle.players[31].items.painkillers, 0)
+    h.assertEqual(handle.lastClient('qbambulance:client:painkillerBenefit').target, 31)
+end)
+
+h.test('painkillers: healthAmount 0 sends no boost; a downed player gets none', function()
+    local amount = Config.painkillers.healthAmount
+    handle.ensurePlayer(32)
+    local before = #handle.clientEvents
+    Config.painkillers.healthAmount = 0
+    Items.applyPainkillerBenefit(32)
+    h.assertEqual(#handle.clientEvents, before)
+
+    Config.painkillers.healthAmount = amount
+    Death.enterLaststand(32, 'test')
+    before = #handle.clientEvents
+    Items.applyPainkillerBenefit(32)
+    for i = before + 1, #handle.clientEvents do
+        h.assertTrue(handle.clientEvents[i].name ~= 'qbambulance:client:painkillerBenefit', 'downed player was boosted')
+    end
+end)
+
+h.test('painkillers: stopBleeding option stops the bleed server-side', function()
+    handle.ensurePlayer(33)
+    Death.recordWound(33, 'left_hand', 2)
+    local stop = Config.painkillers.stopBleeding
+    Config.painkillers.stopBleeding = true
+    Items.applyPainkillerBenefit(33)
+    Config.painkillers.stopBleeding = stop
+    h.assertFalse(Death.isBleeding(33))
 end)
 
 h.report('items')

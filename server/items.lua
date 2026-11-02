@@ -21,18 +21,17 @@ function Items.painkillerEligible(now, lastUsedAt)
 end
 
 ---Health boost / bleeding stop of a completed painkiller use (Config.painkillers).
+---SetEntityHealth is a client-only native (calling it here was a nil-global
+---script error that skipped the whole benefit), so the server only decides
+---that the boost applies and tells the owning client; the client applies it
+---capped at the ped's max health (client/pharmacy.lua). The bleeding state is
+---server-owned and changes here.
 ---@param src integer
 function Items.applyPainkillerBenefit(src)
     local cfg = Config.painkillers
-    if (cfg.healthAmount or 0) > 0 and GetPlayerPed then
-        local ped = GetPlayerPed(src)
-        if ped and ped ~= 0 then
-            local health = GetEntityHealth(ped)
-            -- Never raise a downed (<= 100 here counts as dead/laststand) ped.
-            if health > 100 then
-                SetEntityHealth(ped, math.min(GetEntityMaxHealth(ped), health + cfg.healthAmount))
-            end
-        end
+    -- A downed player's health is held by the death flow, never boosted.
+    if (cfg.healthAmount or 0) > 0 and Death.isAlive(src) then
+        TriggerClientEvent('qbambulance:client:painkillerBenefit', src, cfg.healthAmount)
     end
     if cfg.stopBleeding then Death.stopBleeding(src) end
 end

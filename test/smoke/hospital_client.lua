@@ -40,6 +40,7 @@ h.test('completed server care heals locally; cancelled and inactive care do not'
     handle.ensurePlayer(1)
     handle.setHealth(1, 40)
     PlayerPedId = function() return 1 end
+    SetEntityHealth = function(ped, value) handle.setHealth(ped, value) end -- client-only native
     SetEntityCoords = function() end
     ClearPedTasks = function() end
     local scenarios = 0

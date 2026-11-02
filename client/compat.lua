@@ -36,6 +36,15 @@ RegisterNetEvent('hospital:client:SetPain', function(level)
     end
 end)
 
+-- Applies hospital:server:SetArmor (SetPedArmour is client-only). Reduce-only,
+-- like the server adapter that forwards it.
+RegisterNetEvent('qbambulance:client:setArmour', function(armour)
+    armour = tonumber(armour)
+    if not armour then return end
+    local ped = PlayerPedId()
+    if armour >= 0 and armour <= GetPedArmour(ped) then SetPedArmour(ped, math.floor(armour)) end
+end)
+
 RegisterNetEvent('hospital:client:KillPlayer', function()
     -- Intentionally inert: a locally-triggerable compatibility event cannot
     -- be an authority for changing a player's health.

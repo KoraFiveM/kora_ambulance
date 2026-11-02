@@ -28,6 +28,22 @@ function Downed.downedHealth(configured, max)
     return math.floor(math.min(math.max(value, Downed.FATAL_HEALTH + 1), ceiling(max)))
 end
 
+---Health after a health boost (e.g. painkillers): current + amount capped at the
+---ped's max health. nil when nothing should change -- no/negative boost, or a
+---ped at or below the fatal line (downed health is owned by the death flow).
+---@param current number GetEntityHealth of the ped.
+---@param amount? number
+---@param max? number GetEntityMaxHealth of the ped.
+---@return integer|nil
+function Downed.boostedHealth(current, amount, max)
+    amount = tonumber(amount) or 0
+    current = tonumber(current) or 0
+    if amount <= 0 or current <= Downed.FATAL_HEALTH then return nil end
+    local value = math.floor(math.min(current + amount, ceiling(max)))
+    if value <= current then return nil end
+    return value
+end
+
 ---Health after a revive: pct of the survivable range (100..max), never fatal.
 ---@param pct? number 0..100
 ---@param max? number
