@@ -90,16 +90,17 @@ local hospitalHandlers = {
 
 local facilityKinds = { checkIn = true, pharmacy = true, stash = true }
 
+local zoneIds = {} -- hospital name -> ids of the zones registered for it, replaced on re-registration
+
 local function registerHospital(hospital)
     if Config.Debug then
         print(('[kora_ambulance] registering targets for hospital %s (beds: %d)'):format(hospital.name, #(hospital.beds or {})))
     end
 
-    for _, zone in ipairs(HospitalMenu.build(hospital, hospitalHandlers)) do
-        if facilityKinds[zone.kind] then
-            exports.kora_target:addSphereZone({ coords = zone.coords, radius = zone.radius, options = zone.options })
-        end
-    end
+    zoneIds[hospital.name] = zoneIds[hospital.name] or {}
+    HospitalMenu.register(zoneIds[hospital.name], HospitalMenu.build(hospital, hospitalHandlers), facilityKinds,
+        function(definition) return exports.kora_target:addSphereZone(definition) end,
+        function(id) exports.kora_target:removeZone(id) end)
 
     if hospital.blip then
         local blip = Kora.blips.create(hospital.coords, hospital.blip)

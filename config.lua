@@ -99,7 +99,9 @@ Config.hospitalCare = {
 
 -- Hospital interaction menu (see shared/hospital_menu.lua). Each hospital entry
 -- builds its own zones from whichever fields it has; a missing field only drops
--- that feature.
+-- that feature. A hospital entry may carry its own `radius = { checkIn = n, duty = n, ... }`
+-- (same keys as below) to widen its zones, e.g. so a two-door entrance is covered
+-- from both doors; it overrides `radius` below for that hospital only.
 Config.hospitalMenu = {
     isolateErrors = true,             -- true: a hospital whose targets fail to register is skipped (and logged) without stopping the remaining hospitals; false: the error propagates
     radius = {                        -- metres around each hospital point in which its options show; checkIn defaults to Config.hospitalCare.interactionRange
@@ -188,6 +190,7 @@ Config.hospitals = {
         label = 'Sandy Shores Medical Center',
         coords = vector4(1839.5, 3672.9, 34.3, 130.0),
         checkIn = vector4(1839.5, 3672.9, 34.3, 130.0),
+        radius = { checkIn = 5.5, duty = 5.5 }, -- wide enough to reach both front doors
         beds = {
             vector4(1838.9, 3670.6, 34.3, 40.0),
             vector4(1836.9, 3669.0, 34.3, 40.0),

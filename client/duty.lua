@@ -75,12 +75,13 @@ local dutyHandlers = {
 
 local dutyKinds = { duty = true, garage = true }
 
+local dutyZoneIds = {} -- hospital name -> ids of the zones registered for it, replaced on re-registration
+
 local function registerDutyTarget(hospital)
-    for _, zone in ipairs(HospitalMenu.build(hospital, dutyHandlers)) do
-        if dutyKinds[zone.kind] then
-            exports.kora_target:addSphereZone({ coords = zone.coords, radius = zone.radius, options = zone.options })
-        end
-    end
+    dutyZoneIds[hospital.name] = dutyZoneIds[hospital.name] or {}
+    HospitalMenu.register(dutyZoneIds[hospital.name], HospitalMenu.build(hospital, dutyHandlers), dutyKinds,
+        function(definition) return exports.kora_target:addSphereZone(definition) end,
+        function(id) exports.kora_target:removeZone(id) end)
 end
 
 local function registerDutyTargets()

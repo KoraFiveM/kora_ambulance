@@ -74,4 +74,38 @@ h.test('configured radii override the defaults', function()
     end
 end)
 
+h.test('a per-hospital radius overrides the global one for that hospital only', function()
+    local zones = HospitalMenu.build({
+        name = 'wide', coords = vector4(1.0, 2.0, 3.0, 0.0), radius = { checkIn = 7.5 },
+        duty = vector4(4.0, 5.0, 6.0, 0.0),
+    }, handlers)
+    for _, zone in ipairs(zones) do
+        if zone.kind == 'checkIn' then h.assertEqual(zone.radius, 7.5) end
+        if zone.kind == 'duty' then h.assertEqual(zone.radius, Config.hospitalMenu.radius.duty) end
+    end
+    for _, hospital in ipairs(Config.hospitals) do
+        if hospital.name == 'sandy' then
+            for _, zone in ipairs(HospitalMenu.build(hospital, handlers)) do
+                if zone.kind == 'checkIn' or zone.kind == 'duty' then h.assertTrue(zone.radius >= 5.0) end
+            end
+        end
+    end
+end)
+
+h.test('registering a hospital twice replaces its zones instead of stacking them', function()
+    local live, nextId = {}, 0
+    local function add(definition) nextId = nextId + 1; live[nextId] = definition; return nextId end
+    local function remove(id) live[id] = nil end
+    local ids = {}
+    local zones = HospitalMenu.build(Config.hospitals[2], handlers)
+    local kindsSet = { checkIn = true, pharmacy = true, stash = true }
+    HospitalMenu.register(ids, zones, kindsSet, add, remove)
+    HospitalMenu.register(ids, zones, kindsSet, add, remove)
+    local pharmacy = 0
+    for _, definition in pairs(live) do
+        if definition.options[1].label == 'Browse Pharmacy' then pharmacy = pharmacy + 1 end
+    end
+    h.assertEqual(pharmacy, 1)
+end)
+
 h.report('hospital_menu')

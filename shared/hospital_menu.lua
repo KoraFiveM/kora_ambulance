@@ -15,13 +15,16 @@ local function isPoint(value)
         and type(value.x) == "number" and type(value.y) == "number" and type(value.z) == "number"
 end
 
-local function radius(kind, fallback)
+local function radius(hospital, kind, fallback)
+    local own = type(hospital.radius) == "table" and hospital.radius[kind]
+    if type(own) == "number" and own > 0 then return own end
     local configured = Config.hospitalMenu and Config.hospitalMenu.radius and Config.hospitalMenu.radius[kind]
     if type(configured) == "number" and configured > 0 then return configured end
     return fallback
 end
 
----@param hospital table one Config.hospitals entry
+---@param hospital table one Config.hospitals entry; an optional `radius = { checkIn = n, duty = n, ... }`
+---       overrides Config.hospitalMenu.radius for this hospital only (wide entrances)
 ---@param handlers table kind -> function(hospital) run on select for checkIn / pharmacy / stash / duty;
 ---       `garageOptions` -> function(hospital) returning the garage option list
 ---@return table[] zones { kind, coords, radius, options } -- never empty for a hospital with coords or checkIn
@@ -32,7 +35,7 @@ function HospitalMenu.build(hospital, handlers)
 
     local function add(kind, coords, fallbackRadius, options)
         if not isPoint(coords) or #options == 0 then return end
-        zones[#zones + 1] = { kind = kind, coords = coords, radius = radius(kind, fallbackRadius), options = options }
+        zones[#zones + 1] = { kind = kind, coords = coords, radius = radius(hospital, kind, fallbackRadius), options = options }
     end
 
     local function run(kind)
@@ -68,4 +71,26 @@ function HospitalMenu.build(hospital, handlers)
     add("garage", hospital.garage, 6.0, handlers.garageOptions and handlers.garageOptions(hospital) or {})
 
     return zones
+end
+
+---Registers the zones of `zones` whose kind is in `kinds`, first removing every
+---zone this caller registered earlier. Registering again (kora_target
+---restarting) therefore replaces the old zones instead of stacking a second,
+---overlapping copy that lists every option twice.
+---@param ids table caller-owned list of zone ids from the previous call (updated in place)
+---@param zones table[] HospitalMenu.build result
+---@param kinds table<string, boolean>
+---@param add fun(definition: table): any returns the new zone id
+---@param remove fun(id: any)
+function HospitalMenu.register(ids, zones, kinds, add, remove)
+    for i = #ids, 1, -1 do
+        pcall(remove, ids[i])
+        ids[i] = nil
+    end
+    for _, zone in ipairs(zones) do
+        if kinds[zone.kind] then
+            local id = add({ coords = zone.coords, radius = zone.radius, options = zone.options })
+            if id ~= nil then ids[#ids + 1] = id end
+        end
+    end
 end
