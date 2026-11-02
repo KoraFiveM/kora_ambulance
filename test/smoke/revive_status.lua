@@ -298,4 +298,20 @@ h.test('clearWhenHealthy = false keeps wounds on a full-health player', function
     h.assertTrue(status.isActive(src, 'bleeding'))
 end)
 
+h.test('healthRestored closes wounds at once for a really healed player and ignores a hurt one', function()
+    nextSrc = nextSrc + 1
+    local src = nextSrc
+    handle.ensurePlayer(src)
+    Death.recordWound(src, 'chest', 4)
+    handle.players[src].health = 120
+    handle.Kora.events.registry["qbambulance:server:healthRestored"](src)
+    h.assertTrue(status.isActive(src, 'bleeding'), 'a spoofed report on a hurt player does nothing')
+
+    handle.players[src].health = 200
+    handle.Kora.events.registry["qbambulance:server:healthRestored"](src)
+    h.assertEqual(next(Death.getWoundData(src)), nil)
+    h.assertFalse(status.isActive(src, 'bleeding'))
+    h.assertEqual(lastSync(src)[1], false)
+end)
+
 h.report('revive_status')

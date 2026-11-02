@@ -122,6 +122,7 @@ Config.injuries = {
     maxDamage = 100,                  -- largest single health loss accepted by the client injury classifier
     severityThresholds = { 8, 20, 40 }, -- dense ascending damage cutoffs for wound severity tiers
     clearWhenHealthy = true,          -- true: an alive player whose health is back at max (admin /heal, regen, any healing outside this resource) has every wound closed, so the Bleeding/Limping pills go away; false keeps wounds until treated, revived or checked in
+    clearOnHealEvent = true,          -- true: the client reports an admin /heal (qbadmin:client:heal) and the server closes the wounds at once if health is really at max, instead of waiting for the sweep; false = sweep only
     healthyMargin = 0,                -- HP below max that still counts as fully healthy for clearWhenHealthy (0 = must be exactly at max)
 }
 
@@ -315,6 +316,7 @@ function Config.validate()
     assert(type(Config.revive.clearBleeding) == 'boolean' and type(Config.revive.clearWounds) == 'boolean',
         'revive clearBleeding and clearWounds must be boolean')
     assert(type(Config.injuries.clearWhenHealthy) == 'boolean', 'injuries clearWhenHealthy must be boolean')
+    assert(type(Config.injuries.clearOnHealEvent) == 'boolean', 'injuries clearOnHealEvent must be boolean')
     assert(type(Config.injuries.healthyMargin) == 'number' and Config.injuries.healthyMargin >= 0,
         'injuries healthyMargin must be a non-negative number')
     assert(type(Config.hospitals) == 'table' and #Config.hospitals > 0, 'at least one hospital is required')

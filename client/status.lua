@@ -25,3 +25,13 @@ RegisterNetEvent('qbambulance:client:syncStatus', function(bleedingTier, limping
     reconcile('bleeding', bleedingTier)
     reconcile('limping', limpingTier)
 end)
+
+-- Admin /heal only sets health on this client (qbadmin:client:heal), so the
+-- server never learns of it. Report it once the new health has replicated; the
+-- server re-checks health itself and closes the wounds. Event driven, no polling.
+RegisterNetEvent('qbadmin:client:heal', function()
+    if not Config.injuries.clearOnHealEvent then return end
+    SetTimeout(750, function()
+        Kora.events.trigger('qbambulance:server:healthRestored')
+    end)
+end)

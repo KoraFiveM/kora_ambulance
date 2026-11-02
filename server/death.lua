@@ -544,6 +544,47 @@ CreateThread(function()
     for _, src in ipairs(QBCore:getPlayers()) do restorePlayer(src) end
 end)
 
+---Closes every wound of an alive player whose health is back at max (healed
+---by something outside this resource, e.g. an admin /heal).
+---@param src integer
+---@return boolean cleared
+function Death._clearIfHealthy(src)
+    local bucket = woundData[src]
+    if not bucket or next(bucket) == nil then return false end
+    if not QBCore:getPlayerData(src) or Death.getState(src) ~= 'alive' then return false end
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 or GetEntityHealth(ped) < GetEntityMaxHealth(ped) - Config.injuries.healthyMargin then
+        return false
+    end
+    Death.clearAllWounds(src)
+    return true
+end
+
+-- Kora.status.remove on the server only pushes while kora_lib still tracks the
+-- effect, and a client-side removal from this resource is refused for an
+-- effect kora_lib itself applied (push-owned). An apply+remove pair makes
+-- kora_lib push a removal the client always honours.
+local function forceClearStatus(src, name)
+    if Kora.status.isActive(src, name) then return end
+    Kora.status.apply(src, name, { severity = 1 })
+    Kora.status.remove(src, name)
+end
+
+-- A heal that happens outside this resource (admin /heal fires a client-only
+-- event) never reaches the server, so the client tells us the moment it lands.
+-- Nothing is trusted: the wounds only close when the server-side health
+-- confirms the player is healthy, the same rule as the sweep. Event driven, so
+-- the pill drops at once instead of waiting for the next sweep.
+Kora.events.register('qbambulance:server:healthRestored', function(src)
+    if not Config.injuries.clearOnHealEvent or not QBCore:getPlayerData(src) then return end
+    Death._clearIfHealthy(src)
+    if Death.getState(src) == 'alive' and next(Death.getWoundData(src)) == nil then
+        forceClearStatus(src, 'bleeding')
+        forceClearStatus(src, 'limping')
+        pushStatus(src)
+    end
+end, { rateLimit = { max = 3, window = 10000 } })
+
 ---One pass of the periodic sweep. Players back at full health (healed by
 ---something outside this resource, e.g. an admin /heal) lose their wounds
 ---(Config.injuries.clearWhenHealthy), then reconcile players another resource
@@ -559,14 +600,7 @@ function Death._sweep()
     end
 
     if Config.injuries.clearWhenHealthy then
-        for src, bucket in pairs(woundData) do
-            if next(bucket) ~= nil and QBCore:getPlayerData(src) and Death.getState(src) == 'alive' then
-                local ped = GetPlayerPed(src)
-                if ped and ped ~= 0 and GetEntityHealth(ped) >= GetEntityMaxHealth(ped) - Config.injuries.healthyMargin then
-                    Death.clearAllWounds(src)
-                end
-            end
-        end
+        for src in pairs(woundData) do Death._clearIfHealthy(src) end
     end
 
     if Config.death.respawn.blockWhenMedics.enabled then
