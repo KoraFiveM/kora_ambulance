@@ -221,10 +221,11 @@ local function startCarryPatient(draggerSrc)
             if draggerPlayer ~= -1 then
                 local draggerPed = GetPlayerPed(draggerPlayer)
                 if draggerPed and draggerPed ~= 0 and DoesEntityExist(draggerPed) then
+                    local myPed = PlayerPedId()
                     local pos = GetOffsetFromEntityInWorldCoords(draggerPed,
                         CARRY_OFFSET.x, CARRY_OFFSET.y, CARRY_OFFSET.z)
-                    SetEntityCoordsNoOffset(PlayerPedId(), pos.x, pos.y, pos.z, false, false, false)
-                    SetEntityHeading(PlayerPedId(), GetEntityHeading(draggerPed))
+                    SetEntityCoordsNoOffset(myPed, pos.x, pos.y, pos.z, false, false, false)
+                    SetEntityHeading(myPed, GetEntityHeading(draggerPed))
                 end
             end
             Wait(0)

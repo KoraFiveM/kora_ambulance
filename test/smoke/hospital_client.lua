@@ -12,6 +12,13 @@ Kora.blips.create = function(_, options)
     hospitalBlips[#hospitalBlips + 1] = options
     return #hospitalBlips
 end
+local keybinds = {}
+Kora.keybind = { add = function(definition)
+    local bind = { definition = definition, disabled = definition.disabled == true }
+    bind.disable = function(toggle) bind.disabled = toggle ~= false end
+    keybinds[definition.name] = bind
+    return bind
+end }
 dofile('client/hospital.lua')
 
 h.test('hospital check-in targets tolerate optional facility points being absent', function()
@@ -56,6 +63,49 @@ h.test('completed server care heals locally; cancelled and inactive care do not'
     handle.fireEvent('qbambulance:client:checkInAccepted', 65535, care)
     handle.fireEvent('qbambulance:client:bedReleased', 65535, 'completed')
     h.assertEqual(handle.players[1].health, 200)
+end)
+
+h.test('leaving the bed is a keybind enabled only while a bed is reserved, with no per-frame loop', function()
+    local bind = keybinds.qbambulance_leave_bed
+    h.assertTrue(bind ~= nil, 'leave-bed keybind registered')
+    h.assertEqual(bind.definition.defaultKey, 'E')
+    h.assertTrue(bind.disabled, 'disabled with no bed reserved')
+
+    PlayerPedId = function() return 1 end
+    SetEntityCoords = function() end
+    ClearPedTasks = function() end
+    TaskStartScenarioAtPosition = function() end
+    local care = { token = 'care-key', bed = { x = 1, y = 2, z = 3 }, duration = 5000 }
+    local waits = {}
+    local realWait = Wait
+    Wait = function(ms) waits[#waits + 1] = ms end
+    local triggered = {}
+    Kora.events.trigger = function(name, ...) triggered[#triggered + 1] = { name = name, args = { ... } } end
+    local completions = 0
+    Kora.callback.trigger = function(name) if name == 'qbambulance:server:bedCareCompleted' then completions = completions + 1 end return true end
+
+    bind.definition.onPressed() -- no bed: ignored
+    h.assertEqual(#triggered, 0)
+
+    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, care)
+    h.assertFalse(bind.disabled, 'enabled while resting')
+    bind.definition.onPressed()
+    h.assertEqual(#triggered, 1)
+    h.assertEqual(triggered[1].name, 'qbambulance:server:bedLeft')
+    h.assertEqual(triggered[1].args[1], 'care-key')
+    h.assertTrue(bind.disabled, 'disabled once the leave request is sent')
+
+    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'left-bed')
+    handle.step() -- the care timer wakes after the bed was released: must not complete it
+    h.assertEqual(completions, 0)
+    h.assertEqual(waits[#waits], 5000, 'one sleep for the whole duration')
+
+    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, { token = 'care-done', bed = care.bed, duration = 5000 })
+    handle.step()
+    h.assertEqual(completions, 1)
+    h.assertTrue(bind.disabled, 'disabled once care is completing')
+    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'completed')
+    Wait = realWait
 end)
 
 h.report('hospital_client')

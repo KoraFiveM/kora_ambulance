@@ -2,11 +2,34 @@
 -- and reserves beds; this file cannot select one or make care succeed early.
 
 local activeCare
+local leaveBinding
 
 local function stopCare(token)
     if not activeCare or (token and activeCare.token ~= token) then return end
+    if leaveBinding then leaveBinding.disable(true) end
     ClearPedTasks(PlayerPedId())
     activeCare = nil
+end
+
+-- Leaving the bed is a rebindable key mapping that is only enabled while a bed
+-- is reserved, so nothing polls the control every frame for the whole stay.
+do
+    local key = Config.hospitalCare.leaveKey
+    if key == nil then key = 'E' end
+    if type(key) == 'string' and key ~= '' then
+        leaveBinding = Kora.keybind.add({
+            name = 'qbambulance_leave_bed',
+            description = 'EMS: leave your hospital bed',
+            defaultKey = key,
+            disabled = true,
+            onPressed = function()
+                if not activeCare then return end
+                local token = activeCare.token
+                leaveBinding.disable(true)
+                Kora.events.trigger('qbambulance:server:bedLeft', token)
+            end,
+        })
+    end
 end
 
 local function startCare(care)
@@ -18,23 +41,17 @@ local function startCare(care)
     SetEntityCoords(ped, bed.x, bed.y, bed.z, false, false, false, false)
     TaskStartScenarioAtPosition(ped, 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w or 0.0, 0, true, false)
     Kora.notify.send({ title = 'Hospital Check-in', message = 'Resting in your assigned bed.', type = 'info' })
+    if leaveBinding then leaveBinding.disable(false) end
 
+    -- One sleep for the whole care duration instead of a per-frame tick.
     CreateThread(function()
         local token = care.token
-        local startedAt = GetGameTimer()
-        while activeCare and activeCare.token == token do
-            if IsControlJustPressed(0, 38) then
-                Kora.events.trigger('qbambulance:server:bedLeft', token)
-                return
-            end
-            if GetGameTimer() - startedAt >= care.duration then
-                local completed, reason = Kora.callback.trigger('qbambulance:server:bedCareCompleted', token)
-                if not completed then
-                    Kora.notify.send({ title = 'Hospital Check-in', message = reason or 'Care was not completed.', type = 'warning' })
-                end
-                return
-            end
-            Wait(0)
+        Wait(care.duration)
+        if not activeCare or activeCare.token ~= token then return end
+        if leaveBinding then leaveBinding.disable(true) end
+        local completed, reason = Kora.callback.trigger('qbambulance:server:bedCareCompleted', token)
+        if not completed then
+            Kora.notify.send({ title = 'Hospital Check-in', message = reason or 'Care was not completed.', type = 'warning' })
         end
     end)
 end

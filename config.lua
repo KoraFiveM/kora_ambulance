@@ -95,6 +95,7 @@ Config.hospitalCare = {
     actionTtl = 45000,                -- ms a reserved care action can remain unfinished before its bed is released
     requireInjury = true,             -- healthy players cannot occupy a treatment bed
     allowBedless = true,              -- true: a hospital with no beds still gets its pharmacy/stash/duty/garage options and check-in shows a notice; false: config load fails (strict)
+    leaveKey = 'E',                   -- default key to leave the bed early (kora_lib keybind, rebindable in FiveM key settings; only active while a bed is reserved); '' leaves it unbound
 }
 
 -- Hospital interaction menu (see shared/hospital_menu.lua). Each hospital entry

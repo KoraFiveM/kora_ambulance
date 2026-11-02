@@ -401,7 +401,9 @@ exports.kora_ambulance:CanHelp()     -- UX availability only; never authorizatio
 
 `Config.job` selects the EMS job/type; `Config.death` controls the FSM and CPR;
 `Config.injuries` controls hit correlation, report validation and damage-to-tier
-thresholds; `Config.hospitalCare` controls admissions; `Config.transport`
+thresholds; `Config.hospitalCare` controls admissions (`leaveKey`, default `'E'`, is the
+rebindable key mapping that leaves the bed early; it is only enabled while a bed is
+reserved, `''` leaves it unbound); `Config.transport`
 controls the stretcher model/attachments/heartbeat; `Config.compat` controls the
 legacy adapter; `Config.billing` covers respawn and check-in costs;
 `Config.dispatch` controls emergency/house-call behavior; and `Config.treatment`
