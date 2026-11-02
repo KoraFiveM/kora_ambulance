@@ -30,11 +30,9 @@ RegisterNetEvent('hospital:client:SetPain', function(level)
         if not painScreenHandle then
             painScreenHandle = Kora.fx.screenEffect('DrugsMichaelAliensFightIn', 0, true)
         end
-    else
-        if painScreenHandle then
-            Kora.fx.stopScreenEffect(painScreenHandle)
-            painScreenHandle = nil
-        end
+    elseif painScreenHandle then
+        Kora.fx.stopScreenEffect(painScreenHandle)
+        painScreenHandle = nil
     end
 end)
 
