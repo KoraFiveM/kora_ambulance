@@ -7,9 +7,7 @@
 
 Items = Items or {}
 
--- kora_core has no Kora proxy of its own (see this resource's own AGENTS-style
--- header note in the plan) -- every Core.<module>.<fn> call must cross the
--- exports boundary as a flat exports.kora_core:<fn>(...) call instead.
+-- kora_core has no Kora proxy; every call crosses the exports boundary.
 local QBCore = exports.kora_core
 
 local lastPainkillerAt = {} -- src -> os.time()
@@ -35,18 +33,12 @@ local function treatWound(src, maxTier)
     return true
 end
 
--- kora_inventory's own useItem does NOT auto-remove the item on use (verified
--- by reading kora_inventory/server.lua's intentUse/useItem -- neither path
--- calls removePlayer) -- every handler below explicitly removes its own
--- item on a successful use, otherwise these would be infinite-use.
+-- kora_inventory's useItem does not remove the item, so each handler below
+-- removes its own on successful use.
 
--- Client "feedback" step (client/pharmacy.lua's whole reason to exist,
--- per the plan): the SERVER asks the ITEM USER's own client to run a
--- Kora.progressbar, using Kora.callback.trigger's server->client direction
--- (the reverse of the usual client-asks-server shape), and awaits whether
--- it completed. Reuses the SAME duration/anim already registered on the
--- item's `effect` table (shared/items.lua) rather than duplicating it in a
--- second config -- one number/anim pair per item, not two.
+-- Asks the item user's client to run a progressbar (server->client callback)
+-- and awaits completion. Duration/anim come from the item's `effect` table
+-- in shared/items.lua.
 ---@param src integer
 ---@param itemName string
 ---@return boolean completed
