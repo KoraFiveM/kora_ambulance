@@ -14,6 +14,6 @@ Kora.callback.register('qbambulance:client:pharmacyProgress', function(payload)
         duration = payload.duration or 2500,
         canCancel = true,
         disable = { move = true, combat = true, car = true },
-        anim = payload.anim and { dict = payload.anim.dict, clip = payload.anim.clip } or nil,
+        anim = payload.anim and { dict = payload.anim.dict, clip = payload.anim.clip, flag = payload.anim.flag } or nil,
     })
 end)

@@ -142,7 +142,16 @@ Config.compat = {
 }
 
 Config.painkillers = {
-    interval = 300000,                -- ms cooldown between painkiller uses (metadata.lastPainkillerAt-gated)
+    interval = 300000,                -- ms cooldown between painkiller uses (per player, in memory)
+    animDict = 'mp_suicide',          -- pill-taking animation dictionary
+    animClip = 'pill',                -- pill-taking animation clip
+    animDuration = 3400,              -- ms the animation plays AND the "Using Painkillers" progress bar runs; both end together
+    healthAmount = 15,                -- HP restored on a completed use (capped at the ped's max health); 0 = no health benefit
+    stopBleeding = false,             -- true: a completed use also stops the bleeding of open wounds (wounds stay on the ledger, like a field revive); false = health only
+}
+
+Config.defibrillator = {
+    useable = true,                   -- true: the defibrillator inventory item is a registered usable that starts CPR on the nearest downed patient within Config.death.reviveRange (on-duty EMS only); false: item use is left to your own handler
 }
 
 Config.treatment = {

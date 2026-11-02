@@ -20,6 +20,23 @@ function Items.painkillerEligible(now, lastUsedAt)
     return (now - lastUsedAt) >= math.floor(Config.painkillers.interval / 1000)
 end
 
+---Health boost / bleeding stop of a completed painkiller use (Config.painkillers).
+---@param src integer
+function Items.applyPainkillerBenefit(src)
+    local cfg = Config.painkillers
+    if (cfg.healthAmount or 0) > 0 and GetPlayerPed then
+        local ped = GetPlayerPed(src)
+        if ped and ped ~= 0 then
+            local health = GetEntityHealth(ped)
+            -- Never raise a downed (<= 100 here counts as dead/laststand) ped.
+            if health > 100 then
+                SetEntityHealth(ped, math.min(GetEntityMaxHealth(ped), health + cfg.healthAmount))
+            end
+        end
+    end
+    if cfg.stopBleeding then Death.stopBleeding(src) end
+end
+
 ---@param src integer
 ---@param maxTier integer
 ---@return boolean treated
@@ -41,16 +58,22 @@ end
 -- in shared/items.lua.
 ---@param src integer
 ---@param itemName string
+---@param override? {duration: integer, anim: table} Replaces the item's `effect` duration/anim.
 ---@return boolean completed
-local function runFeedback(src, itemName)
+local function runFeedback(src, itemName, override)
     local def = QBCore:getShared('items', itemName)
     local effect = def and def.effect or {}
+    override = override or {}
 
+    -- Same-VM Kora.callback.trigger returns a promise (only a cross-resource
+    -- caller gets the awaited value); comparing the promise to `true` left every
+    -- completed bar looking cancelled, so no item was ever consumed.
     local completed = Kora.callback.trigger(src, 'qbambulance:client:pharmacyProgress', {
         label = def and def.label or itemName,
-        duration = effect.duration or 2500,
-        anim = effect.anim,
+        duration = override.duration or effect.duration or 2500,
+        anim = override.anim or effect.anim,
     })
+    if type(completed) == 'table' and completed.next then completed = Citizen.Await(completed) end
 
     return completed == true
 end
@@ -106,11 +129,16 @@ QBCore:createUseable('painkillers', function(src, item)
         return
     end
 
-    if not runFeedback(src, 'painkillers') then return end
+    local cfg = Config.painkillers
+    if not runFeedback(src, 'painkillers', {
+        duration = cfg.animDuration,
+        anim = { dict = cfg.animDict, clip = cfg.animClip, flag = 1 },
+    }) then return end -- cancelled: nothing consumed, no cooldown
 
     local removed = QBCore:removeItem(src, 'painkillers', 1, item and item.slot, 'painkillers')
     if not removed then return end
     lastPainkillerAt[src] = now
+    Items.applyPainkillerBenefit(src)
     Kora.notify.send(src, { title = 'Painkillers', message = 'The pain dulls a little.', type = 'success' })
 end)
 

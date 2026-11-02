@@ -193,4 +193,26 @@ h.test('expired medic reservations release the previous patient before starting 
 end)
 
 GetGameTimer = originalTimer
+h.test('defibrillator is a registered useable: refuses non-EMS, warns when nobody is down, asks the client to start CPR otherwise', function()
+    h.assertTrue(handle.kora_core.useables and handle.kora_core.useables.defibrillator ~= nil)
+    local function players() return { '40', '41' } end
+    _G.GetPlayers = players
+
+    handle.ensurePlayer(40); handle.ensurePlayer(41)
+    handle.players[41].coords = vector3(1, 0, 0)
+    handle.players[40].job = { name = 'unemployed', onduty = false, grade = { level = 0 } }
+    local before = #handle.Kora.notify.sent
+    handle.kora_core:useItem(40, 'defibrillator')
+    h.assertEqual(#handle.Kora.notify.sent, before + 1)
+
+    handle.players[40].job = { name = Config.job.name, onduty = true, grade = { level = 1 } }
+    handle.kora_core:useItem(40, 'defibrillator')
+    h.assertEqual(#handle.Kora.notify.sent, before + 2) -- nobody down
+
+    Death.enterLaststand(41)
+    local events = #handle.clientEvents
+    handle.kora_core:useItem(40, 'defibrillator')
+    h.assertEqual(#handle.clientEvents, events + 1)
+end)
+
 h.report('revive')

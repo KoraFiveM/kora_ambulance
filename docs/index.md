@@ -410,6 +410,12 @@ with beds plus optional check-in/pharmacy/stash/duty/garage points.
 `Config.dutyVehicles[n].stretcher` opts a vehicle into physical transport.
 `Config.bodyParts` maps GTA bones to 15 anatomical regions, and
 `Config.woundLevels` defines four treatment/mobility tiers.
+`Config.painkillers` sets the cooldown, the pill animation (`animDict`/`animClip`),
+`animDuration` (ms; the animation and the "Using Painkillers" bar end together),
+`healthAmount` (HP restored on completion) and `stopBleeding`; the item is only
+consumed when the bar completes. `Config.defibrillator.useable` registers the
+defibrillator inventory item so using it starts CPR on the nearest downed patient
+(on-duty EMS only).
 
 ## Related resources
 

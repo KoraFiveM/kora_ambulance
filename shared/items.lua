@@ -65,13 +65,11 @@ QBAmbulance.items = {
         useable = true,
         shouldClose = true,
         description = 'Dulls pain and steadies the nerves for a while. Not a substitute for real treatment.',
-        effect = {
-            duration = 180000,
-            stacking = 'extend',
-            fx = { screen = 'DrugsMichaelAliensFightIn' },
-            anim = { dict = 'mp_suicide', clip = 'pill' },
-            stressDelta = -10,
-        },
+        -- Deliberately no `effect` table: kora_core's usingItem hook applies an
+        -- item's effect (anim included) the moment Use is clicked, before the
+        -- progress bar and even if it is cancelled, and a looping status anim
+        -- never ended with the bar. Animation, bar and benefit are all driven
+        -- by server/items.lua from Config.painkillers on completion.
     },
     {
         name = 'defibrillator',
@@ -80,12 +78,12 @@ QBAmbulance.items = {
         type = 'item',
         image = 'defibrillator.png',
         unique = false,
-        -- Deliberately NOT self-useable: reviving is inherently target-based
-        -- (you defib a specific downed patient, never yourself), so this
-        -- item is consumed via client/revive.lua's kora_target option on a
-        -- laststand/dead player, not QBCore:createUseable.
-        useable = false,
-        shouldClose = false,
+        -- Using it from the inventory (server/revive.lua, Config.defibrillator.
+        -- useable) starts CPR on the nearest downed patient; the item is only
+        -- consumed by a successful revive (also reachable via the kora_target
+        -- option in client/revive.lua).
+        useable = true,
+        shouldClose = true,
         description = 'Delivers a controlled shock to restart a patient\'s heart. EMS use only.',
     },
 }

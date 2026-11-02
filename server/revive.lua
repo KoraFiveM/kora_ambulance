@@ -147,3 +147,34 @@ AddEventHandler('playerDropped', function()
     if owner then clearAction(owner) end
     lastAttemptAt[source] = nil
 end)
+
+-- Inventory "Use" on the defibrillator: kora_inventory only offers a working Use
+-- when a handler is registered (otherwise "no useable registered"). Picks the
+-- nearest downed patient in Config.death.reviveRange and asks the user's client
+-- to start the normal CPR flow; beginRevive/completeRevive re-validate duty,
+-- item and patient, and only a successful revive consumes the item.
+if Config.defibrillator and Config.defibrillator.useable then
+    QBCore:createUseable('defibrillator', function(src)
+        if not isOnDutyEMS(src) then
+            Kora.notify.send(src, { title = 'EMS', message = 'Only on-duty paramedics can use a defibrillator.', type = 'error' })
+            return false
+        end
+
+        local best, bestDistance
+        for _, id in ipairs(GetPlayers()) do
+            local target = tonumber(id)
+            if target and target ~= src and Death.getState(target) ~= 'alive' and nearby(src, target) then
+                local a, b = GetEntityCoords(GetPlayerPed(src)), GetEntityCoords(GetPlayerPed(target))
+                local distance = #(a - b)
+                if not bestDistance or distance < bestDistance then best, bestDistance = target, distance end
+            end
+        end
+
+        if not best then
+            Kora.notify.send(src, { title = 'EMS', message = 'No downed patient nearby to defibrillate.', type = 'warning' })
+            return false
+        end
+
+        TriggerClientEvent('qbambulance:client:reviveRequested', src, best)
+    end)
+end

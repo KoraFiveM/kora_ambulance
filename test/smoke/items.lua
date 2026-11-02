@@ -109,4 +109,33 @@ h.test('painkillers: respects the cooldown and consumes exactly one on success',
     h.assertEqual(handle.players[7].items.painkillers, 1)
 end)
 
+h.test('painkillers: a promise-returning trigger (same-VM) is awaited; health boost applied; cancel consumes nothing', function()
+    handle.ensurePlayer(30)
+    handle.players[30].items.painkillers = 2
+    handle.players[30].health = 150
+    local calls = {}
+    local result = true
+    _G.Citizen = _G.Citizen or {}
+    _G.Citizen.Await = function(p) return p.value end
+    local realTrigger = handle.Kora.callback.trigger
+    handle.Kora.callback.trigger = function(_, _, payload)
+        calls[#calls + 1] = payload
+        return { next = function() end, value = result }
+    end
+
+    result = false -- cancelled
+    handle.kora_core:useItem(30, 'painkillers')
+    h.assertEqual(handle.players[30].items.painkillers, 2)
+    h.assertEqual(handle.players[30].health, 150)
+
+    result = true
+    handle.kora_core:useItem(30, 'painkillers')
+    handle.Kora.callback.trigger = realTrigger
+    h.assertEqual(handle.players[30].items.painkillers, 1)
+    h.assertEqual(handle.players[30].health, 150 + Config.painkillers.healthAmount)
+    h.assertEqual(calls[2].duration, Config.painkillers.animDuration)
+    h.assertEqual(calls[2].anim.dict, Config.painkillers.animDict)
+    h.assertEqual(calls[2].anim.clip, Config.painkillers.animClip)
+end)
+
 h.report('items')
