@@ -297,7 +297,7 @@ local function runDeadPrompt(generation)
     end)
 end
 
-Kora.cache.onChange('isDead', function(isDead, wasDead)
+local function onFatalInjuryChange(isDead, wasDead)
     if not isDead or wasDead or State.inLaststand or State.isDead then return end
 
     local coords = Kora.cache.coords()
@@ -329,6 +329,22 @@ Kora.cache.onChange('isDead', function(isDead, wasDead)
             end
         end
     end)
+end
+
+-- kora_lib drops every onChange registration when it restarts, so the death
+-- edge is registered at load and again on its restart. Only the restart path
+-- seeds from the current value: a death that happened while kora_lib was down
+-- would otherwise never fire an edge (the State guards above make it a no-op
+-- when the server already put this player down).
+local function watchFatalInjury()
+    Kora.cache.onChange('isDead', onFatalInjuryChange)
+end
+
+watchFatalInjury()
+AddEventHandler('onClientResourceStart', function(resource)
+    if resource ~= 'kora_lib' then return end
+    watchFatalInjury()
+    onFatalInjuryChange(Kora.cache.isDead(), false)
 end)
 
 RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
