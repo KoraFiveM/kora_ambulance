@@ -106,15 +106,28 @@ AddEventHandler('qbambulance:server:onPlayerDead', function(src)
     })
 end)
 
+---Whether `call` is about `src` as the patient: an automatic person-down call
+---(data.source), or a /911e the player raised themself (data.requester), which
+---the downed screen tells them to use (Config.dispatch.closeCallerAlerts).
+---@param call table
+---@param src integer
+---@return boolean
+local function isPatientCall(call, src)
+    local data = call.data
+    if type(data) ~= 'table' then return false end
+    if data.source == src then return true end
+    return Config.dispatch.closeCallerAlerts ~= false and call.code == '911e' and data.requester == src
+end
+
 ---Closes every open EMS call raised for this patient, which also removes the
----call's map blip for everyone. Used when the patient is revived, respawns or
----leaves the server (Config.dispatch.closeOnResolve).
+---call's map blip for everyone. Used when the patient is revived, healed,
+---respawns or leaves the server (Config.dispatch.closeOnResolve).
 ---@param src integer
 ---@param reason string
 local function closePatientCalls(src, reason)
     if Config.dispatch.closeOnResolve == false then return end
     for _, call in ipairs(exports.kora_dispatch:getCalls({ service = Config.job.type, activeOnly = true })) do
-        if call.data and call.data.source == src then
+        if isPatientCall(call, src) then
             exports.kora_dispatch:closeCall(call.id, reason)
         end
     end
@@ -130,6 +143,11 @@ AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
     -- noise during the exact minute they are busiest. Once the cooldown lapses
     -- it is treated as a genuinely new emergency again.
     closePatientCalls(src, 'patient treated')
+end)
+
+-- An admin /heal (server/death.lua confirms the health) leaves nobody to treat.
+AddEventHandler('qbambulance:server:onPlayerHealed', function(src)
+    closePatientCalls(src, 'patient healed')
 end)
 
 -- Respawning at the hospital resolves the incident just as a revive does.

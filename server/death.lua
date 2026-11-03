@@ -562,14 +562,19 @@ end)
 ---by something outside this resource, e.g. an admin /heal).
 ---@param src integer
 ---@return boolean cleared
+---Alive by the ledger and back at max health (within Config.injuries.healthyMargin).
+---@param src integer
+---@return boolean
+local function isHealthy(src)
+    if not QBCore:getPlayerData(src) or Death.getState(src) ~= 'alive' then return false end
+    local ped = GetPlayerPed(src)
+    return ped ~= nil and ped ~= 0 and GetEntityHealth(ped) >= GetEntityMaxHealth(ped) - Config.injuries.healthyMargin
+end
+
 function Death._clearIfHealthy(src)
     local bucket = woundData[src]
     if not bucket or next(bucket) == nil then return false end
-    if not QBCore:getPlayerData(src) or Death.getState(src) ~= 'alive' then return false end
-    local ped = GetPlayerPed(src)
-    if not ped or ped == 0 or GetEntityHealth(ped) < GetEntityMaxHealth(ped) - Config.injuries.healthyMargin then
-        return false
-    end
+    if not isHealthy(src) then return false end
     Death.clearAllWounds(src)
     return true
 end
@@ -598,6 +603,8 @@ Kora.events.register('qbambulance:server:healthRestored', function(src)
     if Death.getState(src) == 'alive' and next(Death.getWoundData(src)) == nil then
         pushStatus(src)
     end
+    -- Healed for real: their open EMS call is resolved (server/dispatch.lua).
+    if isHealthy(src) then TriggerEvent('qbambulance:server:onPlayerHealed', src) end
 end, { rateLimit = { max = 3, window = 10000 } })
 
 -- The client tried to drop a pill the server says should be gone and kora_lib

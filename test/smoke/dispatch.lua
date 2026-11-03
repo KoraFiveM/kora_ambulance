@@ -112,6 +112,60 @@ h.test('closeOnResolve = false leaves calls open', function()
     Config.dispatch.closeOnResolve = true
 end)
 
+local function open911eFor(src)
+    local count = 0
+    for _, entry in ipairs(handle.kora_dispatch:getCalls({ service = Config.job.type, activeOnly = true })) do
+        if entry.code == '911e' and entry.data and entry.data.requester == src then count = count + 1 end
+    end
+    return count
+end
+
+local function raise911e(src)
+    Ambulance.dispatch.call({ code = '911e', title = '911 -- Medical Emergency', priority = 1, data = { requester = src } })
+end
+
+h.test('a /911e the patient raised themself closes when an admin revives them', function()
+    handle.ensurePlayer(15)
+    raise911e(15)
+    h.assertEqual(open911eFor(15), 1, 'sanity: the alert is open')
+    Death.fullRevive(15)
+    h.assertEqual(open911eFor(15), 0, 'the caller is up, the alert is gone')
+end)
+
+h.test('closeCallerAlerts = false leaves /911e alerts open', function()
+    Config.dispatch.closeCallerAlerts = false
+    handle.ensurePlayer(16)
+    raise911e(16)
+    Death.fullRevive(16)
+    h.assertEqual(open911eFor(16), 1, 'alert kept')
+    Config.dispatch.closeCallerAlerts = true
+end)
+
+h.test('an admin /heal closes the call only once the server sees full health', function()
+    local healthRestored = handle.Kora.events.registry['qbambulance:server:healthRestored']
+    handle.ensurePlayer(17)
+    raise911e(17)
+    Ambulance.dispatch.call({ code = '10-52', title = 'Person Down', priority = 1, data = { source = 17 } })
+
+    handle.players[17].health = 150
+    healthRestored(17)
+    h.assertEqual(open911eFor(17) + openCallsFor(17), 2, 'still hurt: calls stay open')
+
+    handle.players[17].health = 200
+    healthRestored(17)
+    h.assertEqual(open911eFor(17) + openCallsFor(17), 0, 'healed: every call for them closed')
+end)
+
+h.test('a heal report from a downed player closes nothing', function()
+    local healthRestored = handle.Kora.events.registry['qbambulance:server:healthRestored']
+    handle.ensurePlayer(18)
+    Death.enterLaststand(18, 'gunshot')
+    h.assertEqual(openCallsFor(18), 1, 'sanity: the call is open')
+    handle.players[18].health = 200
+    healthRestored(18)
+    h.assertEqual(openCallsFor(18), 1, 'still down: the call stays open')
+end)
+
 h.test('automatic calls can be turned off entirely', function()
     Config.dispatch.autoCall = false
     handle.ensurePlayer(7)

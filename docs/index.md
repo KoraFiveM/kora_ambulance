@@ -325,7 +325,7 @@ help key:
 | --- | --- | --- |
 | Enters laststand | `10-52 Person Down` | 1 |
 | Bleeds out | `10-54 Possible Fatality` | 2 |
-| Revived | the patient's open call is **closed** | — |
+| Revived (any means, admin `/revive` and `/selfrevive` included), healed by an admin `/heal`, respawned or disconnected | the patient's open calls are **closed** (`Config.dispatch.closeOnResolve`) | — |
 
 The fatality is deliberately below the person-down call: nobody is being saved
 now, so it must not outrank a patient who still can be. Repeat calls for the same
@@ -333,6 +333,10 @@ casualty are suppressed for `Config.dispatch.autoCallCooldown`, so one messy
 firefight is one call rather than ten — and the cooldown is *not* reset by a
 revive, because a patient put straight back down is the same incident to the
 paramedic already standing over them.
+
+A `/911e` alert the patient raised themself (the downed screen points them at it)
+counts as their call and closes the same way; set `Config.dispatch.closeCallerAlerts`
+to `false` to leave `/911e` alerts for EMS to close by hand.
 
 **The house-call queue** is published as a priority-3 dispatch call carrying an
 `onAccept` hook. Accepting it in the dispatch UI and `/accepthousecall` go through
