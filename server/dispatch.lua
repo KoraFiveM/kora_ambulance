@@ -106,6 +106,20 @@ AddEventHandler('qbambulance:server:onPlayerDead', function(src)
     })
 end)
 
+---Closes every open EMS call raised for this patient, which also removes the
+---call's map blip for everyone. Used when the patient is revived, respawns or
+---leaves the server (Config.dispatch.closeOnResolve).
+---@param src integer
+---@param reason string
+local function closePatientCalls(src, reason)
+    if Config.dispatch.closeOnResolve == false then return end
+    for _, call in ipairs(exports.kora_dispatch:getCalls({ service = Config.job.type, activeOnly = true })) do
+        if call.data and call.data.source == src then
+            exports.kora_dispatch:closeCall(call.id, reason)
+        end
+    end
+end
+
 -- A patient who was picked up is no longer an open incident. Without this the
 -- feed keeps showing people who were treated ten minutes ago, and a feed that
 -- lies about what is outstanding stops being read at all.
@@ -115,11 +129,12 @@ AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
     -- paramedic is already standing over them -- so re-alerting would just be
     -- noise during the exact minute they are busiest. Once the cooldown lapses
     -- it is treated as a genuinely new emergency again.
-    for _, call in ipairs(exports.kora_dispatch:getCalls({ service = Config.job.type, activeOnly = true })) do
-        if call.data and call.data.source == src then
-            exports.kora_dispatch:closeCall(call.id, 'patient treated')
-        end
-    end
+    closePatientCalls(src, 'patient treated')
+end)
+
+-- Respawning at the hospital resolves the incident just as a revive does.
+AddEventHandler('qbambulance:server:onPlayerRespawned', function(src)
+    closePatientCalls(src, 'patient respawned')
 end)
 
 -- Dead-player alert key (Config.death.alertEms). The client only asks; the server
@@ -177,6 +192,7 @@ RegisterNetEvent('qbambulance:server:alertEms', function(street)
 end)
 
 AddEventHandler('playerDropped', function()
+    closePatientCalls(source, 'patient left')
     lastAutoCallAt[source] = nil
     lastKeyAlertAt[source] = nil
 end)

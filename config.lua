@@ -178,6 +178,7 @@ Config.dispatch = {
     -- no way to reach EMS except typing a command.
     autoCall = true,
     autoCallCooldown = 45000,         -- ms per player, so one messy firefight is one call, not ten
+    closeOnResolve = true,            -- close a patient's open EMS call (and its blip) when they are revived by any means, respawn or leave the server
 }
 
 -- Multiple check-in/bed hospitals. `beds` are local offsets from `coords`

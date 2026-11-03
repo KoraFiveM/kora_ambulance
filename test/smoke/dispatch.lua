@@ -75,6 +75,43 @@ h.test('a treated patient stops being an open incident', function()
     end
 end)
 
+local function openCallsFor(src)
+    local count = 0
+    for _, entry in ipairs(handle.kora_dispatch:getCalls({ service = Config.job.type, activeOnly = true })) do
+        if entry.data and entry.data.source == src then count = count + 1 end
+    end
+    return count
+end
+
+h.test('an admin full revive closes the call even for a patient this resource never tracked', function()
+    handle.ensurePlayer(11)
+    -- A call is open but the ledger says alive (vanilla death, admin tool).
+    Ambulance.dispatch.call({ code = '10-52', title = 'Person Down', priority = 1, data = { source = 11 } })
+    h.assertEqual(openCallsFor(11), 1, 'sanity: the call is open')
+
+    Death.fullRevive(11)
+    h.assertEqual(openCallsFor(11), 0, 'no open call left')
+end)
+
+h.test('a patient who leaves the server stops being an open incident', function()
+    handle.ensurePlayer(13)
+    handle.players[13].charinfo = { firstname = 'Lee', lastname = 'Park' }
+    Death.enterLaststand(13, 'gunshot')
+    h.assertEqual(openCallsFor(13), 1, 'sanity: the call is open')
+
+    handle.fireEvent('playerDropped', 13)
+    h.assertEqual(openCallsFor(13), 0, 'the call was closed on disconnect')
+end)
+
+h.test('closeOnResolve = false leaves calls open', function()
+    Config.dispatch.closeOnResolve = false
+    handle.ensurePlayer(14)
+    Death.enterLaststand(14, 'gunshot')
+    handle.fireEvent('playerDropped', 14)
+    h.assertEqual(openCallsFor(14), 1, 'call kept')
+    Config.dispatch.closeOnResolve = true
+end)
+
 h.test('automatic calls can be turned off entirely', function()
     Config.dispatch.autoCall = false
     handle.ensurePlayer(7)

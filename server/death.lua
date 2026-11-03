@@ -286,14 +286,15 @@ function Death.fullRevive(src)
     if not QBCore:getPlayerData(src) then return false end
     if Death.getState(src) ~= 'alive' then return Death.reviveInField(src, 100, true) end
 
-    local tracked = laststandAt[src] ~= nil or deadAt[src] ~= nil
     markHealed(src)
     laststandAt[src] = nil
     deadAt[src] = nil
     Death.clearAllWounds(src)
     persistMedical(src)
     publishDownState(src, 'alive')
-    if tracked then TriggerEvent('qbambulance:server:onPlayerRevived', src) end
+    -- Always announced, even for a player this resource never saw go down (killed
+    -- by a vanilla death or an admin tool): their EMS call must still be closed.
+    TriggerEvent('qbambulance:server:onPlayerRevived', src)
     return true
 end
 
