@@ -314,4 +314,73 @@ h.test('healthRestored closes wounds at once for a really healed player and igno
     h.assertEqual(lastSync(src)[1], false)
 end)
 
+local function validHit(src, sequence)
+    return { sequence = sequence, bone = 31086, bodyPart = 'head', damage = 8, healthAfter = 175, fallback = false }
+end
+
+h.test('a hit reported right after a heal or revive is ignored until the grace window ends', function()
+    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
+    nextSrc = nextSrc + 1
+    local src = nextSrc
+    handle.ensurePlayer(src)
+    handle.setHealth(src, 175)
+    Death.recordWound(src, 'chest', 1)
+    Death.clearAllWounds(src)
+    observed(src, validHit(src, 1))
+    h.assertEqual(next(Death.getWoundData(src)), nil, 'inside the window after clearAllWounds')
+    h.assertFalse(status.isActive(src, 'bleeding'))
+
+    handle.advanceTime(Config.injuries.healGraceMs + 1)
+    observed(src, validHit(src, 2))
+    h.assertTrue(status.isActive(src, 'bleeding'), 'a real hit after the window counts')
+
+    nextSrc = nextSrc + 1
+    local other = nextSrc
+    handle.ensurePlayer(other)
+    handle.setHealth(other, 175)
+    Death.fullRevive(other)
+    observed(other, validHit(other, 1))
+    h.assertEqual(next(Death.getWoundData(other)), nil, 'inside the window after fullRevive')
+end)
+
+h.test('healGraceMs = 0 turns the grace window off', function()
+    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
+    local saved = Config.injuries.healGraceMs
+    Config.injuries.healGraceMs = 0
+    nextSrc = nextSrc + 1
+    local src = nextSrc
+    handle.ensurePlayer(src)
+    handle.setHealth(src, 175)
+    Death.clearAllWounds(src)
+    observed(src, validHit(src, 1))
+    Config.injuries.healGraceMs = saved
+    h.assertTrue(next(Death.getWoundData(src)) ~= nil)
+end)
+
+h.test('statusStale force-clears a pill only while no wound backs it', function()
+    local stale = handle.Kora.events.registry['kora_ambulance:server:statusStale']
+    nextSrc = nextSrc + 1
+    local src = nextSrc
+    handle.ensurePlayer(src)
+    Death.recordWound(src, 'chest', 1)
+
+    stale(src, 'bleeding')
+    h.assertTrue(status.isActive(src, 'bleeding'), 'an open wound keeps its pill')
+
+    -- The server lost track of the pill (never tracked) while the ledger is empty.
+    Death.getWoundData(src).chest = nil
+    status.applied[src].bleeding = nil
+    local calls = {}
+    local apply, remove = status.apply, status.remove
+    status.apply = function(target, name, opts) calls[#calls + 1] = 'apply:' .. name; return apply(target, name, opts) end
+    status.remove = function(target, name) calls[#calls + 1] = 'remove:' .. name; return remove(target, name) end
+    stale(src, 'bleeding')
+    status.apply, status.remove = apply, remove
+    h.assertEqual(table.concat(calls, ','), 'remove:bleeding,apply:bleeding,remove:bleeding')
+    h.assertFalse(status.isActive(src, 'bleeding'))
+
+    stale(src, 'not-an-effect')
+    stale(src, nil)
+end)
+
 h.report('revive_status')

@@ -12,6 +12,15 @@ local laststandAt = {}
 local deadAt = {}
 local observations = {}
 local bleedStopped = {} -- src -> true once a revive stopped the bleeding of wounds that stay on the ledger
+local healGraceUntil = {} -- src -> GetGameTimer() deadline before which new injury reports are ignored (Config.injuries.healGraceMs)
+
+---Starts the post-heal grace window: a health blip or stale hit report landing
+---right after a heal/revive must not reopen the wound that was just closed.
+---@param src integer
+local function markHealed(src)
+    local grace = Config.injuries.healGraceMs
+    healGraceUntil[src] = grace > 0 and GetGameTimer() + grace or nil
+end
 
 local VALID_TRANSITIONS = {
     alive = { died = 'laststand' },
@@ -165,6 +174,7 @@ function Death.clearAllWounds(src)
     local hadStoppedBleed = bleedStopped[src] ~= nil
     woundData[src] = {}
     bleedStopped[src] = nil
+    markHealed(src)
     Kora.status.remove(src, 'bleeding')
     Kora.status.remove(src, 'limping')
     pushStatus(src)
@@ -250,6 +260,7 @@ function Death.reviveInField(src, healthPct, clearAll)
     QBCore:setMetaData(src, 'inlaststand', false)
     laststandAt[src] = nil
     deadAt[src] = nil
+    markHealed(src)
     persistMedical(src)
     publishDownState(src, 'alive')
 
@@ -276,6 +287,7 @@ function Death.fullRevive(src)
     if Death.getState(src) ~= 'alive' then return Death.reviveInField(src, 100, true) end
 
     local tracked = laststandAt[src] ~= nil or deadAt[src] ~= nil
+    markHealed(src)
     laststandAt[src] = nil
     deadAt[src] = nil
     Death.clearAllWounds(src)
@@ -510,6 +522,7 @@ end
 Kora.events.register('qbambulance:server:hitObserved', function(src, payload)
     if not QBCore:getPlayerData(src) or not Death.isAlive(src) then return end
     if type(payload) ~= 'table' then return end
+    if healGraceUntil[src] and GetGameTimer() < healGraceUntil[src] then return end
 
     local sequence = payload.sequence
     if not isFinite(sequence) or sequence % 1 ~= 0 or sequence < 1 or sequence > MAX_SEQUENCE then return end
@@ -562,10 +575,11 @@ end
 
 -- Kora.status.remove on the server only pushes while kora_lib still tracks the
 -- effect, and a client-side removal from this resource is refused for an
--- effect kora_lib itself applied (push-owned). An apply+remove pair makes
--- kora_lib push a removal the client always honours.
+-- effect kora_lib itself applied (push-owned). When the server has lost track
+-- of an effect the client still shows, an apply+remove pair makes kora_lib push
+-- a removal the client always honours.
 local function forceClearStatus(src, name)
-    if Kora.status.isActive(src, name) then return end
+    if Kora.status.remove(src, name) then return end
     Kora.status.apply(src, name, { severity = 1 })
     Kora.status.remove(src, name)
 end
@@ -574,16 +588,30 @@ end
 -- event) never reaches the server, so the client tells us the moment it lands.
 -- Nothing is trusted: the wounds only close when the server-side health
 -- confirms the player is healthy, the same rule as the sweep. Event driven, so
--- the pill drops at once instead of waiting for the next sweep.
+-- the pill drops at once instead of waiting for the next sweep. With no wound
+-- left to close the authoritative state is pushed anyway, so a client that
+-- still shows a stale pill reconciles (and reports it, see statusStale).
 Kora.events.register('qbambulance:server:healthRestored', function(src)
     if not Config.injuries.clearOnHealEvent or not QBCore:getPlayerData(src) then return end
     Death._clearIfHealthy(src)
     if Death.getState(src) == 'alive' and next(Death.getWoundData(src)) == nil then
-        forceClearStatus(src, 'bleeding')
-        forceClearStatus(src, 'limping')
         pushStatus(src)
     end
 end, { rateLimit = { max = 3, window = 10000 } })
+
+-- The client tried to drop a pill the server says should be gone and kora_lib
+-- refused (an effect it applied itself cannot be removed by this resource).
+-- The ledger decides: the pill is only force-cleared while no wound backs it.
+Kora.events.register('kora_ambulance:server:statusStale', function(src, name)
+    if not QBCore:getPlayerData(src) then return end
+    local tier = Wounds.worstOpenTier(Death.getWoundData(src))
+    local level = tier and Wounds.woundLevelDef(tier)
+    if name == 'bleeding' and (not tier or bleedStopped[src]) then
+        forceClearStatus(src, 'bleeding')
+    elseif name == 'limping' and not (level and not level.canWalk) then
+        forceClearStatus(src, 'limping')
+    end
+end, { rateLimit = { max = 4, window = 10000 } })
 
 ---One pass of the periodic sweep. Players back at full health (healed by
 ---something outside this resource, e.g. an admin /heal) lose their wounds
@@ -623,6 +651,7 @@ AddEventHandler('playerDropped', function()
     local src = source
     woundData[src] = nil
     bleedStopped[src] = nil
+    healGraceUntil[src] = nil
     laststandAt[src] = nil
     deadAt[src] = nil
     observations[src] = nil

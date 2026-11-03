@@ -6,6 +6,8 @@ dofile('config.lua')
 
 local active = {}
 local applied, removed = {}, {}
+local refuseRemoval = false
+local stale = {}
 handle.Kora.status = {
     getActive = function()
         local out = {}
@@ -13,8 +15,18 @@ handle.Kora.status = {
         return out
     end,
     apply = function(name, opts) active[name] = opts.severity; applied[#applied + 1] = name; return true end,
-    remove = function(name) active[name] = nil; removed[#removed + 1] = name; return true end,
+    remove = function(name)
+        if refuseRemoval then return false end
+        active[name] = nil; removed[#removed + 1] = name; return true
+    end,
+    isActive = function(name) return active[name] ~= nil end,
 }
+handle.Kora.events.trigger = function(name, ...) stale[#stale + 1] = { name = name, args = { ... } } end
+
+SetTimeout = function() end -- the heal report timer is not under test here
+
+local suppressed
+Damage = { suppressFor = function(ms) suppressed = ms end }
 
 dofile('client/status.lua')
 
@@ -43,6 +55,33 @@ h.test('a severity mismatch is corrected and a lone limp survives bleeding endin
     h.assertEqual(active.limping, 4)
     sync(2, 4)
     h.assertEqual(active.bleeding, 2)
+end)
+
+h.test('a pill kora_lib refuses to remove is reported so the server can force-clear it', function()
+    active = { bleeding = 1 }
+    stale = {}
+    refuseRemoval = true
+    sync(false, false)
+    refuseRemoval = false
+    h.assertEqual(#stale, 1)
+    h.assertEqual(stale[1].name, 'kora_ambulance:server:statusStale')
+    h.assertEqual(stale[1].args[1], 'bleeding')
+
+    active = { bleeding = 1 }
+    stale = {}
+    sync(false, false)
+    h.assertEqual(#stale, 0, 'a removal that worked reports nothing')
+end)
+
+h.test('every heal and revive event opens the injury ignore window', function()
+    for _, eventName in ipairs({
+        'qbadmin:client:heal', 'qbadmin:client:revive',
+        'qbambulance:client:revived', 'qbambulance:client:respawnedAtHospital',
+    }) do
+        suppressed = nil
+        handle.fireEvent(eventName, 0)
+        h.assertEqual(suppressed, Config.injuries.healGraceMs, eventName)
+    end
 end)
 
 h.report('status_client')

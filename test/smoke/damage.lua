@@ -27,6 +27,9 @@ GetPedLastDamageBone = function(target)
     return damageBoneFound, damageBone
 end
 
+local needHandlers = {}
+exports.kora_core.onPlayerDataChange = function(_, prefix, handler) needHandlers[prefix[2]] = handler end
+
 dofile('client/damage.lua')
 
 local function nativeHit(options)
@@ -124,6 +127,43 @@ h.test('an expired correlation window and oversized losses are ignored', functio
     nativeHit()
     healthHandler(50, 200)
     h.assertEqual(#reports, before)
+end)
+
+h.test('a heal or revive window drops the pending hit and ignores hits until it ends', function()
+    local before = #reports
+    nativeHit()
+    Damage.suppressFor(Config.injuries.healGraceMs)
+    healthHandler(150, 200)
+    h.assertEqual(#reports, before, 'the hit pending before the heal is dropped')
+
+    nativeHit()
+    healthHandler(100, 150)
+    h.assertEqual(#reports, before, 'hits inside the window are ignored')
+
+    handle.advanceTime(Config.injuries.healGraceMs + 1)
+    nativeHit()
+    healthHandler(180, 200)
+    h.assertEqual(#reports, before + 1, 'a real hit after the window is reported again')
+end)
+
+h.test('an empty hunger or thirst update ignores the starvation damage that follows it', function()
+    h.assertTrue(needHandlers.hunger ~= nil and needHandlers.thirst ~= nil, 'both needs are watched')
+    local before = #reports
+
+    needHandlers.hunger({ 'metadata', 'hunger' }, 40)
+    nativeHit()
+    healthHandler(190, 200)
+    h.assertEqual(#reports, before + 1, 'a non-empty need opens no window')
+
+    needHandlers.thirst({ 'metadata', 'thirst' }, 0)
+    nativeHit()
+    healthHandler(185, 190)
+    h.assertEqual(#reports, before + 1, 'starvation damage is not an injury')
+
+    handle.advanceTime(Config.injuries.needsDamageWindowMs + 1)
+    nativeHit()
+    healthHandler(170, 185)
+    h.assertEqual(#reports, before + 2, 'hits after the window count again')
 end)
 
 h.report('damage')

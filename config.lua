@@ -124,6 +124,9 @@ Config.injuries = {
     clearWhenHealthy = true,          -- true: an alive player whose health is back at max (admin /heal, regen, any healing outside this resource) has every wound closed, so the Bleeding/Limping pills go away; false keeps wounds until treated, revived or checked in
     clearOnHealEvent = true,          -- true: the client reports an admin /heal (qbadmin:client:heal) and the server closes the wounds at once if health is really at max, instead of waiting for the sweep; false = sweep only
     healthyMargin = 0,                -- HP below max that still counts as fully healthy for clearWhenHealthy (0 = must be exactly at max)
+    healGraceMs = 2500,               -- ms after a heal or revive (admin /heal, /revive, CPR, hospital) during which new injury reports are ignored, client side and server side, so a health blip or stale hit cannot reopen a wound that was just closed; 0 = no grace
+    ignoreNeedsDamage = true,         -- true: health lost to starvation/dehydration (kora_core applies it when hunger or thirst is 0) is not an injury and never opens a bleeding wound; false = it counts like any other hit
+    needsDamageWindowMs = 1500,       -- ms after an empty hunger/thirst update during which health loss is treated as needs damage (only used while ignoreNeedsDamage is true)
 }
 
 Config.transport = {
@@ -319,6 +322,11 @@ function Config.validate()
     assert(type(Config.injuries.clearOnHealEvent) == 'boolean', 'injuries clearOnHealEvent must be boolean')
     assert(type(Config.injuries.healthyMargin) == 'number' and Config.injuries.healthyMargin >= 0,
         'injuries healthyMargin must be a non-negative number')
+    assert(type(Config.injuries.healGraceMs) == 'number' and Config.injuries.healGraceMs >= 0,
+        'injuries healGraceMs must be a non-negative number')
+    assert(type(Config.injuries.ignoreNeedsDamage) == 'boolean', 'injuries ignoreNeedsDamage must be boolean')
+    assert(type(Config.injuries.needsDamageWindowMs) == 'number' and Config.injuries.needsDamageWindowMs >= 0,
+        'injuries needsDamageWindowMs must be a non-negative number')
     assert(type(Config.hospitals) == 'table' and #Config.hospitals > 0, 'at least one hospital is required')
     for _, hospital in ipairs(Config.hospitals) do
         assert(type(hospital.name) == 'string' and hospital.name ~= '' and not hospitalNames[hospital.name], 'hospital names must be unique')

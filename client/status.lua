@@ -17,7 +17,12 @@ local function reconcile(name, severity)
             Kora.status.apply(name, { severity = severity })
         end
     elseif current then
-        Kora.status.remove(name)
+        -- kora_lib refuses a removal from this resource for an effect it applied
+        -- itself (a server push), so the pill survives. Only the server can
+        -- clear that one: ask it to, once it has checked the ledger agrees.
+        if not Kora.status.remove(name) and Kora.status.isActive(name) then
+            Kora.events.trigger('kora_ambulance:server:statusStale', name)
+        end
     end
 end
 
@@ -35,3 +40,17 @@ RegisterNetEvent('qbadmin:client:heal', function()
         Kora.events.trigger('qbambulance:server:healthRestored')
     end)
 end)
+
+-- Every path that sets this ped's health from outside a fight (admin heal and
+-- revive, CPR, hospital respawn): the health change that follows is not an
+-- injury, so a hit pending from before must not turn it into a new wound.
+for _, eventName in ipairs({
+    'qbadmin:client:heal',
+    'qbadmin:client:revive',
+    'qbambulance:client:revived',
+    'qbambulance:client:respawnedAtHospital',
+}) do
+    RegisterNetEvent(eventName, function()
+        Damage.suppressFor(Config.injuries.healGraceMs)
+    end)
+end
