@@ -51,7 +51,7 @@ AddEventHandler('gameEventTriggered', function(name, args)
     }
 end)
 
-Kora.cache.onChange('health', function(health, previousHealth)
+local function onHealthChange(health, previousHealth)
     local hit = pendingHit
     if not hit then return end
 
@@ -86,6 +86,13 @@ Kora.cache.onChange('health', function(health, previousHealth)
         healthAfter = health,
         fallback = fallback,
     })
+end
+
+-- kora_lib drops every onChange registration when it restarts; re-register on
+-- its restart. No seeding: this correlates health decreases, not a state.
+Kora.cache.onChange('health', onHealthChange)
+AddEventHandler('onClientResourceStart', function(resource)
+    if resource == 'kora_lib' then Kora.cache.onChange('health', onHealthChange) end
 end)
 
 -- kora_core hurts a starving or dehydrated ped (ApplyDamageToPed) on every

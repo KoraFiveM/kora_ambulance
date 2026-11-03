@@ -498,6 +498,27 @@ h.test('respawn disabled while medics are on duty: prompt says so, /respawn refu
     _G.Wait = realWait
 end)
 
+h.test('a kora_lib restart re-registers the death edge and reports a death it missed', function()
+    deathHandler = nil
+    _G.TriggerEvent('onClientResourceStart', 'kora_target')
+    h.assertEqual(deathHandler, nil, 'other resources starting do not re-register')
+
+    fatal = true
+    acceptReport = true
+    reportAttempts = 0
+    _G.TriggerEvent('onClientResourceStart', 'kora_lib')
+    h.assertTrue(deathHandler ~= nil, 'the isDead listener is registered again')
+    handle.step()
+    h.assertEqual(reportAttempts, 1, 'a player already fatally injured is seeded once')
+
+    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    fatal = false
+    reportAttempts = 0
+    _G.TriggerEvent('onClientResourceStart', 'kora_lib')
+    handle.step()
+    h.assertEqual(reportAttempts, 0, 'an alive player is not reported on restart')
+end)
+
 h.report('death_client')
 
 h.test('a ped below the ground probe is lifted, one resting on uneven ground is not moved', function()
