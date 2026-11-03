@@ -146,7 +146,7 @@ AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
 end)
 
 -- An admin /heal (server/death.lua confirms the health) leaves nobody to treat.
-AddEventHandler('qbambulance:server:onPlayerHealed', function(src)
+AddEventHandler('kora_ambulance:server:onPlayerHealed', function(src)
     closePatientCalls(src, 'patient healed')
 end)
 

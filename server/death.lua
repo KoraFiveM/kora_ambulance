@@ -604,7 +604,7 @@ Kora.events.register('qbambulance:server:healthRestored', function(src)
         pushStatus(src)
     end
     -- Healed for real: their open EMS call is resolved (server/dispatch.lua).
-    if isHealthy(src) then TriggerEvent('qbambulance:server:onPlayerHealed', src) end
+    if isHealthy(src) then TriggerEvent('kora_ambulance:server:onPlayerHealed', src) end
 end, { rateLimit = { max = 3, window = 10000 } })
 
 -- The client tried to drop a pill the server says should be gone and kora_lib
