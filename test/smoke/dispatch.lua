@@ -68,6 +68,7 @@ h.test('the two death-lifecycle priorities are configurable and swappable', func
     Config.dispatch.autoCallCooldown = 0
     cfg.personDown, cfg.possibleFatality = 2, 1
 
+    Death.reviveInField(PATIENT, 30)
     Death.enterLaststand(PATIENT, 'gunshot')
     h.assertEqual(handle.lastDispatchCall().code, '10-52')
     h.assertEqual(handle.lastDispatchCall().priority, 2, 'person down follows Config.dispatch.priorities')
