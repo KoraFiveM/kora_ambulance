@@ -17,13 +17,15 @@ local painScreenHandle
 -- directly still finds a listener rather than an error.
 RegisterNetEvent('hospital:client:ambulanceAlert', function() end)
 
-RegisterNetEvent('hospital:client:Revive', function()
+-- Admin /revive and the admin menu fire these after the player is already up,
+-- so the CPR hint is opt-in (Config.compat.reviveNotice).
+local function reviveNotice()
+    if not Config.compat.reviveNotice then return end
     Kora.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
-end)
+end
 
-RegisterNetEvent('hospital:client:RevivePlayer', function()
-    Kora.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
-end)
+RegisterNetEvent('hospital:client:Revive', reviveNotice)
+RegisterNetEvent('hospital:client:RevivePlayer', reviveNotice)
 
 RegisterNetEvent('hospital:client:SetPain', function(level)
     if tonumber(level) and tonumber(level) > 0 then

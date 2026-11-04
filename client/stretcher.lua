@@ -11,7 +11,6 @@ local pushingNetworkId
 local loadedNetworkId
 
 local CARRY_OFFSET = { x = 0.0, y = -0.65, z = 0.0 }
-local CARRY_ANIM = { dict = 'missfbi3', clip = 'fbi3_c3_speaker_lookback01', flag = 49 }
 local PUSH_ANIM = { dict = 'anim@heists@box_carry@', clip = 'idle', flag = 49 }
 local PATIENT_ANIM = { dict = 'anim@gangops@morgue@table@', clip = 'body_search', flag = 1 }
 
@@ -193,7 +192,8 @@ end
 
 local function startCarryDragger(targetSrc)
     carryDragging = { targetSrc = targetSrc }
-    Kora.anim.play(PlayerPedId(), CARRY_ANIM.dict, CARRY_ANIM.clip, { flag = CARRY_ANIM.flag })
+    local anim = Config.carry.dragger
+    Kora.anim.play(PlayerPedId(), anim.dict, anim.clip, { flag = anim.flag })
 
     CreateThread(function()
         while carryDragging and carryDragging.targetSrc == targetSrc do
@@ -213,7 +213,8 @@ local function startCarryPatient(draggerSrc)
     carryDragged = { draggerSrc = draggerSrc }
     local ped = PlayerPedId()
     SetPedCanRagdoll(ped, false)
-    Kora.anim.play(ped, 'get_up@multiplayer@transitions@prone_to_idle', 'prone_to_idle', { flag = 1 })
+    local anim = Config.carry.patient
+    Kora.anim.play(ped, anim.dict, anim.clip, { flag = anim.flag })
 
     CreateThread(function()
         while carryDragged and carryDragged.draggerSrc == draggerSrc do

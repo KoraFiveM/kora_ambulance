@@ -108,6 +108,7 @@ local hospitalHandlers = {
 local facilityKinds = { checkIn = true, pharmacy = true, stash = true }
 
 local zoneIds = {} -- hospital name -> ids of the zones registered for it, replaced on re-registration
+local hospitalBlips = {} -- hospital name -> map blip, removed before re-registration so a kora_target restart never stacks a second one
 
 local function registerHospital(hospital)
     if Config.Debug then
@@ -120,7 +121,9 @@ local function registerHospital(hospital)
         function(id) exports.kora_target:removeZone(id) end)
 
     if hospital.blip then
+        if hospitalBlips[hospital.name] then Kora.blips.remove(hospitalBlips[hospital.name]) end
         local blip = Kora.blips.create(hospital.coords, hospital.blip)
+        hospitalBlips[hospital.name] = blip
         if blip and not hospital.blip.info then
             Kora.blips.setInfo(blip, {
                 title = hospital.label,

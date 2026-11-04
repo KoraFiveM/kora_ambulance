@@ -12,6 +12,8 @@ Kora.blips.create = function(_, options)
     hospitalBlips[#hospitalBlips + 1] = options
     return #hospitalBlips
 end
+local removedBlips = {}
+Kora.blips.remove = function(blip) removedBlips[#removedBlips + 1] = blip end
 local keybinds = {}
 Kora.keybind = { add = function(definition)
     local bind = { definition = definition, disabled = definition.disabled == true }
@@ -41,6 +43,11 @@ h.test('hospital check-in targets register again after qbtarget restarts', funct
     local before = #handle.kora_target.calls
     handle.fireEvent('onClientResourceStart', nil, 'kora_target')
     h.assertEqual(#handle.kora_target.calls, before * 2)
+end)
+
+h.test('re-registering after a kora_target restart replaces the hospital blips instead of stacking them', function()
+    h.assertEqual(#removedBlips, #Config.hospitals)
+    h.assertEqual(#hospitalBlips, #Config.hospitals * 2)
 end)
 
 h.test('completed server care heals locally; cancelled and inactive care do not', function()

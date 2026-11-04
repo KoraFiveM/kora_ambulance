@@ -144,6 +144,13 @@ Config.compat = {
     enabled = true,                   -- enables legacy qb-ambulancejob compatibility endpoints
     acceptClientInjurySync = false,   -- legacy injury sync remains opt-in; server-owned injury reports are preferred
     allowDestructiveItemEvents = false, -- legacy item-removal events never remove inventory without explicit opt-in
+    reviveNotice = false,             -- true: hospital:client:Revive / RevivePlayer (fired by admin /revive and the admin menu) show an "EMS - a medic must perform CPR" toast; false = silent, an admin revive already stands the player up
+}
+
+Config.carry = {
+    -- Emergency-carry animations (dictionary/clip must exist in the game; verified against the GTA anim list).
+    dragger = { dict = 'missfinale_c2mcs_1', clip = 'fin_c2_mcs_1_camman', flag = 49 }, -- the player doing the carrying
+    patient = { dict = 'nm', clip = 'firemans_carry', flag = 1 },                        -- the player being carried
 }
 
 Config.painkillers = {
