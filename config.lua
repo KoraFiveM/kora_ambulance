@@ -187,6 +187,17 @@ Config.dispatch = {
     autoCallCooldown = 45000,         -- ms per player, so one messy firefight is one call, not ten
     closeOnResolve = true,            -- close a patient's open EMS call (and its blip) when they are revived by any means, healed by an admin /heal, respawn or leave the server
     closeCallerAlerts = true,         -- with closeOnResolve, the /911e alerts a player raised themself close the same way (the downed screen points them at /911e); false = only the automatic person-down calls close
+
+    -- kora_dispatch priority numbers for the two death-lifecycle calls. These are
+    -- kora_dispatch's own priorities (Config.priorities there: 1 = Critical,
+    -- 2 = High, 3 = Routine by default), so match them to your dispatch config.
+    -- The defaults rank a savable downed patient above a bled-out one; swap them
+    -- (personDown = 2, possibleFatality = 1) to rank the fatality as Critical.
+    -- personDown also applies to the dead-player help key alert (Config.death.alertEms).
+    priorities = {
+        personDown = 1,               -- 10-52 Person Down: entering laststand / bleeding out
+        possibleFatality = 2,         -- 10-54 Possible Fatality: bled out / dead
+    },
 }
 
 -- Multiple check-in/bed hospitals. `beds` are local offsets from `coords`
@@ -299,6 +310,11 @@ end
 ---@return boolean
 function Config.validate()
     local hospitalNames, beds, bones = {}, {}, {}
+    local priorities = Config.dispatch.priorities
+    assert(type(priorities) == 'table'
+        and type(priorities.personDown) == 'number' and priorities.personDown >= 1 and priorities.personDown % 1 == 0
+        and type(priorities.possibleFatality) == 'number' and priorities.possibleFatality >= 1 and priorities.possibleFatality % 1 == 0,
+        'dispatch priorities needs whole-number personDown and possibleFatality (>= 1)')
     assert(type(Config.death.allowCameraMovement) == 'boolean', 'death allowCameraMovement must be boolean')
     assert(Config.death.cameraMode == 'free' or Config.death.cameraMode == 'fixed', "death cameraMode must be 'free' or 'fixed'")
     assert(type(Config.death.holdDownedHealth) == 'boolean', 'death holdDownedHealth must be boolean')

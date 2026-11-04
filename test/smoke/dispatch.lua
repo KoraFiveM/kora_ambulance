@@ -57,6 +57,32 @@ h.test('bleeding out raises a lower-priority call than going down did', function
     h.assertEqual(call.priority, 2, 'below the person-down call')
 end)
 
+h.test('the two death-lifecycle priorities are configurable and swappable', function()
+    local cfg = Config.dispatch.priorities
+    h.assertEqual(cfg.personDown, 1, 'default person-down priority')
+    h.assertEqual(cfg.possibleFatality, 2, 'default possible-fatality priority')
+    h.assertTrue(Config.validate())
+
+    local down, fatality = cfg.personDown, cfg.possibleFatality
+    local cooldown = Config.dispatch.autoCallCooldown
+    Config.dispatch.autoCallCooldown = 0
+    cfg.personDown, cfg.possibleFatality = 2, 1
+
+    Death.enterLaststand(PATIENT, 'gunshot')
+    h.assertEqual(handle.lastDispatchCall().code, '10-52')
+    h.assertEqual(handle.lastDispatchCall().priority, 2, 'person down follows Config.dispatch.priorities')
+
+    Death.markDead(PATIENT)
+    h.assertEqual(handle.lastDispatchCall().code, '10-54')
+    h.assertEqual(handle.lastDispatchCall().priority, 1, 'possible fatality follows Config.dispatch.priorities')
+
+    cfg.personDown = 'high'
+    h.assertThrows(Config.validate)
+
+    cfg.personDown, cfg.possibleFatality = down, fatality
+    Config.dispatch.autoCallCooldown = cooldown
+end)
+
 h.test('a treated patient stops being an open incident', function()
     handle.ensurePlayer(6)
     handle.players[6].charinfo = { firstname = 'Robin', lastname = 'Vale' }

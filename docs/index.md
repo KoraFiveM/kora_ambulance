@@ -327,8 +327,17 @@ help key:
 | Bleeds out | `10-54 Possible Fatality` | 2 |
 | Revived (any means, admin `/revive` and `/selfrevive` included), healed by an admin `/heal`, respawned or disconnected | the patient's open calls are **closed** (`Config.dispatch.closeOnResolve`) | — |
 
-The fatality is deliberately below the person-down call: nobody is being saved
-now, so it must not outrank a patient who still can be. Repeat calls for the same
+The priorities are kora_dispatch priority numbers (its default labels: 1 =
+Critical, 2 = High, 3 = Routine). By default the fatality is below the person-down
+call: nobody is being saved now, so it does not outrank a patient who still can be.
+Servers that prefer the opposite ranking set `Config.dispatch.priorities`:
+
+| Option | Default | Effect |
+|---|---|---|
+| `priorities.personDown` | `1` | Priority of the `10-52 Person Down` calls: entering laststand, and the dead-player help key alert (`Config.death.alertEms`). |
+| `priorities.possibleFatality` | `2` | Priority of the `10-54 Possible Fatality` call. Swap the two values (`2` / `1`) to make the fatality Critical and the person-down call High. |
+
+The `/911e` house-call alert is separate and stays priority 1. Repeat calls for the same
 casualty are suppressed for `Config.dispatch.autoCallCooldown`, so one messy
 firefight is one call rather than ten — and the cooldown is *not* reset by a
 revive, because a patient put straight back down is the same incident to the

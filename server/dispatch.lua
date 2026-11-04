@@ -68,9 +68,23 @@ local function coordsOf(src, coords)
     return { x = position.x, y = position.y, z = position.z }
 end
 
--- Entering laststand: the patient is down but savable, and this is the alert
--- that actually matters -- a paramedic reaching them before the bleed-out timer
--- expires is the difference between a revive and a respawn.
+---kora_dispatch priority number for an automatic call, from
+---Config.dispatch.priorities. The defaults are the current ranking; a server can
+---swap them. An unset or invalid entry falls back to the default.
+---@param key 'personDown'|'possibleFatality'
+---@param default integer
+---@return integer
+local function priorityFor(key, default)
+    local priorities = Config.dispatch.priorities
+    local value = priorities and priorities[key]
+    if type(value) ~= 'number' or value < 1 then return default end
+    return math.floor(value)
+end
+
+-- Entering laststand: the patient is down but savable, and by default this is the
+-- alert that ranks highest -- a paramedic reaching them before the bleed-out
+-- timer expires is the difference between a revive and a respawn. The rank is
+-- Config.dispatch.priorities.personDown.
 AddEventHandler('qbambulance:server:onPlayerDied', function(src, cause)
     if not Config.dispatch.autoCall then return end
     if not cooldownElapsed(src) then return end
@@ -81,16 +95,17 @@ AddEventHandler('qbambulance:server:onPlayerDied', function(src, cause)
         code = '10-52',
         title = 'Person Down',
         message = ('%s is down and requires medical assistance.'):format(patient),
-        priority = 1,
+        priority = priorityFor('personDown', 1),
         coords = coordsOf(src),
         icon = 'heart-pulse',
         data = { patient = patient, cause = cause, source = src },
     })
 end)
 
--- Bled out. Lower priority than the laststand alert on purpose: nobody is being
--- saved now, so it must not outrank a patient who still can be. It is raised at
--- all because a body still needs collecting and the death still wants recording.
+-- Bled out. By default ranked below the laststand alert: nobody is being saved
+-- now, so it does not outrank a patient who still can be. Servers that want the
+-- fatality to rank higher swap Config.dispatch.priorities. It is raised at all
+-- because a body still needs collecting and the death still wants recording.
 AddEventHandler('qbambulance:server:onPlayerDead', function(src)
     if not Config.dispatch.autoCall then return end
 
@@ -99,7 +114,7 @@ AddEventHandler('qbambulance:server:onPlayerDead', function(src)
         code = '10-54',
         title = 'Possible Fatality',
         message = ('%s has stopped breathing.'):format(patient),
-        priority = 2,
+        priority = priorityFor('possibleFatality', 2),
         coords = coordsOf(src),
         icon = 'heart-pulse',
         data = { patient = patient, source = src },
@@ -196,7 +211,7 @@ RegisterNetEvent('qbambulance:server:alertEms', function(street)
         code = '10-52',
         title = 'Person Down -- Assistance Requested',
         message = ('%s is down and is asking for a medic at %s.'):format(patient, where),
-        priority = 1,
+        priority = priorityFor('personDown', 1),
         coords = coords,
         icon = 'heart-pulse',
         data = { patient = patient, source = src, street = street },
