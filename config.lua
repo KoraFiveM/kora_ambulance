@@ -195,8 +195,8 @@ Config.dispatch = {
     -- (personDown = 2, possibleFatality = 1) to rank the fatality as Critical.
     -- personDown also applies to the dead-player help key alert (Config.death.alertEms).
     priorities = {
-        personDown = 1,               -- 10-52 Person Down: entering laststand / bleeding out
-        possibleFatality = 2,         -- 10-54 Possible Fatality: bled out / dead
+        personDown = 2,               -- 10-52 Person Down: entering laststand / bleeding out
+        possibleFatality = 1,         -- 10-54 Possible Fatality: bled out / dead
     },
 }
 
