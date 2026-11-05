@@ -10,7 +10,9 @@ local stretcherStates = {} -- networkId -> replicated server snapshot
 local pushingNetworkId
 local loadedNetworkId
 
-local CARRY_OFFSET = { x = 0.0, y = -0.65, z = 0.0 }
+-- Fireman's-carry shoulder position for the nm/firemans_carry clip, relative to the carrier.
+local CARRY_OFFSET = { x = 0.27, y = 0.15, z = 0.63 }
+local CARRY_ROTATION = { x = 0.5, y = 0.5, z = 180.0 }
 local PUSH_ANIM = { dict = 'anim@heists@box_carry@', clip = 'idle', flag = 49 }
 local PATIENT_ANIM = { dict = 'anim@gangops@morgue@table@', clip = 'body_search', flag = 1 }
 
@@ -209,27 +211,35 @@ local function stopCarryDragging()
     Kora.anim.stop(PlayerPedId())
 end
 
+-- The patient's client owns its ped, so attaching it to the carrier replicates
+-- to every player. Teleporting it each frame only moved it locally. Re-checked
+-- every 250ms: a resurrect (new ped) or a ragdoll drops the attachment/anim.
 local function startCarryPatient(draggerSrc)
     carryDragged = { draggerSrc = draggerSrc }
-    local ped = PlayerPedId()
-    SetPedCanRagdoll(ped, false)
     local anim = Config.carry.patient
-    Kora.anim.play(ped, anim.dict, anim.clip, { flag = anim.flag })
 
     CreateThread(function()
         while carryDragged and carryDragged.draggerSrc == draggerSrc do
             local draggerPlayer = GetPlayerFromServerId(draggerSrc)
-            if draggerPlayer ~= -1 then
-                local draggerPed = GetPlayerPed(draggerPlayer)
-                if draggerPed and draggerPed ~= 0 and DoesEntityExist(draggerPed) then
-                    local myPed = PlayerPedId()
-                    local pos = GetOffsetFromEntityInWorldCoords(draggerPed,
-                        CARRY_OFFSET.x, CARRY_OFFSET.y, CARRY_OFFSET.z)
-                    SetEntityCoordsNoOffset(myPed, pos.x, pos.y, pos.z, false, false, false)
-                    SetEntityHeading(myPed, GetEntityHeading(draggerPed))
+            local draggerPed = draggerPlayer ~= -1 and GetPlayerPed(draggerPlayer) or 0
+            if draggerPed ~= 0 and DoesEntityExist(draggerPed) then
+                local ped = PlayerPedId()
+                SetPedCanRagdoll(ped, false)
+                if IsPedRagdoll(ped) then ClearPedTasksImmediately(ped) end
+                if not IsEntityAttachedToEntity(ped, draggerPed) then
+                    DetachEntity(ped, true, false)
+                    AttachEntityToEntity(ped, draggerPed, 0,
+                        CARRY_OFFSET.x, CARRY_OFFSET.y, CARRY_OFFSET.z,
+                        CARRY_ROTATION.x, CARRY_ROTATION.y, CARRY_ROTATION.z,
+                        false, false, false, false, 2, false)
+                end
+                if not IsEntityPlayingAnim(ped, anim.dict, anim.clip, 3) then
+                    Kora.anim.play(ped, anim.dict, anim.clip, { flag = anim.flag })
+                    -- play yields while the dict streams; don't leave the clip on after a release.
+                    if not carryDragged or carryDragged.draggerSrc ~= draggerSrc then Kora.anim.stop(ped) end
                 end
             end
-            Wait(0)
+            Wait(250)
         end
     end)
 end
@@ -238,6 +248,7 @@ local function stopCarryPatient()
     if not carryDragged then return end
     carryDragged = nil
     local ped = PlayerPedId()
+    DetachEntity(ped, true, false)
     SetPedCanRagdoll(ped, true)
     Kora.anim.stop(ped)
 end

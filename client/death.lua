@@ -137,7 +137,10 @@ local function runDownedLoop(generation, state)
         while downGeneration == generation and (state == 'dead' and State.isDead or state == 'laststand' and State.inLaststand) do
             disableDownedControls()
             drawScreenDim(state)
-            if state == 'laststand' then SetPedCanRagdoll(PlayerPedId(), true) end
+            -- A carried/stretcher patient has ragdoll off; re-enabling it here knocks them off.
+            if state == 'laststand' and not (Stretcher and Stretcher.isBeingDragged and Stretcher.isBeingDragged()) then
+                SetPedCanRagdoll(PlayerPedId(), true)
+            end
 
             local now = GetGameTimer()
             if now >= nextAnimCheck then

@@ -125,7 +125,9 @@ Kora.callback.register('qbambulance:server:beginRevive', function(src, targetSrc
         expiresAt = GetGameTimer() + Config.death.reviveActionTtl,
     }
     actionOwnerByTarget[targetSrc] = src
-    return token, nil, authorization
+    -- `false`, not nil: a nil hole in a multi-value return is dropped crossing
+    -- the kora_lib export/funcref boundary, which silently lost `authorization`.
+    return token, false, authorization
 end)
 
 Kora.events.register('qbambulance:server:completeRevive', function(src, targetSrc, token, proof)
@@ -136,9 +138,13 @@ Kora.events.register('qbambulance:server:completeRevive', function(src, targetSr
     if action.expiresAt < GetGameTimer() then return end
     if not Kora.minigames.consumeProof(src, proof, 'mash', action.authorization) then
         lastAttemptAt[targetSrc] = os.time()
+        Kora.notify.send(src, { title = 'EMS', message = 'CPR attempt failed.', type = 'error' })
         return
     end
-    Revive.complete(src, targetSrc, true)
+    local revived, reason = Revive.complete(src, targetSrc, true)
+    if not revived and reason then
+        Kora.notify.send(src, { title = 'EMS', message = reason, type = 'error' })
+    end
 end)
 
 AddEventHandler('playerDropped', function()
