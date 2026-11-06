@@ -150,7 +150,14 @@ Config.compat = {
 Config.carry = {
     -- Emergency-carry animations (dictionary/clip must exist in the game; verified against the GTA anim list).
     dragger = { dict = 'missfinale_c2mcs_1', clip = 'fin_c2_mcs_1_camman', flag = 49 }, -- the player doing the carrying
-    patient = { dict = 'nm', clip = 'firemans_carry', flag = 1 },                        -- the player being carried
+    -- Flag 33 = loop + secondary task, the standard fireman's-carry recipe. With 1 (a primary task) the
+    -- downed ped's own tasks fight the clip and the body hangs off the carrier instead of over the shoulder.
+    patient = { dict = 'nm', clip = 'firemans_carry', flag = 33 },                       -- the player being carried
+    -- Where the patient sits relative to the carrier's root (metres / degrees). Tune here, not in code.
+    patientOffset = { x = 0.27, y = 0.15, z = 0.63 },
+    patientRotation = { x = 0.5, y = 0.5, z = 180.0 },
+    stopPrompt = true,                -- true: the carrying medic sees an "E - Stop Carrying" prompt and E releases the patient; false = release only via the ALT target menu
+    stopControl = 38,                 -- control for stopPrompt (38 = INPUT_PICKUP, E by default)
 }
 
 Config.painkillers = {

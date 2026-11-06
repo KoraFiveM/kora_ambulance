@@ -10,9 +10,20 @@ local stretcherStates = {} -- networkId -> replicated server snapshot
 local pushingNetworkId
 local loadedNetworkId
 
--- Fireman's-carry shoulder position for the nm/firemans_carry clip, relative to the carrier.
+-- Fireman's-carry shoulder position for the nm/firemans_carry clip, relative to
+-- the carrier. Config.carry.patientOffset/patientRotation override these.
 local CARRY_OFFSET = { x = 0.27, y = 0.15, z = 0.63 }
 local CARRY_ROTATION = { x = 0.5, y = 0.5, z = 180.0 }
+
+---@param value any
+---@param fallback table
+---@return table
+local function vec3Config(value, fallback)
+    if type(value) ~= 'table' and type(value) ~= 'vector3' then return fallback end
+    local x, y, z = tonumber(value.x), tonumber(value.y), tonumber(value.z)
+    if not x or not y or not z then return fallback end
+    return { x = x, y = y, z = z }
+end
 local PUSH_ANIM = { dict = 'anim@heists@box_carry@', clip = 'idle', flag = 49 }
 local PATIENT_ANIM = { dict = 'anim@gangops@morgue@table@', clip = 'body_search', flag = 1 }
 
@@ -203,6 +214,28 @@ local function startCarryDragger(targetSrc)
             Wait(2000)
         end
     end)
+
+    -- A way to put the patient down without ALT-targeting a ped that is now
+    -- on the medic's shoulder. The server's release handler already only
+    -- releases the sender's own carry.
+    if Config.carry.stopPrompt == false then return end
+    local control = tonumber(Config.carry.stopControl) or 38
+    CreateThread(function()
+        local promptId = Kora.textui.show('Stop Carrying', { key = 'E', icon = 'hand' })
+        while carryDragging and carryDragging.targetSrc == targetSrc do
+            -- kora_target confirms its menu with the same key: picking another
+            -- option (CPR, assess) while carrying must not also drop the patient.
+            local targeting = false
+            local ok, state = pcall(function() return exports.kora_target:getState() end)
+            if ok and type(state) == 'table' then targeting = state.active == true end
+            if not targeting and IsControlJustPressed(0, control) then
+                Kora.events.trigger('qbambulance:server:stretcherRelease')
+                Wait(500)
+            end
+            Wait(0)
+        end
+        Kora.textui.hide(promptId)
+    end)
 end
 
 local function stopCarryDragging()
@@ -217,6 +250,8 @@ end
 local function startCarryPatient(draggerSrc)
     carryDragged = { draggerSrc = draggerSrc }
     local anim = Config.carry.patient
+    local offset = vec3Config(Config.carry.patientOffset, CARRY_OFFSET)
+    local rotation = vec3Config(Config.carry.patientRotation, CARRY_ROTATION)
 
     CreateThread(function()
         while carryDragged and carryDragged.draggerSrc == draggerSrc do
@@ -226,17 +261,24 @@ local function startCarryPatient(draggerSrc)
                 local ped = PlayerPedId()
                 SetPedCanRagdoll(ped, false)
                 if IsPedRagdoll(ped) then ClearPedTasksImmediately(ped) end
-                if not IsEntityAttachedToEntity(ped, draggerPed) then
-                    DetachEntity(ped, true, false)
-                    AttachEntityToEntity(ped, draggerPed, 0,
-                        CARRY_OFFSET.x, CARRY_OFFSET.y, CARRY_OFFSET.z,
-                        CARRY_ROTATION.x, CARRY_ROTATION.y, CARRY_ROTATION.z,
-                        false, false, false, false, 2, false)
-                end
+                -- Clip first, then attach (the usual fireman's-carry order): the
+                -- offset is authored for the firemans_carry pose, not the downed one.
                 if not IsEntityPlayingAnim(ped, anim.dict, anim.clip, 3) then
                     Kora.anim.play(ped, anim.dict, anim.clip, { flag = anim.flag })
                     -- play yields while the dict streams; don't leave the clip on after a release.
-                    if not carryDragged or carryDragged.draggerSrc ~= draggerSrc then Kora.anim.stop(ped) end
+                    if not carryDragged or carryDragged.draggerSrc ~= draggerSrc then
+                        Kora.anim.stop(ped)
+                        return
+                    end
+                    -- A resurrect while streaming hands back a new ped.
+                    ped = PlayerPedId()
+                end
+                if not IsEntityAttachedToEntity(ped, draggerPed) then
+                    DetachEntity(ped, true, false)
+                    AttachEntityToEntity(ped, draggerPed, 0,
+                        offset.x, offset.y, offset.z,
+                        rotation.x, rotation.y, rotation.z,
+                        false, false, false, false, 2, false)
                 end
             end
             Wait(250)
