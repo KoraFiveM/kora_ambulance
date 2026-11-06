@@ -160,6 +160,13 @@ Config.carry = {
     stopControl = 38,                 -- control for stopPrompt (38 = INPUT_PICKUP, E by default)
 }
 
+Config.firstaid = {
+    enabled = true,                   -- true: the kora_core 'firstaid' item is usable (consumed, heals to full health, clears wounds and bleeding); false = item does nothing
+    duration = 5000,                  -- ms the "Using First Aid" progress bar runs
+    targetEnabled = true,             -- true: on-duty EMS get an ALT target option to use a first aid kit on another player (medic's kit consumed, patient healed); false = self-use only
+    targetRange = 3.0,                -- metres the medic must be within of the patient for the target option
+}
+
 Config.painkillers = {
     interval = 300000,                -- ms cooldown between painkiller uses (per player, in memory)
     animDict = 'mp_suicide',          -- pill-taking animation dictionary
@@ -177,6 +184,7 @@ Config.treatment = {
     duration = 5000,                  -- ms an on-duty medic must spend treating one wound
     range = 3.0,                      -- metres the medic must remain from the patient throughout treatment
     actionTtl = 15000,                -- ms before an unfinished server-issued treatment action expires
+    ifakHealthAmount = 50,            -- HP an IFAK treatment restores to the patient (capped at their max health); 0 = wound only, no health benefit
 }
 
 Config.dispatch = {

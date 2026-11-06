@@ -164,6 +164,12 @@ function Treatment.complete(medicSrc, patientSrc, token, completed)
     if not removed then return false, removeErr or 'could not consume medical supply' end
 
     Death.clearWound(patientSrc, action.bodyPart)
+    local part = Wounds.bodyPartDef(action.bodyPart)
+    Kora.notify.send(patientSrc, { title = 'Patient Treatment', message = ('A medic treated your wound (%s).'):format(part and part.label or action.bodyPart), type = 'success' })
+    local heal = Config.treatment.ifakHealthAmount or 0
+    if action.item == 'ifak' and heal > 0 and Death.isAlive(patientSrc) then
+        TriggerClientEvent('qbambulance:client:painkillerBenefit', patientSrc, heal)
+    end
     TriggerEvent('qbambulance:server:onPatientTreated', patientSrc, medicSrc,
         action.bodyPart, currentTier, action.item)
     return true, nil

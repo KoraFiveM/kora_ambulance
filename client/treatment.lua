@@ -92,8 +92,13 @@ end
 -- option. All authority remains in server/treatment.lua.
 RegisterNetEvent('qbambulance:client:treatmentRequested', treatPatientById)
 
+local function useFirstAid(entity)
+    local patientSrc = targetServerId(entity)
+    if patientSrc then TriggerServerEvent('qbambulance:server:firstAidTarget', patientSrc) end
+end
+
 local function registerTargets()
-    exports.kora_target:addGlobalType('player', {
+    local options = {
         {
             label = 'Assess Patient',
             icon = 'stethoscope',
@@ -106,7 +111,16 @@ local function registerTargets()
             canInteract = isOnDutyEMS,
             onSelect = treatPatient,
         },
-    }, Config.treatment.range)
+    }
+    if Config.firstaid and Config.firstaid.enabled and Config.firstaid.targetEnabled then
+        options[#options + 1] = {
+            label = 'Use First Aid Kit',
+            icon = 'kit-medical',
+            canInteract = isOnDutyEMS,
+            onSelect = useFirstAid,
+        }
+    end
+    exports.kora_target:addGlobalType('player', options, Config.treatment.range)
 end
 
 registerTargets()

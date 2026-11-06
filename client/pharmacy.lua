@@ -18,6 +18,14 @@ Kora.callback.register('qbambulance:client:pharmacyProgress', function(payload)
     })
 end)
 
+-- First aid kit: server/items.lua consumed the item and cleared the wounds;
+-- restore the ped to full health (a downed player is left to the death flow).
+RegisterNetEvent('qbambulance:client:firstAidHeal', function()
+    if State and State.isAlive and not State.isAlive() then return end
+    local ped = PlayerPedId()
+    SetEntityHealth(ped, GetEntityMaxHealth(ped))
+end)
+
 -- Painkiller benefit. SetEntityHealth only exists client-side, so server/items.lua
 -- (which owns item removal and the cooldown) sends the Config.painkillers.
 -- healthAmount here after a completed use. Capped at max health; a downed

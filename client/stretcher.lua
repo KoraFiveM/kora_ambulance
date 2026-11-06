@@ -264,6 +264,9 @@ local function startCarryPatient(draggerSrc)
                 -- Clip first, then attach (the usual fireman's-carry order): the
                 -- offset is authored for the firemans_carry pose, not the downed one.
                 if not IsEntityPlayingAnim(ped, anim.dict, anim.clip, 3) then
+                    -- The downed writhe/dead clip is a primary task that outranks the flag-33
+                    -- carry clip, leaving the body in the downed pose instead of over the shoulder.
+                    ClearPedTasks(ped)
                     Kora.anim.play(ped, anim.dict, anim.clip, { flag = anim.flag })
                     -- play yields while the dict streams; don't leave the clip on after a release.
                     if not carryDragged or carryDragged.draggerSrc ~= draggerSrc then

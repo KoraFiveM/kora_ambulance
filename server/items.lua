@@ -121,6 +121,71 @@ end
 registerIfak('ifak')
 registerIfak('ifaks')
 
+-- First aid kit: consumed on a completed use, clears every wound/bleed and
+-- tells the owning client to restore full health (SetEntityHealth is client-only).
+if Config.firstaid and Config.firstaid.enabled then
+    QBCore:createUseable('firstaid', function(src, item)
+        if not Death.isAlive(src) then
+            Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t use a first aid kit right now.', type = 'error' })
+            return
+        end
+
+        if not runFeedback(src, 'firstaid', { duration = Config.firstaid.duration }) then return end
+
+        local removed = QBCore:removeItem(src, 'firstaid', 1, item and item.slot, 'first-aid')
+        if not removed then return end
+        Death.clearAllWounds(src)
+        TriggerClientEvent('qbambulance:client:firstAidHeal', src)
+        Kora.notify.send(src, { title = 'First Aid', message = 'You patched yourself up.', type = 'success' })
+    end)
+
+    -- On-duty EMS use a first aid kit on another player (ALT target option).
+    -- The medic's kit is consumed; the patient is cleared and healed.
+    local busyMedics = {}
+
+    RegisterNetEvent('qbambulance:server:firstAidTarget', function(patientSrc)
+        local src = source
+        local cfg = Config.firstaid
+        if not cfg.targetEnabled or busyMedics[src] then return end
+        patientSrc = tonumber(patientSrc)
+        if not patientSrc or patientSrc == src or patientSrc < 1 or patientSrc % 1 ~= 0 then return end
+
+        local function nearby()
+            if not QBCore:getPlayerData(src) or not QBCore:getPlayerData(patientSrc) then return false end
+            return Kora.world.resolveNearbyPlayer(src, patientSrc, { maxDistance = cfg.targetRange or 3.0 }) ~= nil
+        end
+        local function fail(message)
+            Kora.notify.send(src, { title = 'First Aid', message = message, type = 'error' })
+        end
+
+        local job = QBCore:getJob(src)
+        if not job or job.name ~= Config.job.name or job.onduty ~= true then return fail('Only on-duty EMS can use a first aid kit on others.') end
+        if not Death.isAlive(src) then return fail('Can\'t use a first aid kit right now.') end
+        if not Death.isAlive(patientSrc) then return fail('The patient needs a revive, not a first aid kit.') end
+        if not nearby() then return fail('The patient is too far away.') end
+        if not QBCore:hasItem(src, 'firstaid') then return fail('You have no first aid kit.') end
+
+        busyMedics[src] = true
+        local completed = runFeedback(src, 'firstaid', { duration = cfg.duration })
+        busyMedics[src] = nil
+        if not completed then return end
+
+        if not Death.isAlive(src) or not Death.isAlive(patientSrc) or not nearby() then
+            return fail('The patient is no longer treatable.')
+        end
+        local removed = QBCore:removeItem(src, 'firstaid', 1, nil, 'first-aid-target')
+        if not removed then return end
+        Death.clearAllWounds(patientSrc)
+        TriggerClientEvent('qbambulance:client:firstAidHeal', patientSrc)
+        Kora.notify.send(src, { title = 'First Aid', message = 'You patched the patient up.', type = 'success' })
+        Kora.notify.send(patientSrc, { title = 'First Aid', message = 'A medic patched you up.', type = 'success' })
+    end)
+
+    AddEventHandler('playerDropped', function()
+        busyMedics[source] = nil
+    end)
+end
+
 QBCore:createUseable('painkillers', function(src, item)
     local now = os.time()
     if not Items.painkillerEligible(now, lastPainkillerAt[src]) then
