@@ -48,6 +48,10 @@ Config.death = {
     respawn = {
         clearInventory = false,        -- true wipes the player inventory server-side on /respawn (kora_inventory clearInventory)
         keepItems = {},                -- item names that survive the wipe, e.g. { 'phone', 'id_card' }; only used when clearInventory = true
+        useBeds = true,                -- true: /respawn places the player on one of the hospital's beds (picked at random) instead of the hospital entrance coords
+        snapToBedProps = true,         -- true: after /respawn the ped is snapped onto a random real v_med_bed2 / v_med_emptybed prop near the landing point (avoids landing in walls); false: use configured bed coords as-is
+        bedSearchRadius = 40.0,        -- metres around the landing point to search for bed props
+        bedZOffset = 0.9,              -- height above the bed prop origin where the ped is placed
         -- Refuse /respawn while enough medics are on duty, so a dead player waits for a
         -- real revive. Counted server-side (on-duty players of `jobs`, the dead player
         -- excluded) and re-checked on every attempt; the death screen says so and

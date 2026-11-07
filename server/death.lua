@@ -391,7 +391,13 @@ function Death.respawnAtHospital(src, hospitalName)
         end
     end
 
-    TriggerClientEvent('qbambulance:client:respawnedAtHospital', src, hospital.coords)
+    local landing = hospital.coords
+    local beds = hospital.beds
+    if Config.death.respawn.useBeds and type(beds) == 'table' and #beds > 0 then
+        landing = beds[math.random(#beds)] or landing
+    end
+
+    TriggerClientEvent('qbambulance:client:respawnedAtHospital', src, landing)
     TriggerEvent('qbambulance:server:onPlayerRespawned', src, hospital.name)
     return true
 end

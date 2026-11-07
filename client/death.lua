@@ -416,6 +416,34 @@ RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
     NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, coords.w or 0.0, true, false)
     SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false)
     SetEntityHeading(ped, coords.w or 0.0)
+
+    -- Configured bed coords can miss the real props (ped lands in a wall): once
+    -- collision/props have streamed in, snap onto a real bed prop near the landing.
+    local cfg = Config.death.respawn
+    if cfg.snapToBedProps then
+        RequestCollisionAtCoord(coords.x, coords.y, coords.z)
+        local tries = 0
+        while not HasCollisionLoadedAroundEntity(ped) and tries < 30 do
+            Wait(100)
+            tries = tries + 1
+        end
+        local radius = (cfg.bedSearchRadius or 40.0) + 0.0
+        local origin = vector3(coords.x, coords.y, coords.z)
+        local found = {}
+        for _, obj in ipairs(GetGamePool('CObject')) do
+            local model = GetEntityModel(obj)
+            if (model == joaat('v_med_bed2') or model == joaat('v_med_emptybed')) and #(GetEntityCoords(obj) - origin) <= radius then
+                found[#found + 1] = obj
+            end
+        end
+        local bed = #found > 0 and found[math.random(#found)] or nil
+        if bed then
+            local pos = GetOffsetFromEntityInWorldCoords(bed, 0.0, 0.0, (cfg.bedZOffset or 0.9) + 0.0)
+            SetEntityCoordsNoOffset(ped, pos.x, pos.y, pos.z, false, false, false)
+            SetEntityHeading(ped, GetEntityHeading(bed))
+        end
+    end
+
     SetEntityHealth(ped, GetEntityMaxHealth(ped))
     ClearPedBloodDamage(ped)
     stopDownedAnimation()
