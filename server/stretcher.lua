@@ -89,8 +89,8 @@ end
 ---@param record table
 local function publish(record)
     local state = snapshot(record)
-    Entity(record.entity).state:set('qbambulanceStretcher', state, true)
-    TriggerClientEvent('qbambulance:client:stretcherStateChanged', -1, state)
+    Entity(record.entity).state:set('kora_ambulanceStretcher', state, true)
+    TriggerClientEvent('kora_ambulance:client:stretcherStateChanged', -1, state)
 end
 
 ---@param src integer
@@ -114,7 +114,7 @@ local function clearPatient(record, reason)
     if not patient then return end
     if stretcherByPatient[patient] == record.networkId then stretcherByPatient[patient] = nil end
     record.patient = nil
-    TriggerClientEvent('qbambulance:client:stretcherPatientReleased', patient, reason or 'released')
+    TriggerClientEvent('kora_ambulance:client:stretcherPatientReleased', patient, reason or 'released')
 end
 
 ---@param record table
@@ -131,7 +131,7 @@ local function removePhysical(record, reason)
         stretcherByVehicle[record.vehicleNetworkId] = nil
     end
 
-    TriggerClientEvent('qbambulance:client:stretcherStateChanged', -1, removedSnapshot)
+    TriggerClientEvent('kora_ambulance:client:stretcherStateChanged', -1, removedSnapshot)
     if record.entity and DoesEntityExist(record.entity) then DeleteEntity(record.entity) end
 end
 
@@ -231,8 +231,8 @@ local function releaseCarry(medicSrc, silent)
     carryHeartbeatAt[medicSrc] = nil
 
     if not silent then
-        TriggerClientEvent('qbambulance:client:stretcherEnd', medicSrc)
-        TriggerClientEvent('qbambulance:client:stretcherEnd', targetSrc)
+        TriggerClientEvent('kora_ambulance:client:stretcherEnd', medicSrc)
+        TriggerClientEvent('kora_ambulance:client:stretcherEnd', targetSrc)
     end
 end
 
@@ -361,7 +361,7 @@ function Stretcher.loadPatient(src, stretcherNetworkId, targetSrc)
     record.patient = targetSrc
     stretcherByPatient[targetSrc] = record.networkId
     publish(record)
-    TriggerClientEvent('qbambulance:client:stretcherPatientLoaded', targetSrc, snapshot(record))
+    TriggerClientEvent('kora_ambulance:client:stretcherPatientLoaded', targetSrc, snapshot(record))
     return true, nil
 end
 
@@ -442,7 +442,7 @@ function Stretcher.removeForVehicle(vehicleNetworkId, reason)
     if record then removePhysical(record, reason or 'vehicle removed') end
 end
 
-Kora.callback.register('qbambulance:server:stretcherDeployRequested', function(src, vehicleNetworkId)
+Kora.callback.register('kora_ambulance:server:stretcherDeployRequested', function(src, vehicleNetworkId)
     return Stretcher.deploy(src, vehicleNetworkId)
 end, { rateLimit = { max = 3, window = 10000 } })
 
@@ -453,14 +453,14 @@ local function registerAction(name, action)
     end)
 end
 
-registerAction('qbambulance:server:stretcherPushRequested', Stretcher.beginPush)
-registerAction('qbambulance:server:stretcherReleased', Stretcher.stopPush)
-registerAction('qbambulance:server:patientLoadedOnStretcher', Stretcher.loadPatient)
-registerAction('qbambulance:server:patientUnloadedFromStretcher', Stretcher.unloadPatient)
-registerAction('qbambulance:server:stretcherStowed', Stretcher.stow)
-registerAction('qbambulance:server:stretcherUnstowed', Stretcher.unstow)
+registerAction('kora_ambulance:server:stretcherPushRequested', Stretcher.beginPush)
+registerAction('kora_ambulance:server:stretcherReleased', Stretcher.stopPush)
+registerAction('kora_ambulance:server:patientLoadedOnStretcher', Stretcher.loadPatient)
+registerAction('kora_ambulance:server:patientUnloadedFromStretcher', Stretcher.unloadPatient)
+registerAction('kora_ambulance:server:stretcherStowed', Stretcher.stow)
+registerAction('kora_ambulance:server:stretcherUnstowed', Stretcher.unstow)
 
-Kora.events.register('qbambulance:server:stretcherHeartbeatReceived', function(src, stretcherNetworkId)
+Kora.events.register('kora_ambulance:server:stretcherHeartbeatReceived', function(src, stretcherNetworkId)
     stretcherNetworkId = networkId(stretcherNetworkId)
     local record = stretcherNetworkId and stretchers[stretcherNetworkId]
     if not record or record.operator ~= src or record.mode ~= 'pushed' then return end
@@ -472,7 +472,7 @@ Kora.events.register('qbambulance:server:stretcherHeartbeatReceived', function(s
 end)
 
 -- Emergency carry remains available when a physical stretcher is impractical.
-Kora.events.register('qbambulance:server:stretcherPickup', function(src, targetSrc)
+Kora.events.register('kora_ambulance:server:stretcherPickup', function(src, targetSrc)
     targetSrc = tonumber(targetSrc)
     if not targetSrc or targetSrc % 1 ~= 0 or targetSrc == src then return end
     if not isOnDutyEMS(src) or not QBCore:getPlayerData(targetSrc) then return end
@@ -495,15 +495,15 @@ Kora.events.register('qbambulance:server:stretcherPickup', function(src, targetS
     draggerOf[targetSrc] = src
     targetOf[src] = targetSrc
     carryHeartbeatAt[src] = GetGameTimer()
-    TriggerClientEvent('qbambulance:client:stretcherBegin', src, targetSrc, true)
-    TriggerClientEvent('qbambulance:client:stretcherBegin', targetSrc, src, false)
+    TriggerClientEvent('kora_ambulance:client:stretcherBegin', src, targetSrc, true)
+    TriggerClientEvent('kora_ambulance:client:stretcherBegin', targetSrc, src, false)
 end)
 
-Kora.events.register('qbambulance:server:stretcherRelease', function(src)
+Kora.events.register('kora_ambulance:server:stretcherRelease', function(src)
     releaseCarry(src, false)
 end)
 
-Kora.events.register('qbambulance:server:stretcherHeartbeat', function(src)
+Kora.events.register('kora_ambulance:server:stretcherHeartbeat', function(src)
     local targetSrc = targetOf[src]
     if not targetSrc then return end
     local now = GetGameTimer()
@@ -535,11 +535,11 @@ local function releasePatient(src, reason)
     end
 end
 
-AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
+AddEventHandler('kora_ambulance:server:onPlayerRevived', function(src)
     releasePatient(src, 'patient revived')
 end)
 
-AddEventHandler('qbambulance:server:onPlayerRespawned', function(src)
+AddEventHandler('kora_ambulance:server:onPlayerRespawned', function(src)
     releasePatient(src, 'patient respawned')
 end)
 

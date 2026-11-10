@@ -31,7 +31,7 @@ function Items.applyPainkillerBenefit(src)
     local cfg = Config.painkillers
     -- A downed player's health is held by the death flow, never boosted.
     if (cfg.healthAmount or 0) > 0 and Death.isAlive(src) then
-        TriggerClientEvent('qbambulance:client:painkillerBenefit', src, cfg.healthAmount)
+        TriggerClientEvent('kora_ambulance:client:painkillerBenefit', src, cfg.healthAmount)
     end
     if cfg.stopBleeding then Death.stopBleeding(src) end
 end
@@ -67,7 +67,7 @@ local function runFeedback(src, itemName, override)
     -- Same-VM Kora.callback.trigger returns a promise (only a cross-resource
     -- caller gets the awaited value); comparing the promise to `true` left every
     -- completed bar looking cancelled, so no item was ever consumed.
-    local completed = Kora.callback.trigger(src, 'qbambulance:client:pharmacyProgress', {
+    local completed = Kora.callback.trigger(src, 'kora_ambulance:client:pharmacyProgress', {
         label = def and def.label or itemName,
         duration = override.duration or effect.duration or 2500,
         anim = override.anim or effect.anim,
@@ -135,7 +135,7 @@ if Config.firstaid and Config.firstaid.enabled then
         local removed = QBCore:removeItem(src, 'firstaid', 1, item and item.slot, 'first-aid')
         if not removed then return end
         Death.clearAllWounds(src)
-        TriggerClientEvent('qbambulance:client:firstAidHeal', src)
+        TriggerClientEvent('kora_ambulance:client:firstAidHeal', src)
         Kora.notify.send(src, { title = 'First Aid', message = 'You patched yourself up.', type = 'success' })
     end)
 
@@ -143,7 +143,7 @@ if Config.firstaid and Config.firstaid.enabled then
     -- The medic's kit is consumed; the patient is cleared and healed.
     local busyMedics = {}
 
-    RegisterNetEvent('qbambulance:server:firstAidTarget', function(patientSrc)
+    RegisterNetEvent('kora_ambulance:server:firstAidTarget', function(patientSrc)
         local src = source
         local cfg = Config.firstaid
         if not cfg.targetEnabled or busyMedics[src] then return end
@@ -176,7 +176,7 @@ if Config.firstaid and Config.firstaid.enabled then
         local removed = QBCore:removeItem(src, 'firstaid', 1, nil, 'first-aid-target')
         if not removed then return end
         Death.clearAllWounds(patientSrc)
-        TriggerClientEvent('qbambulance:client:firstAidHeal', patientSrc)
+        TriggerClientEvent('kora_ambulance:client:firstAidHeal', patientSrc)
         Kora.notify.send(src, { title = 'First Aid', message = 'You patched the patient up.', type = 'success' })
         Kora.notify.send(patientSrc, { title = 'First Aid', message = 'A medic patched you up.', type = 'success' })
     end)

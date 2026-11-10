@@ -3,8 +3,6 @@ game 'gta5'
 lua54 'yes'
 
 name 'kora_ambulance'
--- Keep the legacy resource name resolvable for exports['qbambulance'] callers.
-provide 'qbambulance'
 provide 'qb-ambulancejob'
 author 'Jamie'
 version '2.0.0'
@@ -18,7 +16,7 @@ dependency 'kora_target'
 
 -- kora_lib strictly before kora_core, same rule every consumer resource follows
 -- (kora_core's own mirror extends the Kora table kora_lib's init.lua creates).
--- kora_inventory/qbtarget expose flat exports only (exports.kora_inventory:*,
+-- kora_inventory/kora_target expose flat exports only (exports.kora_inventory:*,
 -- exports.kora_target:*) -- neither needs a shared_script import.
 shared_script '@kora_lib/init.lua'
 shared_script '@kora_core/init.lua'

@@ -145,7 +145,7 @@ local function clearDutyVehicle(src)
     currentVehicle[src] = nil
 end
 
-Kora.callback.register('qbambulance:server:spawnDutyVehicle', function(src, hospitalName, vehicleIndex)
+Kora.callback.register('kora_ambulance:server:spawnDutyVehicle', function(src, hospitalName, vehicleIndex)
     if not isOnDutyEMS(src) then return false, 'not on duty' end
     if currentVehicle[src] then return false, 'you already have a duty vehicle checked out' end
     if not actionAllowed(src) then return false, 'please wait before trying again' end
@@ -188,7 +188,7 @@ Kora.callback.register('qbambulance:server:spawnDutyVehicle', function(src, hosp
     return networkId
 end)
 
-Kora.events.register('qbambulance:server:storeDutyVehicle', function(src)
+Kora.events.register('kora_ambulance:server:storeDutyVehicle', function(src)
     local active = currentVehicle[src]
     if not active or not isOnDutyEMS(src) or not actionAllowed(src) then return end
 

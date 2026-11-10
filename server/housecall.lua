@@ -51,7 +51,7 @@ end
 ---
 ---Non-emergency, so priority 3 and a short life on the map -- it should not sit
 ---above a patient who is actually bleeding out. `onAccept` is the generic hook
----qbdispatch fires server-side when a paramedic first attaches: dispatch knows
+---kora_dispatch fires server-side when a paramedic first attaches: dispatch knows
 ---nothing about house calls, it just fires the event name it was handed, which
 ---is what keeps job-specific behaviour out of it.
 ---@param request table
@@ -65,7 +65,7 @@ function HouseCall.buildQueuePayload(request)
         code = '10-51',
         priority = 3,
         icon = 'home',
-        onAccept = 'qbambulance:server:housecallAccepted',
+        onAccept = 'kora_ambulance:server:housecallAccepted',
         data = { requester = request.src, requestId = request.id, note = request.note },
     }
 end
@@ -237,7 +237,7 @@ QBCore:addCommand('housecalls', 'List open house-call requests (EMS)', {}, false
         return
     end
 
-    TriggerClientEvent('qbambulance:client:housecallList', source, HouseCall.list())
+    TriggerClientEvent('kora_ambulance:client:housecallList', source, HouseCall.list())
 end)
 
 ---Claims a request for a paramedic. One implementation for both entry points --
@@ -253,7 +253,7 @@ local function claimHousecall(src, requestId)
     if not accepted then return false end
 
     queue = newQueue
-    TriggerClientEvent('qbambulance:client:housecallAccepted', src, accepted)
+    TriggerClientEvent('kora_ambulance:client:housecallAccepted', src, accepted)
 
     if accepted.src then
         TriggerClientEvent('QBCore:Notify', accepted.src, 'A paramedic is on the way.', 'success')
@@ -289,7 +289,7 @@ end)
 -- The event NAME was handed to dispatch in the call's `onAccept` field --
 -- dispatch has no idea what a house call is, it just fires what it was given,
 -- which is what keeps job-specific behaviour out of the dispatch resource.
-RegisterNetEvent('qbambulance:server:housecallAccepted', function(src, _callId, data)
+RegisterNetEvent('kora_ambulance:server:housecallAccepted', function(src, _callId, data)
     -- A net event registration would also let a client fire this directly. It
     -- is only ever raised server-side by kora_dispatch (TriggerEvent, not
     -- TriggerClientEvent), so a non-zero `source` means it came over the

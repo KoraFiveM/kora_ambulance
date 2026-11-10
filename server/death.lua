@@ -67,7 +67,7 @@ end
 
 local function persistMedical(src)
     if not QBCore:getPlayerData(src) then return end
-    QBCore:setMetaData(src, 'qbambulanceMedical', {
+    QBCore:setMetaData(src, 'kora_ambulanceMedical', {
         version = MEDICAL_VERSION,
         wounds = copyWounds(src),
         bleedStopped = bleedStopped[src] or nil,
@@ -102,7 +102,7 @@ end
 -- resource restart) would never be told. Push the authoritative state after
 -- every sync and let the client reconcile its local effects against it.
 local function pushStatus(src, bleedingTier, limpingTier)
-    TriggerClientEvent('qbambulance:client:syncStatus', src, bleedingTier or false, limpingTier or false)
+    TriggerClientEvent('kora_ambulance:client:syncStatus', src, bleedingTier or false, limpingTier or false)
 end
 
 ---@param src integer
@@ -209,8 +209,8 @@ function Death.enterLaststand(src, cause)
     persistMedical(src)
     publishDownState(src, 'laststand')
 
-    TriggerClientEvent('qbambulance:client:enterLaststand', src, Config.death.deathTime)
-    TriggerEvent('qbambulance:server:onPlayerDied', src, cause)
+    TriggerClientEvent('kora_ambulance:client:enterLaststand', src, Config.death.deathTime)
+    TriggerEvent('kora_ambulance:server:onPlayerDied', src, cause)
     return true
 end
 
@@ -235,9 +235,9 @@ function Death.markDead(src, effectiveDeadAt)
     persistMedical(src)
     publishDownState(src, 'dead')
 
-    TriggerClientEvent('qbambulance:client:markDead', src, Death.respawnWaitRemaining(src) * 1000)
+    TriggerClientEvent('kora_ambulance:client:markDead', src, Death.respawnWaitRemaining(src) * 1000)
     Death._syncRespawnBlock(src, true)
-    TriggerEvent('qbambulance:server:onPlayerDead', src)
+    TriggerEvent('kora_ambulance:server:onPlayerDead', src)
     return true
 end
 
@@ -272,8 +272,8 @@ function Death.reviveInField(src, healthPct, clearAll)
         Death._syncStatus(src)
     end
 
-    TriggerClientEvent('qbambulance:client:revived', src, healthPct or Config.death.minimumRevive)
-    TriggerEvent('qbambulance:server:onPlayerRevived', src)
+    TriggerClientEvent('kora_ambulance:client:revived', src, healthPct or Config.death.minimumRevive)
+    TriggerEvent('kora_ambulance:server:onPlayerRevived', src)
     return true
 end
 
@@ -294,7 +294,7 @@ function Death.fullRevive(src)
     publishDownState(src, 'alive')
     -- Always announced, even for a player this resource never saw go down (killed
     -- by a vanilla death or an admin tool): their EMS call must still be closed.
-    TriggerEvent('qbambulance:server:onPlayerRevived', src)
+    TriggerEvent('kora_ambulance:server:onPlayerRevived', src)
     return true
 end
 
@@ -346,7 +346,7 @@ function Death._syncRespawnBlock(src, force)
     local value = blocked and minOnDuty or false
     if not force and sentBlock[src] == value then return end
     sentBlock[src] = value
-    TriggerClientEvent('qbambulance:client:respawnBlock', src, value)
+    TriggerClientEvent('kora_ambulance:client:respawnBlock', src, value)
 end
 
 ---@param src integer
@@ -397,8 +397,8 @@ function Death.respawnAtHospital(src, hospitalName)
         landing = beds[math.random(#beds)] or landing
     end
 
-    TriggerClientEvent('qbambulance:client:respawnedAtHospital', src, landing)
-    TriggerEvent('qbambulance:server:onPlayerRespawned', src, hospital.name)
+    TriggerClientEvent('kora_ambulance:client:respawnedAtHospital', src, landing)
+    TriggerEvent('kora_ambulance:server:onPlayerRespawned', src, hospital.name)
     return true
 end
 
@@ -446,7 +446,7 @@ local function restorePlayer(src)
     if not QBCore:getPlayerData(src) then return end
 
     local now = os.time()
-    local raw = QBCore:getMetaData(src, 'qbambulanceMedical')
+    local raw = QBCore:getMetaData(src, 'kora_ambulanceMedical')
     local versioned = type(raw) == 'table' and raw.version == MEDICAL_VERSION
     local clean = {
         version = MEDICAL_VERSION,
@@ -495,14 +495,14 @@ local function restorePlayer(src)
 
     if state == 'laststand' then
         local remaining = math.max(0, deathTimeSeconds - (now - laststandAt[src]))
-        TriggerClientEvent('qbambulance:client:enterLaststand', src, remaining * 1000)
+        TriggerClientEvent('kora_ambulance:client:enterLaststand', src, remaining * 1000)
     elseif state == 'dead' then
-        TriggerClientEvent('qbambulance:client:markDead', src, Death.respawnWaitRemaining(src) * 1000)
+        TriggerClientEvent('kora_ambulance:client:markDead', src, Death.respawnWaitRemaining(src) * 1000)
         Death._syncRespawnBlock(src, true)
     end
 end
 
-Kora.callback.register('qbambulance:server:reportDeath', function(src, cause)
+Kora.callback.register('kora_ambulance:server:reportDeath', function(src, cause)
     if not QBCore:getPlayerData(src) then return false end
     if Death.isLaststand(src) then return true end
     local ped = GetPlayerPed(src)
@@ -526,7 +526,7 @@ local function resolveObservedBodyPart(payload)
     return payload.bodyPart
 end
 
-Kora.events.register('qbambulance:server:hitObserved', function(src, payload)
+Kora.events.register('kora_ambulance:server:hitObserved', function(src, payload)
     if not QBCore:getPlayerData(src) or not Death.isAlive(src) then return end
     if type(payload) ~= 'table' then return end
     if healGraceUntil[src] and GetGameTimer() < healGraceUntil[src] then return end
@@ -557,7 +557,7 @@ Kora.events.register('qbambulance:server:hitObserved', function(src, payload)
     Death.recordWound(src, bodyPart, Wounds.severityFromDamage(payload.damage, bodyPart))
 end)
 
-AddEventHandler('qbcore:server:playerLoaded', restorePlayer)
+AddEventHandler('kora_core:server:playerLoaded', restorePlayer)
 
 CreateThread(function()
     Wait(0)
@@ -603,7 +603,7 @@ end
 -- the pill drops at once instead of waiting for the next sweep. With no wound
 -- left to close the authoritative state is pushed anyway, so a client that
 -- still shows a stale pill reconciles (and reports it, see statusStale).
-Kora.events.register('qbambulance:server:healthRestored', function(src)
+Kora.events.register('kora_ambulance:server:healthRestored', function(src)
     if not Config.injuries.clearOnHealEvent or not QBCore:getPlayerData(src) then return end
     Death._clearIfHealthy(src)
     if Death.getState(src) == 'alive' and next(Death.getWoundData(src)) == nil then

@@ -78,7 +78,7 @@ function Revive.complete(src, targetSrc, success)
     Death.reviveInField(targetSrc, Config.death.minimumRevive)
 
     Kora.notify.send(src, { title = 'EMS', message = 'Patient stabilised.', type = 'success' })
-    TriggerEvent('qbambulance:server:onPlayerRevivedBy', targetSrc, src)
+    TriggerEvent('kora_ambulance:server:onPlayerRevivedBy', targetSrc, src)
 
     return true, nil
 end
@@ -90,7 +90,7 @@ local function clearAction(src)
     if actionOwnerByTarget[action.target] == src then actionOwnerByTarget[action.target] = nil end
 end
 
-Kora.callback.register('qbambulance:server:beginRevive', function(src, targetSrc)
+Kora.callback.register('kora_ambulance:server:beginRevive', function(src, targetSrc)
     targetSrc = tonumber(targetSrc)
     if not targetSrc or targetSrc == src then return nil, 'invalid patient' end
 
@@ -130,7 +130,7 @@ Kora.callback.register('qbambulance:server:beginRevive', function(src, targetSrc
     return token, false, authorization
 end)
 
-Kora.events.register('qbambulance:server:completeRevive', function(src, targetSrc, token, proof)
+Kora.events.register('kora_ambulance:server:completeRevive', function(src, targetSrc, token, proof)
     local action = actionsBySrc[src]
     targetSrc = tonumber(targetSrc)
     if not action or action.target ~= targetSrc or action.token ~= token then return end
@@ -181,6 +181,6 @@ if Config.defibrillator and Config.defibrillator.useable then
             return false
         end
 
-        TriggerClientEvent('qbambulance:client:reviveRequested', src, best)
+        TriggerClientEvent('kora_ambulance:client:reviveRequested', src, best)
     end)
 end

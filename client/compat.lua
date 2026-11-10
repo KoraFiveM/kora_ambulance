@@ -40,7 +40,7 @@ end)
 
 -- Applies hospital:server:SetArmor (SetPedArmour is client-only). Reduce-only,
 -- like the server adapter that forwards it.
-RegisterNetEvent('qbambulance:client:setArmour', function(armour)
+RegisterNetEvent('kora_ambulance:client:setArmour', function(armour)
     armour = tonumber(armour)
     if not armour then return end
     local ped = PlayerPedId()
@@ -112,7 +112,7 @@ end)
 -- sync), and its Stretcher.isBeingDragged()/isDragging() getters exposed for
 -- exactly this reason.
 RegisterNetEvent('hospital:client:SetEscortingState', function(state)
-    if not state then TriggerServerEvent('qbambulance:server:stretcherRelease') end
+    if not state then TriggerServerEvent('kora_ambulance:server:stretcherRelease') end
 end)
 
 exports('isEscorted', function()

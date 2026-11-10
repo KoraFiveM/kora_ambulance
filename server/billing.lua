@@ -46,7 +46,7 @@ function Billing.charge(src, cost, reason)
     end
 
     TriggerClientEvent('hospital:client:SendBillEmail', src, cost)
-    TriggerEvent('qbambulance:server:onBillCharged', src, cost)
+    TriggerEvent('kora_ambulance:server:onBillCharged', src, cost)
 
     return cost
 end

@@ -318,7 +318,7 @@ local function onFatalInjuryChange(isDead, wasDead)
         local attempt = 0
         while true do
             attempt = attempt + 1
-            if Kora.callback.trigger('qbambulance:server:reportDeath', 'died') then
+            if Kora.callback.trigger('kora_ambulance:server:reportDeath', 'died') then
                 suppressVanillaWasted(coords)
                 return
             end
@@ -350,7 +350,7 @@ AddEventHandler('onClientResourceStart', function(resource)
     onFatalInjuryChange(Kora.cache.isDead(), false)
 end)
 
-RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
+RegisterNetEvent('kora_ambulance:client:enterLaststand', function(deathTimeMs)
     State.inLaststand = true
     State.isDead = false
 
@@ -367,7 +367,7 @@ RegisterNetEvent('qbambulance:client:enterLaststand', function(deathTimeMs)
     runDownedLoop(myGeneration, 'laststand')
 end)
 
-RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
+RegisterNetEvent('kora_ambulance:client:markDead', function(respawnTimeMs)
     State.inLaststand = false
     State.isDead = true
     downGeneration = downGeneration + 1
@@ -382,11 +382,11 @@ RegisterNetEvent('qbambulance:client:markDead', function(respawnTimeMs)
     runDeadPrompt(downGeneration)
 end)
 
-RegisterNetEvent('qbambulance:client:respawnBlock', function(minOnDuty)
+RegisterNetEvent('kora_ambulance:client:respawnBlock', function(minOnDuty)
     respawnBlockedBy = tonumber(minOnDuty) or nil
 end)
 
-RegisterNetEvent('qbambulance:client:revived', function(healthPct)
+RegisterNetEvent('kora_ambulance:client:revived', function(healthPct)
     local wasDead = State.isDead
     State.inLaststand = false
     State.isDead = false
@@ -407,7 +407,7 @@ RegisterNetEvent('qbambulance:client:revived', function(healthPct)
     Kora.notify.send({ title = 'EMS', message = 'You have been stabilised.', type = 'success' })
 end)
 
-RegisterNetEvent('qbambulance:client:respawnedAtHospital', function(coords)
+RegisterNetEvent('kora_ambulance:client:respawnedAtHospital', function(coords)
     local ped = PlayerPedId()
 
     DoScreenFadeOut(500)
@@ -487,12 +487,12 @@ end, false)
 -- FiveM settings; the server re-checks dead state, cooldown and location.
 if alertHint() then
     Kora.keybind.add({
-        name = 'qbambulance_alert_ems',
+        name = 'kora_ambulance_alert_ems',
         description = 'EMS: alert paramedics while dead',
         defaultKey = Config.death.alertEms.key,
         onPressed = function()
             if not State.isDead then return end
-            TriggerServerEvent('qbambulance:server:alertEms', (Kora.world.getStreetNames()))
+            TriggerServerEvent('kora_ambulance:server:alertEms', (Kora.world.getStreetNames()))
         end,
     })
 end

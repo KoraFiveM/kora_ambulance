@@ -169,7 +169,7 @@ h.test('closeCallerAlerts = false leaves /911e alerts open', function()
 end)
 
 h.test('an admin /heal closes the call only once the server sees full health', function()
-    local healthRestored = handle.Kora.events.registry['qbambulance:server:healthRestored']
+    local healthRestored = handle.Kora.events.registry['kora_ambulance:server:healthRestored']
     handle.ensurePlayer(17)
     raise911e(17)
     Ambulance.dispatch.call({ code = '10-52', title = 'Person Down', priority = 1, data = { source = 17 } })
@@ -184,7 +184,7 @@ h.test('an admin /heal closes the call only once the server sees full health', f
 end)
 
 h.test('a heal report from a downed player closes nothing', function()
-    local healthRestored = handle.Kora.events.registry['qbambulance:server:healthRestored']
+    local healthRestored = handle.Kora.events.registry['kora_ambulance:server:healthRestored']
     handle.ensurePlayer(18)
     Death.enterLaststand(18, 'gunshot')
     h.assertEqual(openCallsFor(18), 1, 'sanity: the call is open')
@@ -221,12 +221,12 @@ h.test('alert key: a dead player sends their street to EMS, with a cooldown and 
     local before = callsBefore()
 
     handle.ensurePlayer(60)
-    handle.fireEvent('qbambulance:server:alertEms', 60, 'Alta Street')
+    handle.fireEvent('kora_ambulance:server:alertEms', 60, 'Alta Street')
     h.assertEqual(#handle.dispatchCalls, before, 'an alive player is ignored')
 
     Death.markDead(60)
     before = callsBefore() -- markDead itself raises the automatic fatality call
-    handle.fireEvent('qbambulance:server:alertEms', 60, 'Alta Street\n')
+    handle.fireEvent('kora_ambulance:server:alertEms', 60, 'Alta Street\n')
     h.assertEqual(#handle.dispatchCalls, before + 1)
     local call = handle.lastDispatchCall()
     h.assertEqual(call.jobTypes[1], Config.job.type)
@@ -234,16 +234,16 @@ h.test('alert key: a dead player sends their street to EMS, with a cooldown and 
     h.assertEqual(call.data.source, 60)
 
     now = now + 10
-    handle.fireEvent('qbambulance:server:alertEms', 60, 'Alta Street')
+    handle.fireEvent('kora_ambulance:server:alertEms', 60, 'Alta Street')
     h.assertEqual(#handle.dispatchCalls, before + 1, 'cooldown holds')
 
     now = now + math.floor(Config.death.alertEms.cooldown / 1000)
-    handle.fireEvent('qbambulance:server:alertEms', 60, 123)
+    handle.fireEvent('kora_ambulance:server:alertEms', 60, 123)
     h.assertEqual(#handle.dispatchCalls, before + 2, 'allowed again once the cooldown lapsed; bad street input is dropped')
 
     Config.death.alertEms.enabled = false
     now = now + 1000
-    handle.fireEvent('qbambulance:server:alertEms', 60, 'x')
+    handle.fireEvent('kora_ambulance:server:alertEms', 60, 'x')
     h.assertEqual(#handle.dispatchCalls, before + 2, 'Config.death.alertEms.enabled = false disables it')
     Config.death.alertEms.enabled = true
 end)

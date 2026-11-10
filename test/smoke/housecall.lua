@@ -39,7 +39,7 @@ h.test('buildQueuePayload is a low-priority call carrying the accept hook', func
     -- kora_dispatch knows nothing about house calls: it fires whatever event name
     -- it was handed when a paramedic first attaches. That is what keeps
     -- job-specific behaviour out of the dispatch resource.
-    h.assertEqual(payload.onAccept, 'qbambulance:server:housecallAccepted', 'the generic accept hook')
+    h.assertEqual(payload.onAccept, 'kora_ambulance:server:housecallAccepted', 'the generic accept hook')
     h.assertEqual(payload.data.requestId, 7, 'and enough data to find the request again')
 end)
 

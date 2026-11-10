@@ -85,7 +85,7 @@ end
 -- alert that ranks highest -- a paramedic reaching them before the bleed-out
 -- timer expires is the difference between a revive and a respawn. The rank is
 -- Config.dispatch.priorities.personDown.
-AddEventHandler('qbambulance:server:onPlayerDied', function(src, cause)
+AddEventHandler('kora_ambulance:server:onPlayerDied', function(src, cause)
     if not Config.dispatch.autoCall then return end
     if not cooldownElapsed(src) then return end
     lastAutoCallAt[src] = os.time()
@@ -106,7 +106,7 @@ end)
 -- now, so it does not outrank a patient who still can be. Servers that want the
 -- fatality to rank higher swap Config.dispatch.priorities. It is raised at all
 -- because a body still needs collecting and the death still wants recording.
-AddEventHandler('qbambulance:server:onPlayerDead', function(src)
+AddEventHandler('kora_ambulance:server:onPlayerDead', function(src)
     if not Config.dispatch.autoCall then return end
 
     local patient = patientName(src)
@@ -151,7 +151,7 @@ end
 -- A patient who was picked up is no longer an open incident. Without this the
 -- feed keeps showing people who were treated ten minutes ago, and a feed that
 -- lies about what is outstanding stops being read at all.
-AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
+AddEventHandler('kora_ambulance:server:onPlayerRevived', function(src)
     -- The cooldown is deliberately NOT cleared here. A patient revived and put
     -- straight back down is the same incident from EMS's point of view -- the
     -- paramedic is already standing over them -- so re-alerting would just be
@@ -166,7 +166,7 @@ AddEventHandler('kora_ambulance:server:onPlayerHealed', function(src)
 end)
 
 -- Respawning at the hospital resolves the incident just as a revive does.
-AddEventHandler('qbambulance:server:onPlayerRespawned', function(src)
+AddEventHandler('kora_ambulance:server:onPlayerRespawned', function(src)
     closePatientCalls(src, 'patient respawned')
 end)
 
@@ -184,7 +184,7 @@ local function cleanStreet(street)
     return street ~= '' and street or nil
 end
 
-RegisterNetEvent('qbambulance:server:alertEms', function(street)
+RegisterNetEvent('kora_ambulance:server:alertEms', function(street)
     local src = source
     local alert = Config.death.alertEms
     if not alert or alert.enabled ~= true or not Death.isDead(src) then return end

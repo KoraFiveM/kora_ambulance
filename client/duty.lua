@@ -15,7 +15,7 @@ local function resolveNetworkEntity(networkId)
 end
 
 local function spawnVehicle(hospital, vehicleIndex)
-    local result = Kora.callback.trigger('qbambulance:server:spawnDutyVehicle', hospital.name, vehicleIndex)
+    local result = Kora.callback.trigger('kora_ambulance:server:spawnDutyVehicle', hospital.name, vehicleIndex)
     if not result then
         Kora.notify.send({ title = 'EMS Garage', message = 'Could not check out a vehicle.', type = 'error' })
         return
@@ -37,7 +37,7 @@ local function storeVehicle()
 
     TaskLeaveVehicle(Kora.cache.ped(), veh, 0)
     Wait(1500)
-    Kora.events.trigger('qbambulance:server:storeDutyVehicle')
+    Kora.events.trigger('kora_ambulance:server:storeDutyVehicle')
 end
 
 local function garageOptions(hospital)

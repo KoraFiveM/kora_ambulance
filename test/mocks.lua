@@ -209,10 +209,10 @@ function M.install()
 
     _G.Kora = Kora
 
-    local qbcore = {}
+    local kora_core = {}
 
-    function qbcore:getJob(src) return ensure(src).job end
-    function qbcore:getPlayerData(src, path)
+    function kora_core:getJob(src) return ensure(src).job end
+    function kora_core:getPlayerData(src, path)
         local player = players[src]
         if not player then return nil end
         if not path then return player end
@@ -220,23 +220,23 @@ function M.install()
         for _, key in ipairs(path) do value = type(value) == 'table' and value[key] or nil end
         return value
     end
-    function qbcore:setJobDuty(src, onDuty) ensure(src).job.onduty = onDuty; return true end
-    function qbcore:getMetaData(src, key) return ensure(src).metadata[key] end
-    function qbcore:setMetaData(src, key, value) ensure(src).metadata[key] = value; return true end
-    function qbcore:getMoney(src, account) return ensure(src).money[account] or 0 end
-    function qbcore:addMoney(src, account, amount)
+    function kora_core:setJobDuty(src, onDuty) ensure(src).job.onduty = onDuty; return true end
+    function kora_core:getMetaData(src, key) return ensure(src).metadata[key] end
+    function kora_core:setMetaData(src, key, value) ensure(src).metadata[key] = value; return true end
+    function kora_core:getMoney(src, account) return ensure(src).money[account] or 0 end
+    function kora_core:addMoney(src, account, amount)
         local p = ensure(src); p.money[account] = (p.money[account] or 0) + amount; return true
     end
-    function qbcore:removeMoney(src, account, amount)
+    function kora_core:removeMoney(src, account, amount)
         local p = ensure(src); p.money[account] = (p.money[account] or 0) - amount; return true
     end
-    function qbcore:getPlayers()
+    function kora_core:getPlayers()
         local out = {}
         for src in pairs(players) do out[#out + 1] = src end
         table.sort(out)
         return out
     end
-    function qbcore:getPlayersByJob(name, onDutyOnly)
+    function kora_core:getPlayersByJob(name, onDutyOnly)
         local out = {}
         for src, p in pairs(players) do
             if p.job.name == name and (not onDutyOnly or p.job.onduty) then out[#out + 1] = src end
@@ -244,26 +244,26 @@ function M.install()
         table.sort(out)
         return out
     end
-    function qbcore:hasItem(src, name) return (ensure(src).items[name] or 0) > 0 end
-    function qbcore:removeItem(src, name, amount)
+    function kora_core:hasItem(src, name) return (ensure(src).items[name] or 0) > 0 end
+    function kora_core:removeItem(src, name, amount)
         local p = ensure(src)
         p.items[name] = math.max(0, (p.items[name] or 0) - (amount or 1))
         return true
     end
-    function qbcore:createUseable(name, handler) qbcore.useables = qbcore.useables or {}; qbcore.useables[name] = handler end
-    function qbcore:useItem(src, name)
-        local handler = qbcore.useables and qbcore.useables[name]
+    function kora_core:createUseable(name, handler) kora_core.useables = kora_core.useables or {}; kora_core.useables[name] = handler end
+    function kora_core:useItem(src, name)
+        local handler = kora_core.useables and kora_core.useables[name]
         if handler then handler(src, { name = name }) end
     end
-    function qbcore:createVehicle(_citizenid, _model, _plate, _job, _extra) return true end
-    function qbcore:spawnVehicle(_src, _plate, _coords, _heading) return 12345 end
-    function qbcore:deleteVehicle(_plate) return true end
-    function qbcore:storeVehicle(_plate, _snapshot) return true end
-    function qbcore:reset(src) local p = ensure(src); p.metadata.hunger = 100; p.metadata.thirst = 100; p.metadata.stress = 0 end
+    function kora_core:createVehicle(_citizenid, _model, _plate, _job, _extra) return true end
+    function kora_core:spawnVehicle(_src, _plate, _coords, _heading) return 12345 end
+    function kora_core:deleteVehicle(_plate) return true end
+    function kora_core:storeVehicle(_plate, _snapshot) return true end
+    function kora_core:reset(src) local p = ensure(src); p.metadata.hunger = 100; p.metadata.thirst = 100; p.metadata.stress = 0 end
     -- Job types mirror kora_core/shared/jobs.lua. Dispatch calls target the TYPE,
     -- so a fire department registered with type='ems' answers the same radio.
     local JOB_TYPES = { police = 'leo', sheriff = 'leo', ambulance = 'ems', tow = 'recovery' }
-    function qbcore:getPlayersByJobType(jobType, onDutyOnly)
+    function kora_core:getPlayersByJobType(jobType, onDutyOnly)
         local out = {}
         for src, p in pairs(players) do
             if p.job and JOB_TYPES[p.job.name] == jobType and (not onDutyOnly or p.job.onduty) then
@@ -273,34 +273,34 @@ function M.install()
         table.sort(out)
         return out
     end
-    function qbcore:getDutyCountByType(jobType) return #qbcore:getPlayersByJobType(jobType, true) end
-    function qbcore:alert(payload)
+    function kora_core:getDutyCountByType(jobType) return #kora_core:getPlayersByJobType(jobType, true) end
+    function kora_core:alert(payload)
         local count = 0
-        for _, jobName in ipairs(payload.jobs or {}) do count = count + #qbcore:getPlayersByJob(jobName, true) end
-        for _, jobType in ipairs(payload.jobTypes or {}) do count = count + #qbcore:getPlayersByJobType(jobType, true) end
+        for _, jobName in ipairs(payload.jobs or {}) do count = count + #kora_core:getPlayersByJob(jobName, true) end
+        for _, jobType in ipairs(payload.jobTypes or {}) do count = count + #kora_core:getPlayersByJobType(jobType, true) end
         return count
     end
-    qbcore.commands = {}
-    function qbcore:addCommand(name, _help, _args, _argsRequired, handler, permission)
-        qbcore.commands[name] = { handler = handler, permission = permission }
+    kora_core.commands = {}
+    function kora_core:addCommand(name, _help, _args, _argsRequired, handler, permission)
+        kora_core.commands[name] = { handler = handler, permission = permission }
     end
-    function qbcore:getShared(_name, _key) return nil end
-    function qbcore:registerShared(_name, _key, _record) end
+    function kora_core:getShared(_name, _key) return nil end
+    function kora_core:registerShared(_name, _key, _record) end
 
     -- Fake exports.kora_target -- just records addGlobalType calls so provider-
     -- restart re-registration tests can assert it was called again, rather
     -- than actually doing anything with the option lists passed in.
-    local qbtarget
-    qbtarget = {
+    local kora_target
+    kora_target = {
         calls = {},
         addGlobalType = function(self, kind, options, distance)
-            table.insert(qbtarget.calls, { kind = kind, options = options, distance = distance })
+            table.insert(kora_target.calls, { kind = kind, options = options, distance = distance })
         end,
         addSphereZone = function(self, definition)
-            table.insert(qbtarget.calls, { kind = 'sphere', definition = definition })
+            table.insert(kora_target.calls, { kind = 'sphere', definition = definition })
         end,
         addModel = function(self, model, options, distance)
-            table.insert(qbtarget.calls, { kind = 'model', model = model, options = options, distance = distance })
+            table.insert(kora_target.calls, { kind = 'model', model = model, options = options, distance = distance })
         end,
     }
 
@@ -308,13 +308,13 @@ function M.install()
     -- (server/duty.lua's hospital-fixture registration) so provider-restart
     -- re-registration tests can assert on call counts. Any other method
     -- falls through to a harmless stub via __index, same as before.
-    local qbinventory
-    qbinventory = {
+    local kora_inventory
+    kora_inventory = {
         calls = {},
-        registerShop = function(self, ...) table.insert(qbinventory.calls, { fn = 'registerShop', args = { ... } }) end,
-        registerStash = function(self, ...) table.insert(qbinventory.calls, { fn = 'registerStash', args = { ... } }) end,
+        registerShop = function(self, ...) table.insert(kora_inventory.calls, { fn = 'registerShop', args = { ... } }) end,
+        registerStash = function(self, ...) table.insert(kora_inventory.calls, { fn = 'registerStash', args = { ... } }) end,
     }
-    setmetatable(qbinventory, { __index = function() return function() end end })
+    setmetatable(kora_inventory, { __index = function() return function() end end })
 
     -- kora_dispatch owns the call lifecycle; kora_ambulance only raises calls through
     -- it. Recorded rather than simulated -- what these tests care about is the
@@ -324,28 +324,28 @@ function M.install()
     local dispatchClosed = {}
     local playerAlertDefinitions = {}
     local nextCallId = 0
-    local qbdispatch = {}
-    function qbdispatch:createCall(payload)
+    local kora_dispatch = {}
+    function kora_dispatch:createCall(payload)
         nextCallId = nextCallId + 1
         payload.id = nextCallId
         dispatchCalls[#dispatchCalls + 1] = payload
 
         local recipients = {}
         for _, jobName in ipairs(payload.jobs or {}) do
-            for _, src in ipairs(qbcore:getPlayersByJob(jobName, true)) do recipients[src] = true end
+            for _, src in ipairs(kora_core:getPlayersByJob(jobName, true)) do recipients[src] = true end
         end
         for _, jobType in ipairs(payload.jobTypes or {}) do
-            for _, src in ipairs(qbcore:getPlayersByJobType(jobType, true)) do recipients[src] = true end
+            for _, src in ipairs(kora_core:getPlayersByJobType(jobType, true)) do recipients[src] = true end
         end
         local count = 0
         for _ in pairs(recipients) do count = count + 1 end
         return nextCallId, count
     end
-    function qbdispatch:registerPlayerAlert(key, definition)
+    function kora_dispatch:registerPlayerAlert(key, definition)
         playerAlertDefinitions[key] = definition
         return true
     end
-    function qbdispatch:createPlayerCall(src, key)
+    function kora_dispatch:createPlayerCall(src, key)
         local definition = playerAlertDefinitions[key]
         if not definition then return false, 'unknown player alert type' end
 
@@ -355,7 +355,7 @@ function M.install()
         payload.data = { incident = key, reporter = src }
         return self:createCall(payload)
     end
-    function qbdispatch:getCalls(filter)
+    function kora_dispatch:getCalls(filter)
         local out = {}
         for _, call in ipairs(dispatchCalls) do
             if not dispatchClosed[call.id] and (not filter or not filter.service
@@ -365,11 +365,11 @@ function M.install()
         end
         return out
     end
-    function qbdispatch:closeCall(id, reason) dispatchClosed[id] = reason or true; return true end
-    function qbdispatch:setTheme() return true end
+    function kora_dispatch:closeCall(id, reason) dispatchClosed[id] = reason or true; return true end
+    function kora_dispatch:setTheme() return true end
 
-    _G.exports = setmetatable({ kora_core = qbcore, kora_target = qbtarget, kora_inventory = qbinventory,
-                                kora_dispatch = qbdispatch }, {
+    _G.exports = setmetatable({ kora_core = kora_core, kora_target = kora_target, kora_inventory = kora_inventory,
+                                kora_dispatch = kora_dispatch }, {
         __index = function() return setmetatable({}, { __index = function() return function() end end }) end,
         __call = function(_, name, fn) registeredExports[name] = fn end,
     })
@@ -423,13 +423,13 @@ function M.install()
         serverEvents = serverEvents,
         resourceStates = resourceStates,
         Kora = Kora,
-        kora_core = qbcore,
-        kora_dispatch = qbdispatch,
+        kora_core = kora_core,
+        kora_dispatch = kora_dispatch,
         dispatchCalls = dispatchCalls,
         playerAlertDefinitions = playerAlertDefinitions,
         lastDispatchCall = function() return dispatchCalls[#dispatchCalls] end,
-        kora_target = qbtarget,
-        kora_inventory = qbinventory,
+        kora_target = kora_target,
+        kora_inventory = kora_inventory,
         setHealth = function(src, health) ensure(src).health = health end,
         setCoords = function(src, x, y, z) ensure(src).coords = vector(x, y, z) end,
         advanceTime = function(ms) clock = clock + ms end,

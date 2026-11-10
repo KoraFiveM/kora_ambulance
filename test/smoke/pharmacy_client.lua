@@ -15,7 +15,7 @@ _G.State = { isAlive = function() return true end }
 
 dofile('client/pharmacy.lua')
 
-local function boost(amount) handle.fireEvent('qbambulance:client:painkillerBenefit', 0, amount) end
+local function boost(amount) handle.fireEvent('kora_ambulance:client:painkillerBenefit', 0, amount) end
 
 h.test('the boost raises health by the configured amount', function()
     health = 150

@@ -52,11 +52,11 @@ h.test('enterLaststand sets metadata, pushes the client event, and getState refl
     h.assertEqual(Death.getState(1), 'laststand')
     h.assertTrue(Death.isLaststand(1))
 
-    local push = handle.lastClient('qbambulance:client:enterLaststand')
+    local push = handle.lastClient('kora_ambulance:client:enterLaststand')
     h.assertTrue(push ~= nil)
     h.assertEqual(push.target, 1)
     h.assertEqual(handle.playerStates[1].emsDown, 'laststand')
-    h.assertEqual(handle.players[1].metadata.qbambulanceMedical.laststandAt, now)
+    h.assertEqual(handle.players[1].metadata.kora_ambulanceMedical.laststandAt, now)
 end)
 
 h.test('enterLaststand is a no-op if already in laststand or dead', function()
@@ -113,7 +113,7 @@ h.test('respawnAtHospital only works from dead, charges a bill, and fully clears
     h.assertEqual(handle.players[6].metadata.hunger, 100)
     h.assertEqual(handle.players[6].metadata.thirst, 100)
 
-    local push = handle.lastClient('qbambulance:client:respawnedAtHospital')
+    local push = handle.lastClient('kora_ambulance:client:respawnedAtHospital')
     h.assertTrue(push ~= nil and push.target == 6)
 end)
 
@@ -187,13 +187,13 @@ h.test('persisted dead timestamps survive a relog and continue the respawn deadl
     local src = 26
     handle.ensurePlayer(src)
     Death.markDead(src)
-    local persistedAt = handle.players[src].metadata.qbambulanceMedical.deadAt
+    local persistedAt = handle.players[src].metadata.kora_ambulanceMedical.deadAt
     handle.fireEvent('playerDropped', src)
 
     now = now + 10
-    handle.fireEvent('qbcore:server:playerLoaded', src, src)
+    handle.fireEvent('kora_core:server:playerLoaded', src, src)
     h.assertEqual(Death.respawnWaitRemaining(src), respawnWaitSeconds - 10)
-    h.assertEqual(handle.players[src].metadata.qbambulanceMedical.deadAt, persistedAt)
+    h.assertEqual(handle.players[src].metadata.kora_ambulanceMedical.deadAt, persistedAt)
     h.assertEqual(handle.playerStates[src].emsDown, 'dead')
 end)
 
@@ -201,12 +201,12 @@ h.test('persisted wounds round-trip and exported snapshots are detached copies',
     local src = 27
     handle.ensurePlayer(src)
     Death.recordWound(src, 'left_arm', 3)
-    local persisted = handle.players[src].metadata.qbambulanceMedical
+    local persisted = handle.players[src].metadata.kora_ambulanceMedical
     h.assertEqual(persisted.version, 1)
     h.assertEqual(persisted.wounds.left_arm, 3)
 
     handle.fireEvent('playerDropped', src)
-    handle.fireEvent('qbcore:server:playerLoaded', src, src)
+    handle.fireEvent('kora_core:server:playerLoaded', src, src)
     h.assertEqual(Death.getWoundData(src).left_arm, 3)
 
     local snapshot = handle.exports.getPatientStatus(src)
@@ -222,7 +222,7 @@ h.test('player load sanitizes malformed medical data and promotes elapsed lastst
     player.metadata.inlaststand = true
     local deathSeconds = math.floor(Config.death.deathTime / 1000)
     local startedAt = now - deathSeconds - 10
-    player.metadata.qbambulanceMedical = {
+    player.metadata.kora_ambulanceMedical = {
         version = 1,
         wounds = { chest = 3, invented = 4, left_hand = 1.5 },
         laststandAt = startedAt,
@@ -230,11 +230,11 @@ h.test('player load sanitizes malformed medical data and promotes elapsed lastst
         injected = true,
     }
 
-    handle.fireEvent('qbcore:server:playerLoaded', src, src)
+    handle.fireEvent('kora_core:server:playerLoaded', src, src)
     h.assertTrue(Death.isDead(src))
     h.assertEqual(Death.getWoundData(src).chest, 3)
     h.assertEqual(Death.getWoundData(src).invented, nil)
-    local clean = player.metadata.qbambulanceMedical
+    local clean = player.metadata.kora_ambulanceMedical
     h.assertEqual(clean.version, 1)
     h.assertEqual(clean.laststandAt, nil)
     h.assertEqual(clean.deadAt, startedAt + deathSeconds)
@@ -297,18 +297,18 @@ h.test('clearWound / clearAllWounds remove the Kora.status effects once no wound
     h.assertEqual(next(Death.getWoundData(10)), nil)
 end)
 
-h.test('qbambulance:server:reportDeath rejects an alive server ped', function()
+h.test('kora_ambulance:server:reportDeath rejects an alive server ped', function()
     handle.ensurePlayer(11)
-    local reportDeath = handle.Kora.callback.registry['qbambulance:server:reportDeath']
+    local reportDeath = handle.Kora.callback.registry['kora_ambulance:server:reportDeath']
     h.assertTrue(reportDeath ~= nil)
     h.assertFalse(reportDeath(11, 'died'))
     h.assertTrue(Death.isAlive(11))
 end)
 
-h.test('qbambulance:server:reportDeath transitions a corroborated dead ped into laststand', function()
+h.test('kora_ambulance:server:reportDeath transitions a corroborated dead ped into laststand', function()
     handle.ensurePlayer(14)
     handle.setHealth(14, 0)
-    local reportDeath = handle.Kora.callback.registry['qbambulance:server:reportDeath']
+    local reportDeath = handle.Kora.callback.registry['kora_ambulance:server:reportDeath']
     h.assertTrue(reportDeath(14, 'died'))
     h.assertTrue(Death.isLaststand(14))
     handle.setHealth(14, 200)
@@ -377,14 +377,14 @@ h.test('legacy doctor alert is accepted only at a configured hospital', function
 end)
 
 h.test('the legacy client-selected wound tier route is inaccessible', function()
-    h.assertEqual(handle.Kora.events.registry['qbambulance:server:reportWound'], nil)
+    h.assertEqual(handle.Kora.events.registry['kora_ambulance:server:reportWound'], nil)
 end)
 
 h.test('hitObserved validates measurements, remaps known bones, and derives severity', function()
     local src = 12
     handle.ensurePlayer(src)
     handle.setHealth(src, 180)
-    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['kora_ambulance:server:hitObserved']
     h.assertTrue(observed ~= nil)
 
     observed(src, nil)
@@ -399,7 +399,7 @@ h.test('hitObserved validates measurements, remaps known bones, and derives seve
 end)
 
 h.test('hitObserved accepts fallback only for a missing or unmapped bone', function()
-    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['kora_ambulance:server:hitObserved']
 
     handle.ensurePlayer(29)
     handle.setHealth(29, 190)
@@ -420,7 +420,7 @@ h.test('hitObserved burns replayed and cooldown-rejected sequences', function()
     local src = 31
     handle.ensurePlayer(src)
     handle.setHealth(src, 180)
-    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['kora_ambulance:server:hitObserved']
 
     observed(src, { sequence = 10, bone = 18905, bodyPart = 'left_hand', damage = 20, healthAfter = 180, fallback = false })
     h.assertEqual(Death.getWoundData(src).left_hand, 3)
@@ -438,10 +438,10 @@ h.test('hitObserved burns replayed and cooldown-rejected sequences', function()
 end)
 
 -- Config.death.respawn: inventory wipe and the medic gate (both default off).
-local blockPushes = {} -- src -> last qbambulance:client:respawnBlock value
+local blockPushes = {} -- src -> last kora_ambulance:client:respawnBlock value
 local baseTriggerClientEvent = _G.TriggerClientEvent
 _G.TriggerClientEvent = function(name, target, ...)
-    if name == 'qbambulance:client:respawnBlock' then blockPushes[target] = (...) end
+    if name == 'kora_ambulance:client:respawnBlock' then blockPushes[target] = (...) end
     return baseTriggerClientEvent(name, target, ...)
 end
 

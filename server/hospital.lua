@@ -41,8 +41,8 @@ local function releaseSession(src, reason)
 
     sessions[src] = nil
     reservedBeds[getBedKey(session.hospital, session.bedIndex)] = nil
-    TriggerClientEvent('qbambulance:client:bedReleased', src, reason)
-    TriggerEvent('qbambulance:server:onBedReleased', src, session.hospital, session.bedIndex, reason)
+    TriggerClientEvent('kora_ambulance:client:bedReleased', src, reason)
+    TriggerEvent('kora_ambulance:server:onBedReleased', src, session.hospital, session.bedIndex, reason)
     return true
 end
 
@@ -105,8 +105,8 @@ function Hospital.requestCheckIn(src, hospitalName)
         readyAt = session.readyAt,
         expiresAt = session.expiresAt,
     }
-    TriggerClientEvent('qbambulance:client:checkInAccepted', src, response)
-    TriggerEvent('qbambulance:server:onPatientCheckedIn', src, session.hospital, session.bedIndex)
+    TriggerClientEvent('kora_ambulance:client:checkInAccepted', src, response)
+    TriggerEvent('kora_ambulance:server:onPatientCheckedIn', src, session.hospital, session.bedIndex)
     return response
 end
 
@@ -146,7 +146,7 @@ function Hospital.completeBedCare(src, token)
     local cost = Billing.charge(src, Config.billing.checkInCost, 'EMS check-in care')
 
     releaseSession(src, 'completed')
-    TriggerEvent('qbambulance:server:onBedCareCompleted', src, session.hospital, session.bedIndex, cost)
+    TriggerEvent('kora_ambulance:server:onBedCareCompleted', src, session.hospital, session.bedIndex, cost)
     return true
 end
 
@@ -166,15 +166,15 @@ function Hospital.getSession(src)
     return sessions[src]
 end
 
-Kora.callback.register('qbambulance:server:checkInRequested', function(src, hospitalName)
+Kora.callback.register('kora_ambulance:server:checkInRequested', function(src, hospitalName)
     return Hospital.requestCheckIn(src, hospitalName)
 end)
 
-Kora.callback.register('qbambulance:server:bedCareCompleted', function(src, token)
+Kora.callback.register('kora_ambulance:server:bedCareCompleted', function(src, token)
     return Hospital.completeBedCare(src, token)
 end)
 
-Kora.events.register('qbambulance:server:bedLeft', function(src, token)
+Kora.events.register('kora_ambulance:server:bedLeft', function(src, token)
     Hospital.leaveBed(src, token)
 end)
 

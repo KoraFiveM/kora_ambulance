@@ -8,7 +8,7 @@
 -- taking damage, the cancel key) instead of being an instant, un-interactable
 -- server-side flip.
 
-Kora.callback.register('qbambulance:client:pharmacyProgress', function(payload)
+Kora.callback.register('kora_ambulance:client:pharmacyProgress', function(payload)
     return Kora.progressbar.start({
         label = ('Using %s'):format(payload.label or 'item'),
         duration = payload.duration or 2500,
@@ -20,7 +20,7 @@ end)
 
 -- First aid kit: server/items.lua consumed the item and cleared the wounds;
 -- restore the ped to full health (a downed player is left to the death flow).
-RegisterNetEvent('qbambulance:client:firstAidHeal', function()
+RegisterNetEvent('kora_ambulance:client:firstAidHeal', function()
     if State and State.isAlive and not State.isAlive() then return end
     local ped = PlayerPedId()
     SetEntityHealth(ped, GetEntityMaxHealth(ped))
@@ -30,7 +30,7 @@ end)
 -- (which owns item removal and the cooldown) sends the Config.painkillers.
 -- healthAmount here after a completed use. Capped at max health; a downed
 -- player's health is left to the death flow.
-RegisterNetEvent('qbambulance:client:painkillerBenefit', function(amount)
+RegisterNetEvent('kora_ambulance:client:painkillerBenefit', function(amount)
     if State and State.isAlive and not State.isAlive() then return end
     local ped = PlayerPedId()
     local boosted = Downed.boostedHealth(GetEntityHealth(ped), amount, GetEntityMaxHealth(ped))

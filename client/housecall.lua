@@ -3,7 +3,7 @@
 -- /housecall, /housecalls, /accepthousecall commands) -- this file just
 -- reacts to what the server reports back.
 
-RegisterNetEvent('qbambulance:client:housecallList', function(list)
+RegisterNetEvent('kora_ambulance:client:housecallList', function(list)
     if type(list) ~= 'table' or #list == 0 then return end
 
     local lines = {}
@@ -17,7 +17,7 @@ end)
 -- server/housecall.lua reads the requester's coords server-side
 -- (GetPlayerPed + GetEntityCoords) at submission time, no client round-trip
 -- needed -- set a waypoint straight to them.
-RegisterNetEvent('qbambulance:client:housecallAccepted', function(request)
+RegisterNetEvent('kora_ambulance:client:housecallAccepted', function(request)
     if type(request) ~= 'table' then return end
     Kora.notify.send({ title = 'House Call', message = ('Request #%d accepted.'):format(request.id), type = 'success' })
 

@@ -28,12 +28,12 @@ end
 
 h.test('check-in reserves the lowest available bed through its callback', function()
     placeAtCheckIn(1); injure(1)
-    local care = handle.Kora.callback.registry['qbambulance:server:checkInRequested'](1, hospital.name)
+    local care = handle.Kora.callback.registry['kora_ambulance:server:checkInRequested'](1, hospital.name)
     h.assertEqual(care.bedIndex, 1)
     h.assertEqual(care.hospital, hospital.name)
     h.assertTrue(type(care.token) == 'string')
     h.assertEqual(Hospital.getSession(1).token, care.token)
-    handle.Kora.events.registry['qbambulance:server:bedLeft'](1, care.token)
+    handle.Kora.events.registry['kora_ambulance:server:bedLeft'](1, care.token)
 end)
 
 h.test('check-in rejects remote, healthy, dead, duplicate, and full requests', function()
@@ -86,10 +86,10 @@ h.test('successful care revives laststand, requests client healing, clears wound
     Death.enterLaststand(11)
 
     local completedHook, releasedHook = false, false
-    AddEventHandler('qbambulance:server:onBedCareCompleted', function(src, name, index, cost)
+    AddEventHandler('kora_ambulance:server:onBedCareCompleted', function(src, name, index, cost)
         completedHook = src == 11 and name == hospital.name and index == 1 and cost == Config.billing.checkInCost
     end)
-    AddEventHandler('qbambulance:server:onBedReleased', function(src, _, _, reason)
+    AddEventHandler('kora_ambulance:server:onBedReleased', function(src, _, _, reason)
         releasedHook = src == 11 and reason == 'completed'
     end)
 
@@ -98,7 +98,7 @@ h.test('successful care revives laststand, requests client healing, clears wound
     handle.advanceTime(Config.hospitalCare.duration + 1)
     h.assertTrue(Hospital.completeBedCare(11, care.token))
     h.assertTrue(Death.isAlive(11))
-    local release = handle.lastClient('qbambulance:client:bedReleased')
+    local release = handle.lastClient('kora_ambulance:client:bedReleased')
     h.assertEqual(release.target, 11)
     h.assertEqual(release.args[1], 'completed')
     h.assertEqual(next(Death.getWoundData(11)), nil)

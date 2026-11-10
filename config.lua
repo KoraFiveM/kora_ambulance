@@ -1,5 +1,5 @@
 -- Single flat Config table, per-area sub-tables, a trailing comment on every
--- value -- matches kora_lib/qbcore's own config.lua convention.
+-- value -- matches kora_lib/kora_core's own config.lua convention.
 
 Config = Config or {}
 
@@ -126,7 +126,7 @@ Config.injuries = {
     maxDamage = 100,                  -- largest single health loss accepted by the client injury classifier
     severityThresholds = { 8, 20, 40 }, -- dense ascending damage cutoffs for wound severity tiers
     clearWhenHealthy = true,          -- true: an alive player whose health is back at max (admin /heal, regen, any healing outside this resource) has every wound closed, so the Bleeding/Limping pills go away; false keeps wounds until treated, revived or checked in
-    clearOnHealEvent = true,          -- true: the client reports an admin /heal (qbadmin:client:heal) and the server closes the wounds at once if health is really at max, instead of waiting for the sweep; false = sweep only
+    clearOnHealEvent = true,          -- true: the client reports an admin /heal (kora_admin:client:heal) and the server closes the wounds at once if health is really at max, instead of waiting for the sweep; false = sweep only
     healthyMargin = 0,                -- HP below max that still counts as fully healthy for clearWhenHealthy (0 = must be exactly at max)
     healGraceMs = 2500,               -- ms after a heal or revive (admin /heal, /revive, CPR, hospital) during which new injury reports are ignored, client side and server side, so a health blip or stale hit cannot reopen a wound that was just closed; 0 = no grace
     ignoreNeedsDamage = true,         -- true: health lost to starvation/dehydration (kora_core applies it when hunger or thirst is 0) is not an injury and never opens a bleeding wound; false = it counts like any other hit

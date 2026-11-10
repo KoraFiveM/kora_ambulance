@@ -62,7 +62,7 @@ handle.Kora.cache = {
     isDead = function() return fatal end,
 }
 handle.Kora.callback.trigger = function(name, cause)
-    h.assertEqual(name, 'qbambulance:server:reportDeath')
+    h.assertEqual(name, 'kora_ambulance:server:reportDeath')
     reportedCause = cause
     reportAttempts = reportAttempts + 1
     return acceptReport
@@ -177,22 +177,22 @@ h.test('a corroborated death report suppresses native wasted after server accept
 end)
 
 h.test('client death lifecycle never writes the server-owned emsDown state bag', function()
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 1000)
     h.assertTrue(State.inLaststand)
     h.assertEqual(playedAnimations[#playedAnimations].clip, 'writhe_loop')
     h.assertEqual(clientStateWrites, 0)
 end)
 
 h.test('death screen effect retains and releases kora_lib handle identity', function()
-    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
-    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 1000)
 
     h.assertEqual(#handle.Kora.fx.started, 1, 'repeated dead-state updates must not leak screen handles')
     h.assertEqual(playedAnimations[#playedAnimations].clip, 'dead_a')
     local startedHandle = handle.Kora.fx.started[1].handle
     local activeDownedAnimation = playedAnimations[#playedAnimations]
 
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 
     h.assertEqual(handle.Kora.fx.stopped[1], startedHandle,
         'revive must release the opaque handle returned by screenEffect')
@@ -205,7 +205,7 @@ h.test('downed controls block movement while allowing configured camera movement
     playerFiringDisabled = false
     stopControlLoopAfterFrame = true
 
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 1000)
     handle.step()
 
     stopControlLoopAfterFrame = false
@@ -214,7 +214,7 @@ h.test('downed controls block movement while allowing configured camera movement
     h.assertTrue(disabledControls[30], 'horizontal movement must remain disabled')
     h.assertTrue(disabledControls[31], 'vertical movement must remain disabled')
     h.assertTrue(playerFiringDisabled, 'weapon firing must remain disabled')
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('downed camera movement can be disabled in config', function()
@@ -223,14 +223,14 @@ h.test('downed camera movement can be disabled in config', function()
     disabledControls = {}
     stopControlLoopAfterFrame = true
 
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 1000)
     handle.step()
 
     stopControlLoopAfterFrame = false
     Config.death.allowCameraMovement = allowCameraMovement
     h.assertTrue(disabledControls[1])
     h.assertTrue(disabledControls[2])
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('the fully dead state keeps camera look free and still blocks movement and weapons', function()
@@ -238,7 +238,7 @@ h.test('the fully dead state keeps camera look free and still blocks movement an
     playerFiringDisabled = false
     stopControlLoopAfterFrame = true
 
-    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 1000)
     handle.step()
 
     stopControlLoopAfterFrame = false
@@ -248,7 +248,7 @@ h.test('the fully dead state keeps camera look free and still blocks movement an
     h.assertTrue(disabledControls[30], 'horizontal movement must stay disabled while dead')
     h.assertTrue(disabledControls[24], 'attack must stay disabled while dead')
     h.assertTrue(playerFiringDisabled, 'weapon firing must stay disabled while dead')
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('laststand never blocks look, chat, voice or pause controls when camera movement is allowed', function()
@@ -257,14 +257,14 @@ h.test('laststand never blocks look, chat, voice or pause controls when camera m
     disabledControls = {}
     stopControlLoopAfterFrame = true
 
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 1000)
     handle.step()
 
     stopControlLoopAfterFrame = false
     for _, control in ipairs(mustStayFree) do
         h.assertFalse(disabledControls[control], ('control %d must stay enabled'):format(control))
     end
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('the dead state honours the same option when camera movement is disabled', function()
@@ -273,14 +273,14 @@ h.test('the dead state honours the same option when camera movement is disabled'
     disabledControls = {}
     stopControlLoopAfterFrame = true
 
-    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 1000)
     handle.step()
 
     stopControlLoopAfterFrame = false
     Config.death.allowCameraMovement = allowCameraMovement
     h.assertTrue(disabledControls[1])
     h.assertTrue(disabledControls[2])
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 local realWait = _G.Wait
@@ -297,33 +297,33 @@ h.test('laststand entered on a still fatally injured ped (vehicle crash, legacy 
     -- No cache edge involved: only the server push arrives.
     resetWorld()
     fatal = true
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 1000)
     h.assertTrue(resurrectedAt ~= nil, 'a natively dead ped keeps the frozen death camera until resurrected')
     h.assertEqual(health, 101)
     h.assertTrue(ragdolled)
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('laststand entered through normal damage leaves a living ped alone', function()
     resetWorld()
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 1000)
     h.assertEqual(resurrectedAt, nil)
     h.assertEqual(health, nil)
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('a direct dead push on a fatally injured ped resurrects it as well', function()
     resetWorld()
     fatal = true
-    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 1000)
     h.assertTrue(resurrectedAt ~= nil)
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('the bleed-out timer shows through laststand, survives its own expiry and hands over to the dead prompt', function()
     resetWorld()
     _G.Wait = frameWait
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 3000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 3000)
     handle.step()
     h.assertTrue(visiblePrompt() ~= nil, 'timer must be on screen right after entering laststand')
     h.assertTrue(visiblePrompt().text:find('Bleeding out in', 1, true) ~= nil)
@@ -332,13 +332,13 @@ h.test('the bleed-out timer shows through laststand, survives its own expiry and
     h.assertTrue(visiblePrompt() ~= nil, 'the prompt must not vanish when the clock runs out before markDead lands')
     h.assertEqual(visiblePrompt().text, 'Bleeding out...')
 
-    handle.fireEvent('qbambulance:client:markDead', 0, 2000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 2000)
     handle.step()
     h.assertTrue(visiblePrompt().text:find('You can respawn in', 1, true) ~= nil)
     for _ = 1, 400 do handle.step() end
     h.assertEqual(visiblePrompt().text, 'Type /respawn to wake up at a hospital · [G] Alert EMS')
 
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     h.assertEqual(visiblePrompt(), nil, 'revive clears the prompt')
     _G.Wait = realWait
 end)
@@ -346,7 +346,7 @@ end)
 h.test('a prompt another resource stacks on top cannot hide the timer for good', function()
     resetWorld()
     _G.Wait = frameWait
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 60000)
     handle.step()
     local other = handle.Kora.textui.show('Leave property', { key = 'E' })
     h.assertEqual(visiblePrompt().text, 'Leave property')
@@ -355,7 +355,7 @@ h.test('a prompt another resource stacks on top cannot hide the timer for good',
     for _ = 1, 100 do handle.step() end
     h.assertTrue(visiblePrompt().text:find('Bleeding out in', 1, true) ~= nil)
     handle.Kora.textui.hide(other)
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     h.assertEqual(visiblePrompt(), nil)
     _G.Wait = realWait
 end)
@@ -366,11 +366,11 @@ h.test('with camera movement allowed look is actively re-enabled every frame in 
     Config.death.allowCameraMovement = true
     for _, event in ipairs({ 'enterLaststand', 'markDead' }) do
         enabledControls, disabledControls = {}, {}
-        handle.fireEvent('qbambulance:client:' .. event, 0, 60000)
+        handle.fireEvent('kora_ambulance:client:' .. event, 0, 60000)
         handle.step()
         h.assertTrue(enabledControls[1] and enabledControls[2], event .. ': look must be enabled')
         h.assertFalse(disabledControls[1] or disabledControls[2], event .. ': look must not be disabled')
-        handle.fireEvent('qbambulance:client:revived', 0, 20)
+        handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     end
     _G.Wait = realWait
 end)
@@ -378,7 +378,7 @@ end)
 h.test('the downed animation comes back after a ragdoll or resurrect cleared it, but not mid-ragdoll', function()
     resetWorld()
     _G.Wait = frameWait
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 60000)
     playedAnimations = {}
 
     playingAnim, ragdolling = false, true
@@ -389,7 +389,7 @@ h.test('the downed animation comes back after a ragdoll or resurrect cleared it,
     for _ = 1, 100 do handle.step() end
     h.assertTrue(#playedAnimations >= 1, 'writhe animation must be re-applied once the ragdoll ends')
     h.assertEqual(playedAnimations[1].clip, 'writhe_loop')
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     _G.Wait = realWait
 end)
 
@@ -397,13 +397,13 @@ h.test('death screen off: plain countdown prompt, no dim, no title or hints', fu
     resetWorld()
     dimAlphas = {}
     _G.Wait = frameWait
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 60000)
     for _ = 1, 5 do handle.step() end
     local prompt = visiblePrompt()
     h.assertTrue(prompt.text:find('^Bleeding out in %d%d:%d%d$') ~= nil, 'unchanged prompt text: ' .. prompt.text)
     h.assertEqual(prompt.opts.position, nil)
     h.assertEqual(#dimAlphas, 0)
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     _G.Wait = realWait
 end)
 
@@ -415,14 +415,14 @@ h.test('death screen on: Downed then Dead prompts with hints, dimming, and no mo
     _G.Wait = frameWait
     Config.death.screen.enabled = true
 
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 60000)
     for _ = 1, 5 do handle.step() end
     local prompt = visiblePrompt()
     h.assertTrue(prompt.text:find('^%*%*Downed%*%* · Bleeding out in %d%d:%d%d · /911e to call EMS$') ~= nil, prompt.text)
     h.assertEqual(prompt.opts.position, 'top-center')
     h.assertTrue(#dimAlphas > 0 and dimAlphas[#dimAlphas] == 70, 'downed dim')
 
-    handle.fireEvent('qbambulance:client:markDead', 0, 60000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 60000)
     dimAlphas = {}
     for _ = 1, 5 do handle.step() end
     prompt = visiblePrompt()
@@ -434,7 +434,7 @@ h.test('death screen on: Downed then Dead prompts with hints, dimming, and no mo
     h.assertEqual(focusCalls, 0, 'the death screen must never take NUI focus')
 
     h.assertFalse(disabledControls[1] or disabledControls[2], 'camera look stays free with the screen on')
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     h.assertEqual(visiblePrompt(), nil)
     Config.death.screen.enabled = false
     _G.Wait = realWait
@@ -448,18 +448,18 @@ h.test('death screen options dim=false and showHints=false are honoured', functi
     Config.death.screen.dim = false
     Config.death.screen.showHints = false
 
-    handle.fireEvent('qbambulance:client:enterLaststand', 0, 60000)
+    handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 60000)
     for _ = 1, 5 do handle.step() end
     h.assertTrue(visiblePrompt().text:find('^%*%*Downed%*%* · Bleeding out in %d%d:%d%d$') ~= nil, visiblePrompt().text)
     h.assertEqual(#dimAlphas, 0)
 
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     Config.death.screen.enabled, Config.death.screen.dim, Config.death.screen.showHints = false, true, true
     _G.Wait = realWait
 end)
 
 h.test('alert key: registered from Config.death.alertEms, sends the street only while dead', function()
-    local bind = keybinds.qbambulance_alert_ems
+    local bind = keybinds.kora_ambulance_alert_ems
     h.assertTrue(bind ~= nil, 'keybind registered')
     h.assertEqual(bind.defaultKey, Config.death.alertEms.key)
 
@@ -468,33 +468,33 @@ h.test('alert key: registered from Config.death.alertEms, sends the street only 
     bind.onPressed()
     h.assertEqual(#serverEvents, 0, 'alive players send nothing')
 
-    handle.fireEvent('qbambulance:client:markDead', 0, 1000)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 1000)
     bind.onPressed()
     h.assertEqual(#serverEvents, 1)
-    h.assertEqual(serverEvents[1].name, 'qbambulance:server:alertEms')
+    h.assertEqual(serverEvents[1].name, 'kora_ambulance:server:alertEms')
     h.assertEqual(serverEvents[1].args[1], 'Alta Street')
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
 end)
 
 h.test('respawn disabled while medics are on duty: prompt says so, /respawn refuses, and it clears on its own', function()
     resetWorld()
     serverEvents = {}
     _G.Wait = frameWait
-    handle.fireEvent('qbambulance:client:markDead', 0, 0)
-    handle.fireEvent('qbambulance:client:respawnBlock', 0, 3)
+    handle.fireEvent('kora_ambulance:client:markDead', 0, 0)
+    handle.fireEvent('kora_ambulance:client:respawnBlock', 0, 3)
     for _ = 1, 100 do handle.step() end
     h.assertEqual(visiblePrompt().text, 'Respawn is disabled while 3 medics are on duty · [G] Alert EMS')
 
     commands.respawn()
     h.assertEqual(#serverEvents, 0, 'no round-trip while blocked')
 
-    handle.fireEvent('qbambulance:client:respawnBlock', 0, false)
+    handle.fireEvent('kora_ambulance:client:respawnBlock', 0, false)
     for _ = 1, 100 do handle.step() end
     h.assertEqual(visiblePrompt().text, 'Type /respawn to wake up at a hospital · [G] Alert EMS')
     commands.respawn()
     h.assertEqual(serverEvents[1].name, 'hospital:server:RespawnAtHospital')
 
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     _G.Wait = realWait
 end)
 
@@ -511,7 +511,7 @@ h.test('a kora_lib restart re-registers the death edge and reports a death it mi
     handle.step()
     h.assertEqual(reportAttempts, 1, 'a player already fatally injured is seeded once')
 
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     fatal = false
     reportAttempts = 0
     _G.TriggerEvent('onClientResourceStart', 'kora_lib')
@@ -537,7 +537,7 @@ h.test('revive resurrects a still fatally injured ped and restores survivable he
     fatal = true
     resurrectedAt = nil
     health = nil
-    handle.fireEvent('qbambulance:client:revived', 0, 20)
+    handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     h.assertTrue(resurrectedAt ~= nil, 'a fatally injured ped must be resurrected first')
     h.assertTrue(health > 100)
     h.assertEqual(resurrectedAt.z, 30.0)

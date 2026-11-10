@@ -32,7 +32,7 @@ local function performCPRForTarget(targetSrc)
     targetSrc = tonumber(targetSrc)
     if not targetSrc or targetSrc < 1 or targetSrc % 1 ~= 0 then return end
 
-    local token, beginErr, authorization = Kora.callback.trigger('qbambulance:server:beginRevive', targetSrc)
+    local token, beginErr, authorization = Kora.callback.trigger('kora_ambulance:server:beginRevive', targetSrc)
     if not token then
         Kora.notify.send({ title = 'EMS', message = beginErr or 'Unable to begin CPR.', type = 'error' })
         return
@@ -45,7 +45,7 @@ local function performCPRForTarget(targetSrc)
     Kora.anim.stop(ped)
 
     local proof = ok and type(result) == 'table' and result.success == true and result.proof or nil
-    Kora.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
+    Kora.events.trigger('kora_ambulance:server:completeRevive', targetSrc, token, proof)
 end
 
 local function performCPR(entity)
@@ -56,7 +56,7 @@ end
 -- Compatibility asks the caller to run this exact modern flow. Triggering
 -- the client event locally cannot bypass anything: begin/complete still bind
 -- the action token, proof, job, duty, item, range and patient state server-side.
-RegisterNetEvent('qbambulance:client:reviveRequested', performCPRForTarget)
+RegisterNetEvent('kora_ambulance:client:reviveRequested', performCPRForTarget)
 
 local function registerTargets()
     exports.kora_target:addGlobalType('player', {

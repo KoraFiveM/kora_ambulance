@@ -15,13 +15,13 @@ h.test('registerHospitals runs once per hospital at load time', function()
     h.assertEqual(#handle.kora_inventory.calls, hospitalCount * 2, 'each hospital should register exactly one shop and one stash at load')
 end)
 
-h.test('a qbinventory restart re-registers every hospital shop and stash', function()
+h.test('a kora_inventory restart re-registers every hospital shop and stash', function()
     local before = #handle.kora_inventory.calls
 
     handle.fireEvent('onResourceStart', nil, 'kora_inventory')
 
     local after = #handle.kora_inventory.calls
-    h.assertEqual(after, before + hospitalCount * 2, 'registerHospitals must re-run on a qbinventory restart, not just at load')
+    h.assertEqual(after, before + hospitalCount * 2, 'registerHospitals must re-run on a kora_inventory restart, not just at load')
 end)
 
 h.test('an unrelated resource starting does not re-trigger hospital registration', function()
@@ -29,7 +29,7 @@ h.test('an unrelated resource starting does not re-trigger hospital registration
 
     handle.fireEvent('onResourceStart', nil, 'some_other_resource')
 
-    h.assertEqual(#handle.kora_inventory.calls, before, 'only a qbinventory restart should re-trigger registerHospitals')
+    h.assertEqual(#handle.kora_inventory.calls, before, 'only a kora_inventory restart should re-trigger registerHospitals')
 end)
 
 h.test('optional pharmacy and stash points can be omitted independently', function()
@@ -55,7 +55,7 @@ h.test('duty checkout creates one ephemeral server-owned vehicle without a garag
     local hospital = Config.hospitals[1]
     makeMedicAtGarage(20, hospital)
 
-    local networkId = handle.Kora.callback.registry['qbambulance:server:spawnDutyVehicle'](20, hospital.name, 1)
+    local networkId = handle.Kora.callback.registry['kora_ambulance:server:spawnDutyVehicle'](20, hospital.name, 1)
 
     h.assertTrue(type(networkId) == 'number' and networkId > 0)
     h.assertTrue(handle.entities[networkId] ~= nil, 'the shared vehicle exists server-side')
@@ -71,13 +71,13 @@ h.test('duty checkout refuses remote callers and return deletes the ephemeral en
     local hospital = Config.hospitals[1]
     makeMedicAtGarage(21, hospital)
     handle.setCoords(21, 0, 0, 0)
-    local remote = handle.Kora.callback.registry['qbambulance:server:spawnDutyVehicle'](21, hospital.name, 1)
+    local remote = handle.Kora.callback.registry['kora_ambulance:server:spawnDutyVehicle'](21, hospital.name, 1)
     h.assertFalse(remote)
 
     makeMedicAtGarage(22, hospital)
-    local networkId = handle.Kora.callback.registry['qbambulance:server:spawnDutyVehicle'](22, hospital.name, 1)
+    local networkId = handle.Kora.callback.registry['kora_ambulance:server:spawnDutyVehicle'](22, hospital.name, 1)
     handle.advanceTime(Config.dutyGarage.actionCooldown)
-    handle.Kora.events.registry['qbambulance:server:storeDutyVehicle'](22)
+    handle.Kora.events.registry['kora_ambulance:server:storeDutyVehicle'](22)
 
     h.assertEqual(handle.entities[networkId], nil, 'return deletes the live entity')
     h.assertEqual(Duty.currentVehiclePlate(22), nil, 'return clears the checkout guard')
@@ -86,7 +86,7 @@ end)
 h.test('disconnect deletes a checked-out duty vehicle', function()
     local hospital = Config.hospitals[1]
     makeMedicAtGarage(23, hospital)
-    local networkId = handle.Kora.callback.registry['qbambulance:server:spawnDutyVehicle'](23, hospital.name, 1)
+    local networkId = handle.Kora.callback.registry['kora_ambulance:server:spawnDutyVehicle'](23, hospital.name, 1)
 
     handle.fireEvent('playerDropped', 23)
 

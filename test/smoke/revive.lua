@@ -101,7 +101,7 @@ h.test('complete enforces the per-target cooldown across separate revivers', fun
     h.assertTrue(reason ~= nil)
 end)
 
-h.test('a successful revive fires qbambulance:server:onPlayerRevivedBy', function()
+h.test('a successful revive fires kora_ambulance:server:onPlayerRevivedBy', function()
     makeMedic(14)
     handle.ensurePlayer(15)
     Death.enterLaststand(15)
@@ -109,7 +109,7 @@ h.test('a successful revive fires qbambulance:server:onPlayerRevivedBy', functio
     local fired = false
     local originalTriggerEvent = _G.TriggerEvent
     _G.TriggerEvent = function(name, ...)
-        if name == 'qbambulance:server:onPlayerRevivedBy' then fired = true end
+        if name == 'kora_ambulance:server:onPlayerRevivedBy' then fired = true end
         return originalTriggerEvent(name, ...)
     end
 
@@ -124,22 +124,22 @@ h.test('network revive requires the proof authorization issued for that action',
     handle.ensurePlayer(17)
     Death.enterLaststand(17)
 
-    local token, _, authorization = handle.Kora.callback.registry['qbambulance:server:beginRevive'](16, 17)
+    local token, _, authorization = handle.Kora.callback.registry['kora_ambulance:server:beginRevive'](16, 17)
     local wrongProof = handle.issueMinigameProof(16, 'mash', 'wrong-authorization')
-    handle.Kora.events.registry['qbambulance:server:completeRevive'](16, 17, token, wrongProof)
+    handle.Kora.events.registry['kora_ambulance:server:completeRevive'](16, 17, token, wrongProof)
     h.assertTrue(Death.isLaststand(17), 'a proof from another authorization is rejected')
 
     makeMedic(18)
     handle.ensurePlayer(19)
     Death.enterLaststand(19)
-    local validToken, _, validAuthorization = handle.Kora.callback.registry['qbambulance:server:beginRevive'](18, 19)
+    local validToken, _, validAuthorization = handle.Kora.callback.registry['kora_ambulance:server:beginRevive'](18, 19)
     local validProof = handle.issueMinigameProof(18, 'mash', validAuthorization)
-    handle.Kora.events.registry['qbambulance:server:completeRevive'](18, 19, validToken, validProof)
+    handle.Kora.events.registry['kora_ambulance:server:completeRevive'](18, 19, validToken, validProof)
     h.assertTrue(Death.isAlive(19), 'the matching action proof revives the patient')
 end)
 
-local beginRevive = handle.Kora.callback.registry['qbambulance:server:beginRevive']
-local completeRevive = handle.Kora.events.registry['qbambulance:server:completeRevive']
+local beginRevive = handle.Kora.callback.registry['kora_ambulance:server:beginRevive']
+local completeRevive = handle.Kora.events.registry['kora_ambulance:server:completeRevive']
 local originalTimer = GetGameTimer
 local clock = 1000000
 GetGameTimer = function() return clock end

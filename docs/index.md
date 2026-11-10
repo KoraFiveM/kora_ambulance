@@ -17,10 +17,10 @@ client directly heal, revive, choose a bed, or remove inventory.
 ## Requirements
 
 - [kora_lib](https://qbcore2.github.io/kora_lib/)
-- [qbcore](https://qbcore2.github.io/kora_core/)
-- [qbinventory](https://qbcore2.github.io/kora_inventory/)
-- [qbtarget](https://qbcore2.github.io/kora_target/)
-- [qbdispatch](https://qbcore2.github.io/kora_dispatch/)
+- [kora_core](https://qbcore2.github.io/kora_core/)
+- [kora_inventory](https://qbcore2.github.io/kora_inventory/)
+- [kora_target](https://qbcore2.github.io/kora_target/)
+- [kora_dispatch](https://qbcore2.github.io/kora_dispatch/)
 
 ## Installation
 
@@ -79,16 +79,16 @@ to "your emergency has been reported".
 ```
 `/housecalls` lists the open queue; `/accepthousecall <id>` removes that entry
 and sets a waypoint on the accepting medic's client via
-`qbambulance:client:housecallAccepted`.
+`kora_ambulance:client:housecallAccepted`.
 
 ### React to a field revive from another resource
 ```lua
 -- server, any resource
-AddEventHandler('qbambulance:server:onPlayerRevived', function(src)
+AddEventHandler('kora_ambulance:server:onPlayerRevived', function(src)
     print(('%d was stabilised by EMS'):format(src))
 end)
 
-AddEventHandler('qbambulance:server:onPlayerRevivedBy', function(targetSrc, reviverSrc)
+AddEventHandler('kora_ambulance:server:onPlayerRevivedBy', function(targetSrc, reviverSrc)
     exports.kora_core:incrementMetaData(reviverSrc, 'stat_revives', 1)
 end)
 ```
@@ -104,7 +104,7 @@ action timing and current wound severity are all checked again on the server whe
 the action completes.
 
 ```lua
-AddEventHandler('qbambulance:server:onPatientTreated', function(patientSrc, medicSrc, bodyPart, tier, item)
+AddEventHandler('kora_ambulance:server:onPatientTreated', function(patientSrc, medicSrc, bodyPart, tier, item)
     print(('%d treated %d (%s, tier %d) with %s'):format(medicSrc, patientSrc, bodyPart, tier, item))
 end)
 ```
@@ -119,15 +119,15 @@ health, clears wounds and charges `Config.billing.checkInCost`; cancellation,
 expiry and disconnect release the bed without charging.
 
 ```lua
-AddEventHandler('qbambulance:server:onPatientCheckedIn', function(src, hospitalName, bedIndex)
+AddEventHandler('kora_ambulance:server:onPatientCheckedIn', function(src, hospitalName, bedIndex)
     print(('%d entered %s bed %d'):format(src, hospitalName, bedIndex))
 end)
 
-AddEventHandler('qbambulance:server:onBedCareCompleted', function(src, hospitalName, bedIndex, charged)
+AddEventHandler('kora_ambulance:server:onBedCareCompleted', function(src, hospitalName, bedIndex, charged)
     print(('%d completed care at %s for $%d'):format(src, hospitalName, charged))
 end)
 
-AddEventHandler('qbambulance:server:onBedReleased', function(src, hospitalName, bedIndex, reason)
+AddEventHandler('kora_ambulance:server:onBedReleased', function(src, hospitalName, bedIndex, reason)
     print(('%s bed %d released: %s'):format(hospitalName, bedIndex, reason))
 end)
 ```
@@ -144,7 +144,7 @@ physical stretcher is impractical.
 ### React to a hospital bill being charged
 ```lua
 -- server, any resource
-AddEventHandler('qbambulance:server:onBillCharged', function(src, cost)
+AddEventHandler('kora_ambulance:server:onBillCharged', function(src, cost)
     print(('%d was billed $%d for treatment'):format(src, cost))
 end)
 ```
@@ -167,48 +167,48 @@ internally between kora_ambulance's own client and server realms.
 ### Duty & vehicles
 ```
 /ems-duty                                                    -- command: toggle EMS duty
-Kora.callback.trigger('qbambulance:server:spawnDutyVehicle', hospitalName, vehicleIndex) -- -> networkId | false, err
-Kora.events.trigger('qbambulance:server:storeDutyVehicle', snapshot)
+Kora.callback.trigger('kora_ambulance:server:spawnDutyVehicle', hospitalName, vehicleIndex) -- -> networkId | false, err
+Kora.events.trigger('kora_ambulance:server:storeDutyVehicle', snapshot)
 ```
 
 ### Revive
 ```
-Kora.callback.trigger('qbambulance:server:beginRevive', targetSrc)      -- -> token | nil, err
-Kora.events.trigger('qbambulance:server:completeRevive', targetSrc, token, proof)
-qbambulance:server:onPlayerRevivedBy(targetSrc, reviverSrc)           -- hook
-qbambulance:server:onPlayerRevived(src)                               -- hook
+Kora.callback.trigger('kora_ambulance:server:beginRevive', targetSrc)      -- -> token | nil, err
+Kora.events.trigger('kora_ambulance:server:completeRevive', targetSrc, token, proof)
+kora_ambulance:server:onPlayerRevivedBy(targetSrc, reviverSrc)           -- hook
+kora_ambulance:server:onPlayerRevived(src)                               -- hook
 ```
 
 ### Patient assessment & treatment
 ```
-Kora.callback.trigger('qbambulance:server:assessPatient', targetSrc) -- -> report | nil, err
-Kora.callback.trigger('qbambulance:server:beginTreatment', targetSrc) -- -> token | nil, err
-Kora.callback.trigger('qbambulance:server:completeTreatment', targetSrc, token, completed) -- -> treated, err
-qbambulance:server:onPatientTreated(patientSrc, medicSrc, bodyPart, tier, item) -- hook
+Kora.callback.trigger('kora_ambulance:server:assessPatient', targetSrc) -- -> report | nil, err
+Kora.callback.trigger('kora_ambulance:server:beginTreatment', targetSrc) -- -> token | nil, err
+Kora.callback.trigger('kora_ambulance:server:completeTreatment', targetSrc, token, completed) -- -> treated, err
+kora_ambulance:server:onPatientTreated(patientSrc, medicSrc, bodyPart, tier, item) -- hook
 ```
 
 ### Hospital admission
 ```
-Kora.callback.trigger('qbambulance:server:checkInRequested', hospitalName) -- -> care | false, reason
-Kora.callback.trigger('qbambulance:server:bedCareCompleted', token)        -- -> true | false, reason
-Kora.events.trigger('qbambulance:server:bedLeft', token)
-qbambulance:server:onPatientCheckedIn(src, hospitalName, bedIndex)       -- hook
-qbambulance:server:onBedCareCompleted(src, hospitalName, bedIndex, cost) -- hook
-qbambulance:server:onBedReleased(src, hospitalName, bedIndex, reason)    -- hook
+Kora.callback.trigger('kora_ambulance:server:checkInRequested', hospitalName) -- -> care | false, reason
+Kora.callback.trigger('kora_ambulance:server:bedCareCompleted', token)        -- -> true | false, reason
+Kora.events.trigger('kora_ambulance:server:bedLeft', token)
+kora_ambulance:server:onPatientCheckedIn(src, hospitalName, bedIndex)       -- hook
+kora_ambulance:server:onBedCareCompleted(src, hospitalName, bedIndex, cost) -- hook
+kora_ambulance:server:onBedReleased(src, hospitalName, bedIndex, reason)    -- hook
 ```
 
 ### Death state machine
 ```
 /respawn                                          -- command: client, only while dead and only after Config.death.respawnTime
-qbambulance:client:enterLaststand(deathTimeMs)    -- client event
-qbambulance:client:markDead(respawnTimeMs)        -- client event
-qbambulance:client:revived(healthPct)             -- client event
-qbambulance:client:respawnedAtHospital(coords)    -- client event
-qbambulance:client:respawnBlock(minOnDuty|false)  -- client event: /respawn disabled by on-duty medics (Config.death.respawn.blockWhenMedics)
-qbambulance:server:alertEms(street?)              -- net event: dead player's alert key (Config.death.alertEms); the server re-checks dead state and cooldown
-qbambulance:server:onPlayerDied(src, cause)       -- hook
-qbambulance:server:onPlayerDead(src)              -- hook
-qbambulance:server:onPlayerRespawned(src, hospitalName) -- hook
+kora_ambulance:client:enterLaststand(deathTimeMs)    -- client event
+kora_ambulance:client:markDead(respawnTimeMs)        -- client event
+kora_ambulance:client:revived(healthPct)             -- client event
+kora_ambulance:client:respawnedAtHospital(coords)    -- client event
+kora_ambulance:client:respawnBlock(minOnDuty|false)  -- client event: /respawn disabled by on-duty medics (Config.death.respawn.blockWhenMedics)
+kora_ambulance:server:alertEms(street?)              -- net event: dead player's alert key (Config.death.alertEms); the server re-checks dead state and cooldown
+kora_ambulance:server:onPlayerDied(src, cause)       -- hook
+kora_ambulance:server:onPlayerDead(src)              -- hook
+kora_ambulance:server:onPlayerRespawned(src, hospitalName) -- hook
 ```
 
 The server also exposes a detached, read-only medical snapshot:
@@ -219,7 +219,7 @@ local status = exports.kora_ambulance:getPatientStatus(source)
 ```
 
 Wounds and down-state deadlines are stored in
-`metadata.qbambulanceMedical`. A reconnect or resource restart restores the
+`metadata.kora_ambulanceMedical`. A reconnect or resource restart restores the
 ledger, continues the bleed-out/respawn clocks, and republishes the server-owned
 `emsDown` state bag. Invalid or stale metadata fields are discarded.
 
@@ -253,7 +253,7 @@ on the ledger. `Config.revive.clearWounds` (default `false`, the previous
 behaviour) also closes every wound, ending limping. A new or worse wound after
 the revive bleeds again. Hospital check-in care, respawn at a hospital and
 `exports.kora_ambulance:fullRevive(src)` always clear everything. After every
-wound or revive change the server pushes `qbambulance:client:syncStatus`, and
+wound or revive change the server pushes `kora_ambulance:client:syncStatus`, and
 the client reconciles its bleeding/limping effects against it, so the HUD pill
 cannot go stale. A player flipped back to alive by another resource (admin
 `/revive`) is reconciled by the periodic sweep; admin tools should call
@@ -295,7 +295,7 @@ and used as display text. The call lands in the dispatch feed with
 The medic block is evaluated server-side on every `/respawn` attempt (in
 `Death.respawnAtHospital`, so firing `hospital:server:RespawnAtHospital` by hand
 is refused too). While it is enabled the server also tells each dead client via
-`qbambulance:client:respawnBlock` (on death and whenever the state changes, checked
+`kora_ambulance:client:respawnBlock` (on death and whenever the state changes, checked
 by the 5 s sweep), and the prompt reads `Respawn is disabled while N medics are on
 duty`. It returns to the `/respawn` instruction by itself when the count drops
 below `minOnDuty`. `Death.medicsOnDuty(src)` and `Death.respawnBlocked(src)` expose the count.
@@ -310,8 +310,8 @@ older data cannot strand a player during migration.
 /housecall [note]            -- command: queue a non-emergency request
 /housecalls                  -- command: EMS, lists the open queue
 /accepthousecall <id>        -- command: EMS, accepts a queued request
-qbambulance:client:housecallList(list)         -- client event
-qbambulance:client:housecallAccepted(request)  -- client event
+kora_ambulance:client:housecallList(list)         -- client event
+kora_ambulance:client:housecallAccepted(request)  -- client event
 ```
 
 Presentation belongs to **kora_dispatch**: the feed, the map, history and the
@@ -355,24 +355,24 @@ calls — it just fires the event name it was handed.
 
 ### Billing
 ```
-qbambulance:server:onBillCharged(src, cost) -- hook, fires from Death.respawnAtHospital
+kora_ambulance:server:onBillCharged(src, cost) -- hook, fires from Death.respawnAtHospital
 ```
 Cost is `Config.billing.baseCost` plus `Config.billing.perWoundCost[tier]` for
 every still-open wound at respawn time.
 
 ### Patient transport
 ```
-Kora.callback.trigger('qbambulance:server:stretcherDeployRequested', vehicleNetId)
-Kora.events.trigger('qbambulance:server:stretcherPushRequested', stretcherNetId)
-Kora.events.trigger('qbambulance:server:stretcherReleased', stretcherNetId)
-Kora.events.trigger('qbambulance:server:patientLoadedOnStretcher', stretcherNetId, targetSrc)
-Kora.events.trigger('qbambulance:server:patientUnloadedFromStretcher', stretcherNetId)
-Kora.events.trigger('qbambulance:server:stretcherStowed', stretcherNetId, vehicleNetId)
-Kora.events.trigger('qbambulance:server:stretcherUnstowed', vehicleNetId)
+Kora.callback.trigger('kora_ambulance:server:stretcherDeployRequested', vehicleNetId)
+Kora.events.trigger('kora_ambulance:server:stretcherPushRequested', stretcherNetId)
+Kora.events.trigger('kora_ambulance:server:stretcherReleased', stretcherNetId)
+Kora.events.trigger('kora_ambulance:server:patientLoadedOnStretcher', stretcherNetId, targetSrc)
+Kora.events.trigger('kora_ambulance:server:patientUnloadedFromStretcher', stretcherNetId)
+Kora.events.trigger('kora_ambulance:server:stretcherStowed', stretcherNetId, vehicleNetId)
+Kora.events.trigger('kora_ambulance:server:stretcherUnstowed', vehicleNetId)
 
 -- emergency-carry fallback
-Kora.events.trigger('qbambulance:server:stretcherPickup', targetSrc)
-Kora.events.trigger('qbambulance:server:stretcherRelease')
+Kora.events.trigger('kora_ambulance:server:stretcherPickup', targetSrc)
+Kora.events.trigger('kora_ambulance:server:stretcherRelease')
 ```
 All models, attachment offsets, duty-vehicle associations and relationship
 changes are resolved from server/config state. Network events are internal
@@ -439,9 +439,9 @@ defibrillator inventory item so using it starts CPR on the nearest downed patien
 Part of the [qbcore2](https://github.com/qbcore2) resource set:
 
 - [kora_lib](https://qbcore2.github.io/kora_lib/) — shared helper library
-- [qbsql](https://qbcore2.github.io/kora_sql/) — database driver
-- [qbcore](https://qbcore2.github.io/kora_core/) — framework core
-- [qbinventory](https://qbcore2.github.io/kora_inventory/) — headless inventory
-- [qbtarget](https://qbcore2.github.io/kora_target/) — targeting/interaction
-- [qbpolice](https://qbcore2.github.io/kora_police/) — police/LEO job
+- [kora_sql](https://qbcore2.github.io/kora_sql/) — database driver
+- [kora_core](https://qbcore2.github.io/kora_core/) — framework core
+- [kora_inventory](https://qbcore2.github.io/kora_inventory/) — headless inventory
+- [kora_target](https://qbcore2.github.io/kora_target/) — targeting/interaction
+- [kora_police](https://qbcore2.github.io/kora_police/) — police/LEO job
 - [full resource list ↗](https://github.com/orgs/qbcore2/repositories)

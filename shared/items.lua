@@ -14,11 +14,11 @@
 -- NOT here -- that's server/items.lua's QBCore:createUseable handlers,
 -- which run independently of this cosmetic bridge.
 
-QBAmbulance = QBAmbulance or {}
+KoraAmbulance = KoraAmbulance or {}
 
 local QBCore = exports.kora_core
 
-QBAmbulance.items = {
+KoraAmbulance.items = {
     {
         name = 'bandage',
         label = 'Bandage',
@@ -88,12 +88,12 @@ QBAmbulance.items = {
     },
 }
 
-for _, item in ipairs(QBAmbulance.items) do
+for _, item in ipairs(KoraAmbulance.items) do
     if item.effect then Kora.status.registerEffect(item.name, item.effect) end
 end
 
 if IsDuplicityVersion() then
-    for _, item in ipairs(QBAmbulance.items) do
+    for _, item in ipairs(KoraAmbulance.items) do
         QBCore:registerShared('items', item.name, item)
     end
 end

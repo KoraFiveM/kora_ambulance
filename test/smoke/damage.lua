@@ -52,7 +52,7 @@ h.test('a mapped local hit reports measurements only after an actual health decr
     healthHandler(180, 200)
     h.assertEqual(#reports, before + 1)
     local report = reports[#reports]
-    h.assertEqual(report.name, 'qbambulance:server:hitObserved')
+    h.assertEqual(report.name, 'kora_ambulance:server:hitObserved')
     h.assertEqual(report.payload.bone, 31086)
     h.assertEqual(report.payload.bodyPart, 'head')
     h.assertEqual(report.payload.damage, 20)

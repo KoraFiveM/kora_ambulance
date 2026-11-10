@@ -168,25 +168,25 @@ function Treatment.complete(medicSrc, patientSrc, token, completed)
     Kora.notify.send(patientSrc, { title = 'Patient Treatment', message = ('A medic treated your wound (%s).'):format(part and part.label or action.bodyPart), type = 'success' })
     local heal = Config.treatment.ifakHealthAmount or 0
     if action.item == 'ifak' and heal > 0 and Death.isAlive(patientSrc) then
-        TriggerClientEvent('qbambulance:client:painkillerBenefit', patientSrc, heal)
+        TriggerClientEvent('kora_ambulance:client:painkillerBenefit', patientSrc, heal)
     end
-    TriggerEvent('qbambulance:server:onPatientTreated', patientSrc, medicSrc,
+    TriggerEvent('kora_ambulance:server:onPatientTreated', patientSrc, medicSrc,
         action.bodyPart, currentTier, action.item)
     return true, nil
 end
 
-Kora.callback.register('qbambulance:server:assessPatient', function(src, patientSrc)
+Kora.callback.register('kora_ambulance:server:assessPatient', function(src, patientSrc)
     patientSrc = tonumber(patientSrc)
     local allowed, reason = Treatment.canAccess(src, patientSrc)
     if not allowed then return nil, reason end
     return Treatment.assessment(patientSrc), nil
 end, { rateLimit = { max = 10, window = 10000 } })
 
-Kora.callback.register('qbambulance:server:beginTreatment', function(src, patientSrc)
+Kora.callback.register('kora_ambulance:server:beginTreatment', function(src, patientSrc)
     return Treatment.begin(src, patientSrc)
 end, { rateLimit = { max = 5, window = 10000 } })
 
-Kora.callback.register('qbambulance:server:completeTreatment', function(src, patientSrc, token, completed)
+Kora.callback.register('kora_ambulance:server:completeTreatment', function(src, patientSrc, token, completed)
     return Treatment.complete(src, patientSrc, token, completed == true)
 end, { rateLimit = { max = 5, window = 10000 } })
 

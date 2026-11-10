@@ -22,7 +22,7 @@ end)
 
 -- Stub the client's progress-bar response for every test below: "completed"
 -- unless a test overrides it to simulate a cancel.
-handle.Kora.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return true end
+handle.Kora.callback.clientHandlers['kora_ambulance:client:pharmacyProgress'] = function(_payload) return true end
 
 h.test('bandage: no wound at all -> refused, item not consumed', function()
     handle.ensurePlayer(1)
@@ -90,9 +90,9 @@ h.test('a cancelled progress bar (client reports false) treats nothing and consu
     handle.players[6].items.bandage = 1
     Death.recordWound(6, 'left_hand', 1)
 
-    handle.Kora.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return false end
+    handle.Kora.callback.clientHandlers['kora_ambulance:client:pharmacyProgress'] = function(_payload) return false end
     handle.kora_core:useItem(6, 'bandage')
-    handle.Kora.callback.clientHandlers['qbambulance:client:pharmacyProgress'] = function(_payload) return true end
+    handle.Kora.callback.clientHandlers['kora_ambulance:client:pharmacyProgress'] = function(_payload) return true end
 
     h.assertEqual(Death.getWoundData(6).left_hand, 1) -- untreated
     h.assertEqual(handle.players[6].items.bandage, 1) -- not consumed
@@ -134,7 +134,7 @@ h.test('painkillers: a promise-returning trigger (same-VM) is awaited; health bo
     h.assertEqual(handle.players[30].items.painkillers, 1)
     -- Server never writes health (SetEntityHealth is client-only): it tells the client.
     h.assertEqual(handle.players[30].health, 150)
-    local benefit = handle.lastClient('qbambulance:client:painkillerBenefit')
+    local benefit = handle.lastClient('kora_ambulance:client:painkillerBenefit')
     h.assertEqual(benefit.target, 30)
     h.assertEqual(benefit.args[1], Config.painkillers.healthAmount)
     h.assertEqual(calls[2].duration, Config.painkillers.animDuration)
@@ -150,7 +150,7 @@ h.test('painkillers: success never raises a script error (no client-only natives
     local ok, err = pcall(function() handle.kora_core:useItem(31, 'painkillers') end)
     h.assertTrue(ok, tostring(err))
     h.assertEqual(handle.players[31].items.painkillers, 0)
-    h.assertEqual(handle.lastClient('qbambulance:client:painkillerBenefit').target, 31)
+    h.assertEqual(handle.lastClient('kora_ambulance:client:painkillerBenefit').target, 31)
 end)
 
 h.test('painkillers: healthAmount 0 sends no boost; a downed player gets none', function()
@@ -166,7 +166,7 @@ h.test('painkillers: healthAmount 0 sends no boost; a downed player gets none', 
     before = #handle.clientEvents
     Items.applyPainkillerBenefit(32)
     for i = before + 1, #handle.clientEvents do
-        h.assertTrue(handle.clientEvents[i].name ~= 'qbambulance:client:painkillerBenefit', 'downed player was boosted')
+        h.assertTrue(handle.clientEvents[i].name ~= 'kora_ambulance:client:painkillerBenefit', 'downed player was boosted')
     end
 end)
 

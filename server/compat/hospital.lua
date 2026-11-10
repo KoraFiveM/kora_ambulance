@@ -55,12 +55,12 @@ RegisterNetEvent('hospital:server:SetLaststandStatus', function(inLaststand)
 end)
 
 local playerAlerts = {
-    ['qbambulance:emergency'] = {
+    ['kora_ambulance:emergency'] = {
         jobTypes = { Config.job.type }, code = '10-52', title = 'Medical Emergency',
         message = 'A patient requires medical assistance.', priority = 1, icon = 'heart-pulse',
         cooldown = Config.dispatch.autoCallCooldown,
     },
-    ['qbambulance:doctor'] = {
+    ['kora_ambulance:doctor'] = {
         jobTypes = { Config.job.type }, code = '10-51', title = 'Doctor Requested',
         message = 'A doctor is needed at the hospital.', priority = 3, icon = 'stethoscope',
         cooldown = Config.dispatch.autoCallCooldown,
@@ -69,19 +69,19 @@ local playerAlerts = {
 
 for key, definition in pairs(playerAlerts) do
     local ok, err = exports.kora_dispatch:registerPlayerAlert(key, definition)
-    if not ok then print(('^3[qbambulance]^7 could not register dispatch alert %s: %s'):format(key, err)) end
+    if not ok then print(('^3[kora_ambulance]^7 could not register dispatch alert %s: %s'):format(key, err)) end
 end
 
 RegisterNetEvent('hospital:server:ambulanceAlert', function()
     local src = source
     if Death.isAlive(src) then return end
-    exports.kora_dispatch:createPlayerCall(src, 'qbambulance:emergency')
+    exports.kora_dispatch:createPlayerCall(src, 'kora_ambulance:emergency')
 end)
 
 RegisterNetEvent('hospital:server:SendDoctorAlert', function()
     local src = source
     if not nearbyHospital(src) then return end
-    exports.kora_dispatch:createPlayerCall(src, 'qbambulance:doctor')
+    exports.kora_dispatch:createPlayerCall(src, 'kora_ambulance:doctor')
 end)
 
 RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospital)
@@ -142,7 +142,7 @@ RegisterNetEvent('hospital:server:SetArmor', function(armor)
     -- SetPedArmour is client-only: the owning client applies it, reduce-only
     -- (client/compat.lua).
     local requested = math.max(0, math.min(100, math.floor(tonumber(armor) or 0)))
-    TriggerClientEvent('qbambulance:client:setArmour', source, requested)
+    TriggerClientEvent('kora_ambulance:client:setArmour', source, requested)
 end)
 
 RegisterNetEvent('hospital:server:resetHungerThirst', function()
@@ -164,7 +164,7 @@ RegisterNetEvent('hospital:server:RevivePlayer', function(targetSrc)
         or not nearbyPlayers(src, targetSrc, Config.death.reviveRange)
         or Death.isAlive(targetSrc) then return end
 
-    TriggerClientEvent('qbambulance:client:reviveRequested', src, targetSrc)
+    TriggerClientEvent('kora_ambulance:client:reviveRequested', src, targetSrc)
 end)
 
 RegisterNetEvent('hospital:server:TreatWounds', function(targetSrc)
@@ -173,7 +173,7 @@ RegisterNetEvent('hospital:server:TreatWounds', function(targetSrc)
     if not targetSrc or targetSrc == src or not isOnDutyEMS(src)
         or not nearbyPlayers(src, targetSrc, Config.treatment.range) then return end
 
-    TriggerClientEvent('qbambulance:client:treatmentRequested', src, targetSrc)
+    TriggerClientEvent('kora_ambulance:client:treatmentRequested', src, targetSrc)
 end)
 
 RegisterNetEvent('hospital:server:UseFirstAid', function()
@@ -237,7 +237,7 @@ QBCore:addCommand('aheal', 'Heal a player (admin)', {
 
     if Death.getState(target) == 'alive' then
         Death.fullRevive(target)
-        TriggerClientEvent('qbambulance:client:revived', target, 100)
+        TriggerClientEvent('kora_ambulance:client:revived', target, 100)
     else
         Death.reviveInField(target, 100, true)
     end

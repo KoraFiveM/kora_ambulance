@@ -18,7 +18,7 @@ do
     if key == nil then key = 'E' end
     if type(key) == 'string' and key ~= '' then
         leaveBinding = Kora.keybind.add({
-            name = 'qbambulance_leave_bed',
+            name = 'kora_ambulance_leave_bed',
             description = 'EMS: leave your hospital bed',
             defaultKey = key,
             disabled = true,
@@ -26,7 +26,7 @@ do
                 if not activeCare then return end
                 local token = activeCare.token
                 leaveBinding.disable(true)
-                Kora.events.trigger('qbambulance:server:bedLeft', token)
+                Kora.events.trigger('kora_ambulance:server:bedLeft', token)
             end,
         })
     end
@@ -49,7 +49,7 @@ local function startCare(care)
         Wait(care.duration)
         if not activeCare or activeCare.token ~= token then return end
         if leaveBinding then leaveBinding.disable(true) end
-        local completed, reason = Kora.callback.trigger('qbambulance:server:bedCareCompleted', token)
+        local completed, reason = Kora.callback.trigger('kora_ambulance:server:bedCareCompleted', token)
         if not completed then
             Kora.notify.send({ title = 'Hospital Check-in', message = reason or 'Care was not completed.', type = 'warning' })
         end
@@ -65,7 +65,7 @@ local function requestCheckIn(hospital)
         Kora.notify.send({ title = 'Hospital Check-in', message = 'You already have a bed reserved.', type = 'warning' })
         return
     end
-    local care, reason = Kora.callback.trigger('qbambulance:server:checkInRequested', hospital.name)
+    local care, reason = Kora.callback.trigger('kora_ambulance:server:checkInRequested', hospital.name)
     if not care then
         Kora.notify.send({ title = 'Hospital Check-in', message = reason or 'Check-in is unavailable.', type = 'error' })
         return
@@ -73,11 +73,11 @@ local function requestCheckIn(hospital)
     startCare(care)
 end
 
-RegisterNetEvent('qbambulance:client:checkInAccepted', function(care)
+RegisterNetEvent('kora_ambulance:client:checkInAccepted', function(care)
     startCare(care)
 end)
 
-RegisterNetEvent('qbambulance:client:bedReleased', function(reason)
+RegisterNetEvent('kora_ambulance:client:bedReleased', function(reason)
     if not activeCare then return end
     stopCare(activeCare.token)
     if reason == 'completed' then

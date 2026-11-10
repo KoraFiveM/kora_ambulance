@@ -39,7 +39,7 @@ h.test('hospital markers use canonical category and facility names', function()
     h.assertEqual(hospitalBlips[1].label, nil, 'kora_lib composes the map label')
 end)
 
-h.test('hospital check-in targets register again after qbtarget restarts', function()
+h.test('hospital check-in targets register again after kora_target restarts', function()
     local before = #handle.kora_target.calls
     handle.fireEvent('onClientResourceStart', nil, 'kora_target')
     h.assertEqual(#handle.kora_target.calls, before * 2)
@@ -61,19 +61,19 @@ h.test('completed server care heals locally; cancelled and inactive care do not'
     TaskStartScenarioAtPosition = function() scenarios = scenarios + 1 end
     TaskStartScenarioAtCoords = nil
     local care = { token = 'care-test', bed = { x = 1, y = 2, z = 3 }, duration = 5000 }
-    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, care)
+    handle.fireEvent('kora_ambulance:client:checkInAccepted', 65535, care)
     h.assertEqual(scenarios, 1)
-    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'left-bed')
+    handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'left-bed')
     h.assertEqual(handle.players[1].health, 40)
-    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'completed')
+    handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'completed')
     h.assertEqual(handle.players[1].health, 40)
-    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, care)
-    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'completed')
+    handle.fireEvent('kora_ambulance:client:checkInAccepted', 65535, care)
+    handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'completed')
     h.assertEqual(handle.players[1].health, 200)
 end)
 
 h.test('leaving the bed is a keybind enabled only while a bed is reserved, with no per-frame loop', function()
-    local bind = keybinds.qbambulance_leave_bed
+    local bind = keybinds.kora_ambulance_leave_bed
     h.assertTrue(bind ~= nil, 'leave-bed keybind registered')
     h.assertEqual(bind.definition.defaultKey, 'E')
     h.assertTrue(bind.disabled, 'disabled with no bed reserved')
@@ -89,29 +89,29 @@ h.test('leaving the bed is a keybind enabled only while a bed is reserved, with 
     local triggered = {}
     Kora.events.trigger = function(name, ...) triggered[#triggered + 1] = { name = name, args = { ... } } end
     local completions = 0
-    Kora.callback.trigger = function(name) if name == 'qbambulance:server:bedCareCompleted' then completions = completions + 1 end return true end
+    Kora.callback.trigger = function(name) if name == 'kora_ambulance:server:bedCareCompleted' then completions = completions + 1 end return true end
 
     bind.definition.onPressed() -- no bed: ignored
     h.assertEqual(#triggered, 0)
 
-    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, care)
+    handle.fireEvent('kora_ambulance:client:checkInAccepted', 65535, care)
     h.assertFalse(bind.disabled, 'enabled while resting')
     bind.definition.onPressed()
     h.assertEqual(#triggered, 1)
-    h.assertEqual(triggered[1].name, 'qbambulance:server:bedLeft')
+    h.assertEqual(triggered[1].name, 'kora_ambulance:server:bedLeft')
     h.assertEqual(triggered[1].args[1], 'care-key')
     h.assertTrue(bind.disabled, 'disabled once the leave request is sent')
 
-    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'left-bed')
+    handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'left-bed')
     handle.step() -- the care timer wakes after the bed was released: must not complete it
     h.assertEqual(completions, 0)
     h.assertEqual(waits[#waits], 5000, 'one sleep for the whole duration')
 
-    handle.fireEvent('qbambulance:client:checkInAccepted', 65535, { token = 'care-done', bed = care.bed, duration = 5000 })
+    handle.fireEvent('kora_ambulance:client:checkInAccepted', 65535, { token = 'care-done', bed = care.bed, duration = 5000 })
     handle.step()
     h.assertEqual(completions, 1)
     h.assertTrue(bind.disabled, 'disabled once care is completing')
-    handle.fireEvent('qbambulance:client:bedReleased', 65535, 'completed')
+    handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'completed')
     Wait = realWait
 end)
 

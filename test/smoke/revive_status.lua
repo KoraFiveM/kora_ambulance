@@ -27,7 +27,7 @@ end
 local function lastSync(src)
     for i = #handle.clientEvents, 1, -1 do
         local event = handle.clientEvents[i]
-        if event.name == 'qbambulance:client:syncStatus' and event.target == src then return event.args end
+        if event.name == 'kora_ambulance:client:syncStatus' and event.target == src then return event.args end
     end
 end
 
@@ -218,7 +218,7 @@ h.test('fullRevive (admin) ignores Config.revive and clears every wound', functi
     h.assertEqual(next(Death.getWoundData(src)), nil)
     h.assertFalse(status.isActive(src, 'bleeding'))
     h.assertFalse(status.isActive(src, 'limping'))
-    h.assertEqual(handle.lastClient('qbambulance:client:revived').target, src)
+    h.assertEqual(handle.lastClient('kora_ambulance:client:revived').target, src)
 end)
 
 h.test('fullRevive is exported for admin tools', function()
@@ -252,11 +252,11 @@ end)
 h.test('a stopped bleed survives a relog and a rewound ledger does not resurrect the pill', function()
     local src = downedPatient()
     Death.reviveInField(src, 20)
-    local saved = handle.players[src].metadata.qbambulanceMedical
+    local saved = handle.players[src].metadata.kora_ambulanceMedical
     h.assertTrue(saved.bleedStopped)
 
     handle.fireEvent('playerDropped', src)
-    handle.fireEvent('qbcore:server:playerLoaded', src, src)
+    handle.fireEvent('kora_core:server:playerLoaded', src, src)
 
     h.assertEqual(Death.getWoundData(src).chest, 4)
     h.assertFalse(Death.isBleeding(src))
@@ -304,11 +304,11 @@ h.test('healthRestored closes wounds at once for a really healed player and igno
     handle.ensurePlayer(src)
     Death.recordWound(src, 'chest', 4)
     handle.players[src].health = 120
-    handle.Kora.events.registry["qbambulance:server:healthRestored"](src)
+    handle.Kora.events.registry["kora_ambulance:server:healthRestored"](src)
     h.assertTrue(status.isActive(src, 'bleeding'), 'a spoofed report on a hurt player does nothing')
 
     handle.players[src].health = 200
-    handle.Kora.events.registry["qbambulance:server:healthRestored"](src)
+    handle.Kora.events.registry["kora_ambulance:server:healthRestored"](src)
     h.assertEqual(next(Death.getWoundData(src)), nil)
     h.assertFalse(status.isActive(src, 'bleeding'))
     h.assertEqual(lastSync(src)[1], false)
@@ -319,7 +319,7 @@ local function validHit(src, sequence)
 end
 
 h.test('a hit reported right after a heal or revive is ignored until the grace window ends', function()
-    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['kora_ambulance:server:hitObserved']
     nextSrc = nextSrc + 1
     local src = nextSrc
     handle.ensurePlayer(src)
@@ -344,7 +344,7 @@ h.test('a hit reported right after a heal or revive is ignored until the grace w
 end)
 
 h.test('healGraceMs = 0 turns the grace window off', function()
-    local observed = handle.Kora.events.registry['qbambulance:server:hitObserved']
+    local observed = handle.Kora.events.registry['kora_ambulance:server:hitObserved']
     local saved = Config.injuries.healGraceMs
     Config.injuries.healGraceMs = 0
     nextSrc = nextSrc + 1

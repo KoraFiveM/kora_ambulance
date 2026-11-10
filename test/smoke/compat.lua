@@ -71,11 +71,11 @@ h.test('legacy armor and weapon modifiers remain reduce-only', function()
     -- SetPedArmour is client-only: the server clamps and forwards, the client
     -- (client/compat.lua) applies it reduce-only.
     handle.fireEvent('hospital:server:SetArmor', 7, 90)
-    local armour = handle.lastClient('qbambulance:client:setArmour')
+    local armour = handle.lastClient('kora_ambulance:client:setArmour')
     h.assertEqual(armour.target, 7)
     h.assertEqual(armour.args[1], 90)
     handle.fireEvent('hospital:server:SetArmor', 7, -5)
-    h.assertEqual(handle.lastClient('qbambulance:client:setArmour').args[1], 0)
+    h.assertEqual(handle.lastClient('kora_ambulance:client:setArmour').args[1], 0)
 
     handle.fireEvent('hospital:server:SetWeaponDamage', 7, 12345, 9.0)
     local event = handle.lastClient('hospital:client:SetWeaponDamage')
@@ -90,7 +90,7 @@ h.test('legacy revive starts modern CPR UX without reviving or consuming an item
     Death.enterLaststand(9)
 
     handle.fireEvent('hospital:server:RevivePlayer', 8, 9)
-    local event = handle.lastClient('qbambulance:client:reviveRequested')
+    local event = handle.lastClient('kora_ambulance:client:reviveRequested')
     h.assertTrue(event ~= nil)
     h.assertEqual(event.target, 8)
     h.assertEqual(event.args[1], 9)
@@ -105,7 +105,7 @@ h.test('legacy treatment starts modern treatment UX without clearing or consumin
     Death.recordWound(11, 'left_arm', 2)
 
     handle.fireEvent('hospital:server:TreatWounds', 10, 11)
-    local event = handle.lastClient('qbambulance:client:treatmentRequested')
+    local event = handle.lastClient('kora_ambulance:client:treatmentRequested')
     h.assertTrue(event ~= nil)
     h.assertEqual(event.target, 10)
     h.assertEqual(event.args[1], 11)
@@ -143,17 +143,17 @@ h.test('RespawnAtHospital accepts a numeric hospital index and still requires be
     handle.ensurePlayer(22)
 
     handle.fireEvent('hospital:server:RespawnAtHospital', 22, 2)
-    h.assertEqual(handle.lastClient('qbambulance:client:respawnedAtHospital'), nil, 'alive players cannot respawn')
+    h.assertEqual(handle.lastClient('kora_ambulance:client:respawnedAtHospital'), nil, 'alive players cannot respawn')
 
     Death.markDead(22)
     handle.fireEvent('hospital:server:RespawnAtHospital', 22, 2)
-    local event = handle.lastClient('qbambulance:client:respawnedAtHospital')
+    local event = handle.lastClient('kora_ambulance:client:respawnedAtHospital')
     h.assertTrue(event ~= nil)
     h.assertEqual(event.args[1], Config.hospitals[2].coords)
 
     Death.markDead(22)
     handle.fireEvent('hospital:server:RespawnAtHospital', 22, 99)
-    event = handle.lastClient('qbambulance:client:respawnedAtHospital')
+    event = handle.lastClient('kora_ambulance:client:respawnedAtHospital')
     h.assertEqual(event.args[1], Config.hospitals[1].coords, 'out-of-range index falls back to the first hospital')
     Config.death.respawnTime = savedWait
 end)

@@ -30,7 +30,7 @@ Damage = { suppressFor = function(ms) suppressed = ms end }
 
 dofile('client/status.lua')
 
-local function sync(bleeding, limping) handle.fireEvent('qbambulance:client:syncStatus', 0, bleeding, limping) end
+local function sync(bleeding, limping) handle.fireEvent('kora_ambulance:client:syncStatus', 0, bleeding, limping) end
 
 h.test('a stale bleeding pill is removed when the server reports none', function()
     active = { bleeding = 2 }
@@ -75,8 +75,8 @@ end)
 
 h.test('every heal and revive event opens the injury ignore window', function()
     for _, eventName in ipairs({
-        'qbadmin:client:heal', 'qbadmin:client:revive',
-        'qbambulance:client:revived', 'qbambulance:client:respawnedAtHospital',
+        'kora_admin:client:heal', 'kora_admin:client:revive',
+        'kora_ambulance:client:revived', 'kora_ambulance:client:respawnedAtHospital',
     }) do
         suppressed = nil
         handle.fireEvent(eventName, 0)

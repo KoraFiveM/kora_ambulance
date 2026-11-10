@@ -28,9 +28,9 @@ h.test('setArmour only ever lowers armour', function()
     _G.PlayerPedId = function() return 1 end
     _G.GetPedArmour = function() return armour end
     _G.SetPedArmour = function(_, value) armour = value end
-    handle.fireEvent('qbambulance:client:setArmour', 0, 90)
+    handle.fireEvent('kora_ambulance:client:setArmour', 0, 90)
     h.assertEqual(armour, 50)
-    handle.fireEvent('qbambulance:client:setArmour', 0, 20)
+    handle.fireEvent('kora_ambulance:client:setArmour', 0, 20)
     h.assertEqual(armour, 20)
 end)
 

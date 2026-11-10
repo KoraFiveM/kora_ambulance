@@ -78,7 +78,7 @@ local function onHealthChange(health, previousHealth)
     local fallback = bodyPart == nil
     if fallback then bodyPart = Wounds.pickBodyPart() end
 
-    Kora.events.trigger('qbambulance:server:hitObserved', {
+    Kora.events.trigger('kora_ambulance:server:hitObserved', {
         sequence = nextSequence(),
         bone = hit.bone,
         bodyPart = bodyPart,

@@ -19,7 +19,7 @@ local function assessPatientById(patientSrc)
     patientSrc = tonumber(patientSrc)
     if not patientSrc or patientSrc < 1 or patientSrc % 1 ~= 0 then return end
 
-    local report, reason = Kora.callback.trigger('qbambulance:server:assessPatient', patientSrc)
+    local report, reason = Kora.callback.trigger('kora_ambulance:server:assessPatient', patientSrc)
     if not report then
         Kora.notify.send({ title = 'Patient Assessment', message = reason or 'Unable to assess patient.', type = 'error' })
         return
@@ -53,10 +53,10 @@ local function treatPatientById(patientSrc)
         disable = { move = true, combat = true, car = true },
         anim = { dict = 'amb@medic@standing@tendtodead@base', clip = 'base' },
         begin = function(targetSrc)
-            return Kora.callback.trigger('qbambulance:server:beginTreatment', targetSrc)
+            return Kora.callback.trigger('kora_ambulance:server:beginTreatment', targetSrc)
         end,
         complete = function(result, targetSrc)
-            local treated, completeErr = Kora.callback.trigger('qbambulance:server:completeTreatment',
+            local treated, completeErr = Kora.callback.trigger('kora_ambulance:server:completeTreatment',
                 targetSrc, result.token, result.completed)
             return { treated = treated == true, reason = completeErr }
         end,
@@ -90,11 +90,11 @@ end
 
 -- Legacy integrations enter the same kora_lib action as the native target
 -- option. All authority remains in server/treatment.lua.
-RegisterNetEvent('qbambulance:client:treatmentRequested', treatPatientById)
+RegisterNetEvent('kora_ambulance:client:treatmentRequested', treatPatientById)
 
 local function useFirstAid(entity)
     local patientSrc = targetServerId(entity)
-    if patientSrc then TriggerServerEvent('qbambulance:server:firstAidTarget', patientSrc) end
+    if patientSrc then TriggerServerEvent('kora_ambulance:server:firstAidTarget', patientSrc) end
 end
 
 local function registerTargets()
