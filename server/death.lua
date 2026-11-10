@@ -542,9 +542,19 @@ Kora.events.register('kora_ambulance:server:hitObserved', function(src, payload)
     local bodyPart = resolveObservedBodyPart(payload)
     if not bodyPart then return end
 
+    -- The client reports the moment its own health drops; the server's copy of
+    -- the ped's health arrives with the next entity sync. Give it a moment to
+    -- catch up before deciding the report does not match a real health loss.
     local ped = GetPlayerPed(src)
     if not ped or ped == 0 then return end
-    if math.abs(GetEntityHealth(ped) - payload.healthAfter) > Config.injuries.healthTolerance then return end
+    local syncDeadline = GetGameTimer() + 1000
+    while math.abs(GetEntityHealth(ped) - payload.healthAfter) > Config.injuries.healthTolerance do
+        if GetGameTimer() >= syncDeadline then return end
+        Wait(50)
+        ped = GetPlayerPed(src)
+        if not ped or ped == 0 or not Death.isAlive(src) then return end
+    end
+    if healGraceUntil[src] and GetGameTimer() < healGraceUntil[src] then return end
 
     local previous = observations[src]
     if previous and sequence <= previous.sequence then return end

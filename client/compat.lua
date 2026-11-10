@@ -61,7 +61,7 @@ RegisterNetEvent('hospital:client:SendToBed', function(_bedIndex)
 end)
 
 RegisterNetEvent('hospital:client:leaveBed', function()
-    TriggerServerEvent('hospital:server:leaveBed')
+    TriggerServerEvent('hospital:server:LeaveBed')
 end)
 
 RegisterNetEvent('hospital:client:SetBed', function(bedIndex)

@@ -90,8 +90,12 @@ local function isNearDutyPoint(src)
     for _, hospital in ipairs(Config.hospitals) do
         local duty = hospital.duty
         if duty then
+            -- At least 3 m, and the whole duty zone the target offers the toggle
+            -- in (Sandy widens it to 5.5 m to cover both front doors).
+            local zone = HospitalMenu and HospitalMenu.radius and HospitalMenu.radius(hospital, 'duty', 3.0) or 3.0
+            local reach = math.max(3.0, zone)
             local dx, dy, dz = coords.x - duty.x, coords.y - duty.y, coords.z - duty.z
-            if dx * dx + dy * dy + dz * dz <= 9.0 then return true end
+            if dx * dx + dy * dy + dz * dz <= reach * reach then return true end
         end
     end
     return false

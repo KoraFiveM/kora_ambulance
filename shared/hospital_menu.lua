@@ -23,6 +23,15 @@ local function radius(hospital, kind, fallback)
     return fallback
 end
 
+---The zone radius of one feature at one hospital (its own radius, else
+---Config.hospitalMenu.radius, else `fallback`). The server checks use it too,
+---so an option offered anywhere in its zone is also accepted there.
+---@param hospital table
+---@param kind string
+---@param fallback number
+---@return number
+HospitalMenu.radius = radius
+
 ---@param hospital table one Config.hospitals entry; an optional `radius = { checkIn = n, duty = n, ... }`
 ---       overrides Config.hospitalMenu.radius for this hospital only (wide entrances)
 ---@param handlers table kind -> function(hospital) run on select for checkIn / pharmacy / stash / duty;
