@@ -1,0 +1,91 @@
+{
+  "resource": "kora_ambulance",
+  "standardsRevision": "2026-11-12.1",
+  "realms": {
+    "client": [
+      "client/compat.lua",
+      "client/damage.lua",
+      "client/death.lua",
+      "client/duty.lua",
+      "client/hospital.lua",
+      "client/housecall.lua",
+      "client/pharmacy.lua",
+      "client/revive.lua",
+      "client/status.lua",
+      "client/stretcher.lua",
+      "client/treatment.lua"
+    ],
+    "server": [
+      "server/billing.lua",
+      "server/compat/hospital.lua",
+      "server/death.lua",
+      "server/dispatch.lua",
+      "server/doctors.lua",
+      "server/duty.lua",
+      "server/hospital.lua",
+      "server/housecall.lua",
+      "server/items.lua",
+      "server/revive.lua",
+      "server/stretcher.lua",
+      "server/treatment.lua"
+    ],
+    "shared": [
+      "config.lua",
+      "shared/downed.lua",
+      "shared/hospital_menu.lua",
+      "shared/items.lua",
+      "shared/wounds.lua"
+    ],
+    "manifest": [
+      "fxmanifest.lua"
+    ],
+    "test": [
+      "test/harness.lua",
+      "test/mocks.lua",
+      "test/smoke/billing.lua",
+      "test/smoke/client_targets.lua",
+      "test/smoke/compat.lua",
+      "test/smoke/compat_client.lua",
+      "test/smoke/config.lua",
+      "test/smoke/damage.lua",
+      "test/smoke/death.lua",
+      "test/smoke/death_client.lua",
+      "test/smoke/dispatch.lua",
+      "test/smoke/doctors.lua",
+      "test/smoke/duty.lua",
+      "test/smoke/hospital.lua",
+      "test/smoke/hospital_client.lua",
+      "test/smoke/hospital_menu.lua",
+      "test/smoke/housecall.lua",
+      "test/smoke/items.lua",
+      "test/smoke/pharmacy_client.lua",
+      "test/smoke/revive.lua",
+      "test/smoke/revive_status.lua",
+      "test/smoke/status_client.lua",
+      "test/smoke/stretcher.lua",
+      "test/smoke/treatment.lua",
+      "test/smoke/wounds.lua"
+    ]
+  },
+  "exclude": [
+    ".git/*",
+    ".github/*",
+    ".standards/*",
+    "node_modules/*",
+    "**/node_modules/*",
+    "vendor/*",
+    "**/vendor/*",
+    "web/*",
+    "ui/*",
+    "html/*",
+    "dist/*",
+    "artifacts/*",
+    "runtime/*",
+    "txData/*",
+    "storage/*",
+    "stream/*",
+    "docs/*",
+    "__pycache__/*",
+    "modules/lookup/data/*"
+  ]
+}
