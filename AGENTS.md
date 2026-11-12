@@ -4,7 +4,7 @@ kora_ambulance is the server-authoritative EMS job for Kora: it covers the death
 
 ## Documentation
 
-User-facing documentation lives in `docs/` (Markdown, published via the Kora Docusaurus site, kora_docs_next). Read `docs/index.md` first for an overview of features, configuration, commands, exports, events and database usage.
+User-facing documentation lives in `docs/` (Markdown, published via the Kora Docusaurus site, kora_docs_next). Read `docs/index.md` first (overview and a map of every page). Layout: `installation.md` (dependencies, start order, manifest, requirements), `how-to-use.md` (how the modules fit together), `commands.md` (commands, keybinds, controls), `api/` (exports: `api/index.md`, `api/death.md`, `api/hospital-compat.md`), and topic pages (`configuration.md`, `items.md`, `events.md`, `database.md`, `compatibility.md`, `features/*`). Update the page that owns the topic; there is no separate exports page.
 
 When you add, change, or remove a feature, config option, command, export, event, item, permission, or database table/column, update the matching page in `docs/` in the same change. Keep docs accurate to the code; do not document behaviour that does not exist.
 

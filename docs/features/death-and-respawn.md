@@ -78,7 +78,7 @@ With `blockWhenMedics.enabled`, the server counts on-duty players whose job is i
 
 A revive sends `kora_ambulance:client:revived(healthPct)`. The client restores health to that percentage of the survivable range (100 to max health), clears tasks and the death screen effect, and fires `kora_ambulance:server:onPlayerRevived`. What happens to the wounds depends on `Config.revive` (see [Medical care](./medical-care.md#cpr-and-defibrillator)).
 
-Sometimes another resource flips a player back to alive without going through kora_ambulance, for example an admin `/revive`. The 5-second sweep detects this and runs a full revive. That clears the wounds, closes the patient's EMS calls and fires `onPlayerRevived`. Admin tools should call the [`fullRevive`](../exports.md#fullrevive) export directly.
+Sometimes another resource flips a player back to alive without going through kora_ambulance, for example an admin `/revive`. The 5-second sweep detects this and runs a full revive. That clears the wounds, closes the patient's EMS calls and fires `onPlayerRevived`. Admin tools should call the [`fullRevive`](../api/death.md) export directly.
 
 ## Persistence and reconnects
 

@@ -19,41 +19,19 @@ kora_ambulance is the EMS / ambulance job for Kora FiveM servers. The server own
 - **Dispatch**: `/911e` emergency calls go out through [kora_dispatch](https://github.com/KoraFiveM/kora_dispatch). Calls are also raised automatically when someone goes down or dies, and closed when the patient is revived, healed, respawns or leaves. Players can also queue non-emergency house calls. See [Dispatch and house calls](./features/dispatch.md).
 - **Legacy compatibility**: the resource provides `qb-ambulancejob` and maps common `hospital:*` events, callbacks and exports onto the validated flows. See [Compatibility](./compatibility.md).
 
-## Requirements
+## Documentation map
 
-Declared in `fxmanifest.lua`:
-
-- [kora_lib](https://github.com/KoraFiveM/kora_lib) (loaded as `@kora_lib/init.lua`)
-- [kora_core](https://github.com/KoraFiveM/kora_core) (loaded as `@kora_core/init.lua`). Provides jobs, money, items, metadata and commands.
-- [kora_dispatch](https://github.com/KoraFiveM/kora_dispatch). Handles EMS calls, player alerts and the dispatch theme.
-- [kora_inventory](https://github.com/KoraFiveM/kora_inventory). Handles pharmacy shops, EMS stashes and the optional inventory wipe on respawn.
-- [kora_target](https://github.com/KoraFiveM/kora_target). Handles hospital zones and the player, vehicle and stretcher target options.
-
-The resource also listens for `kora_admin:client:heal` and `kora_admin:client:revive` from [kora_admin](https://github.com/KoraFiveM/kora_admin) when that resource is installed. It is not a hard dependency.
-
-There is no SQL to import. All state lives in kora_core player metadata (see [Persistence](./database.md)).
-
-## Installation
-
-1. Put the resource in your resources folder and add it to `server.cfg` after its dependencies:
-
-   ```cfg
-   ensure kora_sql
-   ensure kora_lib
-   ensure kora_core
-   ensure kora_inventory
-   ensure kora_target
-   ensure kora_dispatch
-   ensure kora_ambulance
-   ```
-
-2. Make sure the `ambulance` job exists in kora_core. The kora_core shared job list already seeds it with `type = 'ems'`. If you rename it, update `Config.job.name` and `Config.job.type` to match.
-3. Items: kora_ambulance registers `bandage`, `ifak`, `painkillers` and `defibrillator` with kora_core when it starts. The `firstaid` and `ifaks` items it uses come from kora_core's own item list. Add item images to your inventory if you use custom ones. See [Items](./items.md).
-4. Edit `config.lua` for your hospitals, beds, vehicles and gameplay timings. See [Configuration](./configuration.md). `Config.validate()` runs at load and stops the resource with an error message if the configuration is invalid.
-
-## Documentation pages
-
+- [Installation](./installation.md): dependencies, start order, manifest, requirements and compatibility switches
+- [How to use](./how-to-use.md): how injuries, treatment, transport, duty, dispatch and billing fit together
+- [Commands and keybinds](./commands.md): every command with arguments, access and results, plus key mappings
+- [API reference](./api/index.md): exports
+  - [Death and injuries](./api/death.md): `getPatientStatus` and `fullRevive`
+  - [Legacy hospital exports](./api/hospital-compat.md): `GetDoctorCount`, `isEscorted`, `CanHelp`, `PainKillerLoop`
 - [Configuration](./configuration.md): every `config.lua` option
+- [Items](./items.md)
+- [Events and state bags](./events.md)
+- [Persistence](./database.md)
+- [Compatibility](./compatibility.md)
 - Features:
   - [Death and respawn](./features/death-and-respawn.md)
   - [Injuries and wounds](./features/injuries.md)
@@ -62,12 +40,6 @@ There is no SQL to import. All state lives in kora_core player metadata (see [Pe
   - [Duty and vehicles](./features/duty-and-vehicles.md)
   - [Patient transport](./features/transport.md)
   - [Dispatch and house calls](./features/dispatch.md)
-- [Commands and keybinds](./commands.md)
-- [Items](./items.md)
-- [Exports](./exports.md)
-- [Events and state bags](./events.md)
-- [Persistence](./database.md)
-- [Compatibility](./compatibility.md)
 
 ## Related resources
 
