@@ -1,6 +1,6 @@
 ---
 title: Compatibility
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Compatibility (`qb-ambulancejob` / `hospital:*`)
@@ -63,7 +63,7 @@ These names keep working, but they do not give clients the power the original re
 
 ## Exports and commands
 
-- Server export `GetDoctorCount`. Client exports `isEscorted`, `CanHelp` and `PainKillerLoop`. See [Exports](./exports.md). They are registered under `exports.kora_ambulance` only.
+- Server export `GetDoctorCount`. Client exports `isEscorted`, `CanHelp` and `PainKillerLoop`. See [Exports](./api/index.md). They are registered under `exports.kora_ambulance` only.
 - `/aheal [id]` (admin) and `/status` (EMS). See [Commands](./commands.md).
 - The `ifaks` item works as an alias of `ifak` for self use.
 

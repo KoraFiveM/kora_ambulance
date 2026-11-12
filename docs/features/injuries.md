@@ -60,4 +60,4 @@ When a player is healed outside this resource with kora_admin (`kora_admin:clien
 
 ## Reading the ledger from another resource
 
-Use the server export [`getPatientStatus`](../exports.md#getpatientstatus). It returns a detached copy that includes `wounds` and `bleeding`.
+Use the server export [`getPatientStatus`](../api/death.md). It returns a detached copy that includes `wounds` and `bleeding`.

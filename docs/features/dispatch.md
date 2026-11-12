@@ -34,7 +34,7 @@ When `Config.dispatch.autoCall` is on:
 
 `<name>` is the character's first and last name, or `Patient #<id>` if unknown. Each call has `data.source` set to the patient. Repeat person-down calls for one player are suppressed for `autoCallCooldown` ms, and a revive does **not** reset that cooldown. The fatality call and the alert key have no auto-call cooldown. The alert key has its own (`Config.death.alertEms.cooldown`).
 
-With the shipped config, `personDown = 2` and `possibleFatality = 1`. In kora_dispatch's default labels that makes the fatality call Critical and the person-down call High. Swap the values to rank them the other way. See [Configuration](../configuration.md#configdispatch).
+With the shipped config, `personDown = 2` and `possibleFatality = 1`. In kora_dispatch's default labels that makes the fatality call Critical and the person-down call High. Swap the values to rank them the other way. See [Configuration](../configuration.md).
 
 ## Closing calls
 

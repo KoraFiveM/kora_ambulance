@@ -1,6 +1,6 @@
 ---
 title: Events and state bags
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Events and state bags
