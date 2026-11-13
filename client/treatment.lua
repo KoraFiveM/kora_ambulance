@@ -21,22 +21,22 @@ local function assessPatientById(patientSrc)
 
     local report, reason = Kora.callback.trigger('kora_ambulance:server:assessPatient', patientSrc)
     if not report then
-        Kora.notify.send({ title = 'Patient Assessment', message = reason or 'Unable to assess patient.', type = 'error' })
+        Kora.notify.send({ title = Kora.lang('title.assessment'), message = reason or Kora.lang('ui.unable_assess'), type = 'error' })
         return
     end
 
     if #report.wounds == 0 then
-        Kora.notify.send({ title = 'Patient Assessment', message = ('State: %s. No open wounds.'):format(report.state), type = 'success' })
+        Kora.notify.send({ title = Kora.lang('title.assessment'), message = Kora.lang('ui.woundless_assessment', report.state), type = 'success' })
         return
     end
 
     local findings = {}
     for _, wound in ipairs(report.wounds) do
-        findings[#findings + 1] = ('%s: %s'):format(wound.bodyPartLabel, wound.severityLabel)
+        findings[#findings + 1] = Kora.lang('ui.finding', wound.bodyPartLabel, wound.severityLabel)
     end
     Kora.notify.send({
-        title = ('Patient Assessment (%s)'):format(report.state),
-        message = table.concat(findings, ' | '),
+        title = Kora.lang('ui.assessment_title', report.state),
+        message = table.concat(findings, Kora.lang('ui.finding_separator')),
         type = 'warning',
     })
 end
@@ -47,7 +47,7 @@ local function treatPatientById(patientSrc)
     if not patientSrc or patientSrc < 1 or patientSrc % 1 ~= 0 then return end
 
     local started, outcome = Kora.actions.run({
-        label = 'Treating patient',
+        label = Kora.lang('ui.treating_patient'),
         duration = Config.treatment.duration,
         canCancel = true,
         disable = { move = true, combat = true, car = true },
@@ -63,16 +63,16 @@ local function treatPatientById(patientSrc)
     }, patientSrc)
 
     if not started then
-        Kora.notify.send({ title = 'Patient Treatment', message = outcome or 'Unable to begin treatment.', type = 'error' })
+        Kora.notify.send({ title = Kora.lang('title.treatment'), message = outcome or Kora.lang('ui.unable_treat'), type = 'error' })
         return
     end
 
     if outcome and outcome.treated then
-        Kora.notify.send({ title = 'Patient Treatment', message = 'One wound has been treated.', type = 'success' })
+        Kora.notify.send({ title = Kora.lang('title.treatment'), message = Kora.lang('ui.one_wound_treated'), type = 'success' })
     else
         Kora.notify.send({
-            title = 'Patient Treatment',
-            message = (outcome and outcome.reason) or 'Treatment was not completed.',
+            title = Kora.lang('title.treatment'),
+            message = (outcome and outcome.reason) or Kora.lang('ui.treatment_incomplete'),
             type = 'warning',
         })
     end
@@ -100,13 +100,13 @@ end
 local function registerTargets()
     local options = {
         {
-            label = 'Assess Patient',
+            label = Kora.lang('ui.assess_patient'),
             icon = 'stethoscope',
             canInteract = isOnDutyEMS,
             onSelect = assessPatient,
         },
         {
-            label = 'Treat Wound',
+            label = Kora.lang('ui.treat_wound'),
             icon = 'bandage',
             canInteract = isOnDutyEMS,
             onSelect = treatPatient,
@@ -114,7 +114,7 @@ local function registerTargets()
     }
     if Config.firstaid and Config.firstaid.enabled and Config.firstaid.targetEnabled then
         options[#options + 1] = {
-            label = 'Use First Aid Kit',
+            label = Kora.lang('ui.use_first_aid'),
             icon = 'kit-medical',
             canInteract = isOnDutyEMS,
             onSelect = useFirstAid,

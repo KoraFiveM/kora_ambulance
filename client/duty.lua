@@ -17,7 +17,7 @@ end
 local function spawnVehicle(hospital, vehicleIndex)
     local result = Kora.callback.trigger('kora_ambulance:server:spawnDutyVehicle', hospital.name, vehicleIndex)
     if not result then
-        Kora.notify.send({ title = 'EMS Garage', message = 'Could not check out a vehicle.', type = 'error' })
+        Kora.notify.send({ title = Kora.lang('title.ems_garage'), message = Kora.lang('ui.checkout_failed'), type = 'error' })
         return
     end
 
@@ -25,13 +25,13 @@ local function spawnVehicle(hospital, vehicleIndex)
     if not veh or veh == 0 or not DoesEntityExist(veh) then return end
 
     TaskWarpPedIntoVehicle(Kora.cache.ped(), veh, -1)
-    Kora.notify.send({ title = 'EMS Garage', message = 'Vehicle checked out.', type = 'success' })
+    Kora.notify.send({ title = Kora.lang('title.ems_garage'), message = Kora.lang('ui.vehicle_checked_out'), type = 'success' })
 end
 
 local function storeVehicle()
     local veh = Kora.cache.vehicle()
     if not veh then
-        Kora.notify.send({ title = 'EMS Garage', message = 'Get in the vehicle first.', type = 'error' })
+        Kora.notify.send({ title = Kora.lang('title.ems_garage'), message = Kora.lang('ui.get_in_vehicle'), type = 'error' })
         return
     end
 
@@ -45,7 +45,7 @@ local function garageOptions(hospital)
 
     for index, vehicleDef in ipairs(Config.dutyVehicles) do
         options[#options + 1] = {
-            label = ('Check out %s'):format(vehicleDef.label),
+            label = Kora.lang('ui.checkout_vehicle', vehicleDef.label),
             icon = 'car',
             canInteract = isOnDutyEMS,
             onSelect = function() spawnVehicle(hospital, index) end,
@@ -53,7 +53,7 @@ local function garageOptions(hospital)
     end
 
     options[#options + 1] = {
-        label = 'Return Vehicle',
+        label = Kora.lang('ui.return_vehicle'),
         icon = 'undo',
         canInteract = isOnDutyEMS,
         onSelect = storeVehicle,

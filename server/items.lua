@@ -45,7 +45,7 @@ local function treatWound(src, maxTier)
     if not bodyPart then return false end
 
     Death.clearWound(src, bodyPart)
-    Kora.notify.send(src, { title = 'First Aid', message = ('Treated a wound (%s).'):format(Wounds.bodyPartDef(bodyPart) and Wounds.bodyPartDef(bodyPart).label or bodyPart), type = 'success' })
+    Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('success.treated_wound', Wounds.bodyPartDef(bodyPart) and Wounds.bodyPartDef(bodyPart).label or bodyPart), type = 'success' })
     return true
 end
 
@@ -79,12 +79,12 @@ end
 
 QBCore:createUseable('bandage', function(src, item)
     if not Death.isAlive(src) then
-        Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t apply a bandage right now.', type = 'error' })
+        Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('error.bandage_failed'), type = 'error' })
         return
     end
 
     if not Wounds.pickTreatableWound(Death.getWoundData(src), 2) then
-        Kora.notify.send(src, { title = 'First Aid', message = 'No wound a bandage can treat.', type = 'warning' })
+        Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('error.no_open_wound'), type = 'warning' })
         return
     end
 
@@ -100,12 +100,12 @@ end)
 local function registerIfak(itemName)
     QBCore:createUseable(itemName, function(src, item)
         if not Death.isAlive(src) then
-            Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t apply an IFAK right now.', type = 'error' })
+            Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('error.ifak_failed'), type = 'error' })
             return
         end
 
         if not Wounds.pickTreatableWound(Death.getWoundData(src), Wounds.MAX_TIER) then
-            Kora.notify.send(src, { title = 'First Aid', message = 'No open wound to treat.', type = 'warning' })
+            Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('error.no_open_wound'), type = 'warning' })
             return
         end
 
@@ -126,7 +126,7 @@ registerIfak('ifaks')
 if Config.firstaid and Config.firstaid.enabled then
     QBCore:createUseable('firstaid', function(src, item)
         if not Death.isAlive(src) then
-            Kora.notify.send(src, { title = 'First Aid', message = 'Can\'t use a first aid kit right now.', type = 'error' })
+            Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('error.first_aid_failed'), type = 'error' })
             return
         end
 
@@ -136,7 +136,7 @@ if Config.firstaid and Config.firstaid.enabled then
         if not removed then return end
         Death.clearAllWounds(src)
         TriggerClientEvent('kora_ambulance:client:firstAidHeal', src)
-        Kora.notify.send(src, { title = 'First Aid', message = 'You patched yourself up.', type = 'success' })
+        Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('success.patched_self'), type = 'success' })
     end)
 
     -- On-duty EMS use a first aid kit on another player (ALT target option).
@@ -155,7 +155,7 @@ if Config.firstaid and Config.firstaid.enabled then
             return Kora.world.resolveNearbyPlayer(src, patientSrc, { maxDistance = cfg.targetRange or 3.0 }) ~= nil
         end
         local function fail(message)
-            Kora.notify.send(src, { title = 'First Aid', message = message, type = 'error' })
+            Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = message, type = 'error' })
         end
 
         local job = QBCore:getJob(src)
@@ -177,8 +177,8 @@ if Config.firstaid and Config.firstaid.enabled then
         if not removed then return end
         Death.clearAllWounds(patientSrc)
         TriggerClientEvent('kora_ambulance:client:firstAidHeal', patientSrc)
-        Kora.notify.send(src, { title = 'First Aid', message = 'You patched the patient up.', type = 'success' })
-        Kora.notify.send(patientSrc, { title = 'First Aid', message = 'A medic patched you up.', type = 'success' })
+        Kora.notify.send(src, { title = Kora.lang('title.first_aid'), message = Kora.lang('success.patched_patient'), type = 'success' })
+        Kora.notify.send(patientSrc, { title = Kora.lang('title.first_aid'), message = Kora.lang('success.patient_patched'), type = 'success' })
     end)
 
     AddEventHandler('playerDropped', function()
@@ -189,7 +189,7 @@ end
 QBCore:createUseable('painkillers', function(src, item)
     local now = os.time()
     if not Items.painkillerEligible(now, lastPainkillerAt[src]) then
-        Kora.notify.send(src, { title = 'Painkillers', message = 'You took some recently -- wait before taking more.', type = 'warning' })
+        Kora.notify.send(src, { title = Kora.lang('title.painkillers'), message = Kora.lang('error.painkiller_wait'), type = 'warning' })
         return
     end
 
@@ -203,7 +203,7 @@ QBCore:createUseable('painkillers', function(src, item)
     if not removed then return end
     lastPainkillerAt[src] = now
     Items.applyPainkillerBenefit(src)
-    Kora.notify.send(src, { title = 'Painkillers', message = 'The pain dulls a little.', type = 'success' })
+    Kora.notify.send(src, { title = Kora.lang('title.painkillers'), message = Kora.lang('success.pain_dulled'), type = 'success' })
 end)
 
 AddEventHandler('playerDropped', function()

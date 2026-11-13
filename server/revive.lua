@@ -28,12 +28,12 @@ end
 ---@return boolean eligible
 ---@return string|nil reason
 function Revive.eligibility(targetState, lastAttempt, now)
-    if targetState == 'alive' then return false, 'patient is not down' end
+    if targetState == 'alive' then return false, Kora.lang('error.not_down') end
 
     if lastAttempt then
         local elapsed = (now - lastAttempt) * 1000
         if elapsed < Config.death.reviveInterval then
-            return false, 'another reviver is already working on this patient'
+            return false, Kora.lang('error.another_reviver')
         end
     end
 
@@ -58,9 +58,9 @@ end
 ---@return boolean revived
 ---@return string|nil reason
 function Revive.complete(src, targetSrc, success)
-    if not isOnDutyEMS(src) then return false, 'not an on-duty paramedic' end
-    if not QBCore:hasItem(src, 'defibrillator') then return false, 'no defibrillator' end
-    if not nearby(src, targetSrc) then return false, 'patient is too far away' end
+    if not isOnDutyEMS(src) then return false, Kora.lang('error.on_duty_paramedic') end
+    if not QBCore:hasItem(src, 'defibrillator') then return false, Kora.lang('error.no_defibrillator') end
+    if not nearby(src, targetSrc) then return false, Kora.lang('error.patient_too_far') end
 
     local targetState = Death.getState(targetSrc)
     local eligible, reason = Revive.eligibility(targetState, lastAttemptAt[targetSrc], os.time())
@@ -69,15 +69,15 @@ function Revive.complete(src, targetSrc, success)
     lastAttemptAt[targetSrc] = os.time()
 
     if not success then
-        Kora.notify.send(src, { title = 'EMS', message = 'CPR attempt failed.', type = 'error' })
-        return false, 'minigame failed'
+        Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.cpr_failed'), type = 'error' })
+        return false, Kora.lang('error.cpr_minigame')
     end
 
     local removed, removeErr = QBCore:removeItem(src, 'defibrillator', 1, nil, 'field-revive')
-    if not removed then return false, removeErr or 'could not consume defibrillator' end
+    if not removed then return false, removeErr or Kora.lang('error.no_defibrillator') end
     Death.reviveInField(targetSrc, Config.death.minimumRevive)
 
-    Kora.notify.send(src, { title = 'EMS', message = 'Patient stabilised.', type = 'success' })
+    Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.stabilised'), type = 'success' })
     TriggerEvent('kora_ambulance:server:onPlayerRevivedBy', targetSrc, src)
 
     return true, nil
@@ -92,7 +92,7 @@ end
 
 Kora.callback.register('kora_ambulance:server:beginRevive', function(src, targetSrc)
     targetSrc = tonumber(targetSrc)
-    if not targetSrc or targetSrc == src then return nil, 'invalid patient' end
+    if not targetSrc or targetSrc == src then return nil, Kora.lang('error.invalid_patient') end
 
     local now = GetGameTimer()
     local current = actionsBySrc[src]
@@ -102,11 +102,11 @@ Kora.callback.register('kora_ambulance:server:beginRevive', function(src, target
     local ownedAction = owner and actionsBySrc[owner]
     if ownedAction and ownedAction.expiresAt < now then clearAction(owner) end
 
-    if actionsBySrc[src] then return nil, 'revive already in progress' end
-    if actionOwnerByTarget[targetSrc] then return nil, 'another reviver is already working on this patient' end
-    if not isOnDutyEMS(src) then return nil, 'not an on-duty paramedic' end
-    if not QBCore:hasItem(src, 'defibrillator') then return nil, 'no defibrillator' end
-    if not nearby(src, targetSrc) then return nil, 'patient is too far away' end
+    if actionsBySrc[src] then return nil, Kora.lang('error.revive_progress') end
+    if actionOwnerByTarget[targetSrc] then return nil, Kora.lang('error.another_reviver') end
+    if not isOnDutyEMS(src) then return nil, Kora.lang('error.on_duty_paramedic') end
+    if not QBCore:hasItem(src, 'defibrillator') then return nil, Kora.lang('error.no_defibrillator') end
+    if not nearby(src, targetSrc) then return nil, Kora.lang('error.patient_too_far') end
     local eligible, reason = Revive.eligibility(Death.getState(targetSrc), lastAttemptAt[targetSrc], os.time())
     if not eligible then return nil, reason end
 
@@ -116,7 +116,7 @@ Kora.callback.register('kora_ambulance:server:beginRevive', function(src, target
         timeLimit = 8000,
         attempts = 1,
     })
-    if not authorization then return nil, 'could not authorize CPR' end
+    if not authorization then return nil, Kora.lang('error.cpr_authorize') end
 
     actionsBySrc[src] = {
         token = token,
@@ -138,12 +138,12 @@ Kora.events.register('kora_ambulance:server:completeRevive', function(src, targe
     if action.expiresAt < GetGameTimer() then return end
     if not Kora.minigames.consumeProof(src, proof, 'mash', action.authorization) then
         lastAttemptAt[targetSrc] = os.time()
-        Kora.notify.send(src, { title = 'EMS', message = 'CPR attempt failed.', type = 'error' })
+        Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.cpr_failed'), type = 'error' })
         return
     end
     local revived, reason = Revive.complete(src, targetSrc, true)
     if not revived and reason then
-        Kora.notify.send(src, { title = 'EMS', message = reason, type = 'error' })
+        Kora.notify.send(src, { title = Kora.lang('title.ems'), message = reason, type = 'error' })
     end
 end)
 
@@ -162,7 +162,7 @@ end)
 if Config.defibrillator and Config.defibrillator.useable then
     QBCore:createUseable('defibrillator', function(src)
         if not isOnDutyEMS(src) then
-            Kora.notify.send(src, { title = 'EMS', message = 'Only on-duty paramedics can use a defibrillator.', type = 'error' })
+            Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('error.only_on_duty_defib'), type = 'error' })
             return false
         end
 
@@ -177,7 +177,7 @@ if Config.defibrillator and Config.defibrillator.useable then
         end
 
         if not best then
-            Kora.notify.send(src, { title = 'EMS', message = 'No downed patient nearby to defibrillate.', type = 'warning' })
+            Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('error.no_patient_defib'), type = 'warning' })
             return false
         end
 

@@ -37,8 +37,8 @@ function HouseCall.buildAlertPayload(src, coords, message)
         -- server with a fire department or a second hospital reaches all of
         -- them from one call.
         jobTypes = { Config.job.type },
-        title = '911 -- Medical Emergency',
-        message = message or ('Caller #%d reported a medical emergency.'):format(src),
+        title = Kora.lang('dispatch.emergency_title'),
+        message = message or Kora.lang('dispatch.emergency_message', src),
         coords = coords,
         code = '911e',
         priority = 1,
@@ -59,8 +59,8 @@ end
 function HouseCall.buildQueuePayload(request)
     return {
         jobTypes = { Config.job.type },
-        title = 'House Call',
-        message = request.note or ('A non-emergency visit was requested by caller #%d.'):format(request.src),
+        title = Kora.lang('dispatch.house_call_title'),
+        message = request.note or Kora.lang('dispatch.house_call_message', request.src),
         coords = request.coords,
         code = '10-51',
         priority = 3,

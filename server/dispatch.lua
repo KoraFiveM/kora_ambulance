@@ -93,8 +93,8 @@ AddEventHandler('kora_ambulance:server:onPlayerDied', function(src, cause)
     local patient = patientName(src)
     Ambulance.dispatch.call({
         code = '10-52',
-        title = 'Person Down',
-        message = ('%s is down and requires medical assistance.'):format(patient),
+        title = Kora.lang('dispatch.person_down'),
+        message = Kora.lang('dispatch.person_down_message', patient),
         priority = priorityFor('personDown', 1),
         coords = coordsOf(src),
         icon = 'heart-pulse',
@@ -112,8 +112,8 @@ AddEventHandler('kora_ambulance:server:onPlayerDead', function(src)
     local patient = patientName(src)
     Ambulance.dispatch.call({
         code = '10-54',
-        title = 'Possible Fatality',
-        message = ('%s has stopped breathing.'):format(patient),
+        title = Kora.lang('dispatch.possible_fatality'),
+        message = Kora.lang('dispatch.stopped_breathing', patient),
         priority = priorityFor('possibleFatality', 2),
         coords = coordsOf(src),
         icon = 'heart-pulse',
@@ -194,8 +194,8 @@ RegisterNetEvent('kora_ambulance:server:alertEms', function(street)
     local cooldown = math.floor(alert.cooldown / 1000)
     if last and now - last < cooldown then
         Kora.notify.send(src, {
-            title = 'EMS',
-            message = ('You already alerted EMS. Try again in %ds.'):format(cooldown - (now - last)),
+            title = Kora.lang('title.ems'),
+            message = Kora.lang('error.house_call_cooldown', cooldown - (now - last)),
             type = 'error',
         })
         return
@@ -205,12 +205,12 @@ RegisterNetEvent('kora_ambulance:server:alertEms', function(street)
     local patient = patientName(src)
     local coords = coordsOf(src)
     street = cleanStreet(street)
-    local where = street or (coords and ('%.0f, %.0f'):format(coords.x, coords.y)) or 'an unknown location'
+    local where = street or (coords and ('%.0f, %.0f'):format(coords.x, coords.y)) or Kora.lang('dispatch.unknown_location')
 
     local _, count = Ambulance.dispatch.call({
         code = '10-52',
-        title = 'Person Down -- Assistance Requested',
-        message = ('%s is down and is asking for a medic at %s.'):format(patient, where),
+        title = Kora.lang('dispatch.person_down_assistance'),
+        message = Kora.lang('dispatch.request_help', patient, where),
         priority = priorityFor('personDown', 1),
         coords = coords,
         icon = 'heart-pulse',
@@ -218,8 +218,8 @@ RegisterNetEvent('kora_ambulance:server:alertEms', function(street)
     })
     count = tonumber(count) or 0
     Kora.notify.send(src, {
-        title = 'EMS',
-        message = count > 0 and 'Your location has been sent to EMS.' or 'No paramedics are currently on duty.',
+        title = Kora.lang('title.ems'),
+        message = count > 0 and Kora.lang('dispatch.location_sent') or Kora.lang('error.no_paramedics'),
         type = count > 0 and 'success' or 'error',
     })
 end)

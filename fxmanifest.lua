@@ -4,7 +4,7 @@ lua54 'yes'
 
 name 'kora_ambulance'
 provide 'qb-ambulancejob'
-author 'Jamie'
+author 'Kora'
 version '0.2.1'
 description 'Authoritative EMS care, anatomical injuries, hospital admissions, transport, dispatch and billing'
 
@@ -20,12 +20,13 @@ dependency 'kora_target'
 -- exports.kora_target:*) -- neither needs a shared_script import.
 shared_script '@kora_lib/init.lua'
 shared_script '@kora_core/init.lua'
+files { 'locales/*.lua' }
 
 -- config.lua first (everything below reads Config.*); shared/wounds.lua
 -- second since shared/items.lua's pharmacy effect table references
 -- Wounds.woundLevels labels for description text.
 shared_scripts {
-    'config.lua',
+    'shared/config.lua',
     'shared/wounds.lua',
     'shared/items.lua',
     'shared/downed.lua',

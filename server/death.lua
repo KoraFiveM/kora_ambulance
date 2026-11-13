@@ -354,14 +354,14 @@ end
 ---@return boolean, string|nil
 function Death.respawnAtHospital(src, hospitalName)
     local state = Death.getState(src)
-    if state ~= 'dead' then return false, 'You are not dead.' end
+    if state ~= 'dead' then return false, Kora.lang('error.not_dead') end
 
     local remaining = Death.respawnWaitRemaining(src)
-    if remaining > 0 then return false, ('You cannot respawn for another %ds.'):format(remaining) end
+    if remaining > 0 then return false, Kora.lang('error.respawn_wait', remaining) end
 
     local blocked, minOnDuty = Death.respawnBlocked(src)
     if blocked then
-        return false, ('Respawn is disabled while %d or more medics are on duty.'):format(minOnDuty)
+        return false, Kora.lang('error.respawn_disabled', minOnDuty)
     end
 
     local hospital
@@ -372,7 +372,7 @@ function Death.respawnAtHospital(src, hospitalName)
 
     Billing.chargeForRespawn(src, Death.getWoundData(src))
     local _, changed = Death.transition(state, 'respawned')
-    if not changed then return false, 'invalid transition' end
+    if not changed then return false, Kora.lang('error.invalid_transition') end
 
     QBCore:setMetaData(src, 'isdead', false)
     QBCore:setMetaData(src, 'inlaststand', false)

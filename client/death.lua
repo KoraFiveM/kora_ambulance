@@ -190,8 +190,8 @@ local function stopCountdown()
     countdown = nil
 end
 
-local SCREEN_TITLES = { laststand = 'Downed', dead = 'Dead' }
-local SCREEN_HINTS = { laststand = '/911e to call EMS', dead = '/respawn once the timer ends' }
+local SCREEN_TITLES = { laststand = Kora.lang('ui.title_downed'), dead = Kora.lang('ui.screen_dead') }
+local SCREEN_HINTS = { laststand = Kora.lang('ui.hint_laststand'), dead = Kora.lang('ui.hint_dead') }
 
 -- minOnDuty while the server has /respawn disabled because enough medics are on
 -- duty (Config.death.respawn.blockWhenMedics), nil otherwise. Display only.
@@ -201,7 +201,7 @@ local respawnBlockedBy
 local function alertHint()
     local alert = Config.death.alertEms
     if type(alert) ~= 'table' or alert.enabled ~= true then return nil end
-    return ('[%s] Alert EMS'):format(alert.key)
+    return Kora.lang('ui.alert_ems', alert.key)
 end
 
 ---Death screen presentation of a prompt: a state title, optionally the hint
@@ -357,7 +357,7 @@ RegisterNetEvent('kora_ambulance:client:enterLaststand', function(deathTimeMs)
     downGeneration = downGeneration + 1
     local myGeneration = downGeneration
 
-    Kora.notify.send({ title = 'EMS', message = 'You are critically injured. Wait for help or you will bleed out.', type = 'error' })
+    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.critically_injured'), type = 'error' })
     suppressVanillaWasted()
     playDownedAnimation('laststand')
 
@@ -373,7 +373,7 @@ RegisterNetEvent('kora_ambulance:client:markDead', function(respawnTimeMs)
     downGeneration = downGeneration + 1
 
     if not deathScreenHandle then deathScreenHandle = Kora.fx.screenEffect('DeathFailOut', 0, true) end
-    Kora.notify.send({ title = 'EMS', message = 'You have died. Wait for the coroner or a medic.', type = 'error' })
+    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.died'), type = 'error' })
     suppressVanillaWasted()
     playDownedAnimation('dead')
 
@@ -404,7 +404,7 @@ RegisterNetEvent('kora_ambulance:client:revived', function(healthPct)
 
     if wasDead then stopDeathScreen() end
 
-    Kora.notify.send({ title = 'EMS', message = 'You have been stabilised.', type = 'success' })
+    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.stabilised'), type = 'success' })
 end)
 
 RegisterNetEvent('kora_ambulance:client:respawnedAtHospital', function(coords)
@@ -471,12 +471,12 @@ RegisterCommand('respawn', function()
 
     local remaining = respawnAvailableAt - GetGameTimer()
     if remaining > 0 then
-        Kora.notify.send({ title = 'EMS', message = ('You cannot respawn for another %s.'):format(clockText(remaining)), type = 'error' })
+        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.respawn_after', clockText(remaining)), type = 'error' })
         return
     end
 
     if respawnBlockedBy then
-        Kora.notify.send({ title = 'EMS', message = ('Respawn is disabled while %d medics are on duty.'):format(respawnBlockedBy), type = 'error' })
+        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.respawn_medics', respawnBlockedBy), type = 'error' })
         return
     end
 
@@ -488,7 +488,7 @@ end, false)
 if alertHint() then
     Kora.keybind.add({
         name = 'kora_ambulance_alert_ems',
-        description = 'EMS: alert paramedics while dead',
+        description = Kora.lang('ui.alert_description'),
         defaultKey = Config.death.alertEms.key,
         onPressed = function()
             if not State.isDead then return end

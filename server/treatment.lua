@@ -32,9 +32,9 @@ end
 ---@return string|nil
 function Treatment.canAccess(medicSrc, patientSrc)
     patientSrc = tonumber(patientSrc)
-    if not patientSrc or patientSrc == medicSrc then return false, 'invalid patient' end
-    if not isOnDutyEMS(medicSrc) then return false, 'not an on-duty paramedic' end
-    if not nearby(medicSrc, patientSrc) then return false, 'patient is too far away' end
+    if not patientSrc or patientSrc == medicSrc then return false, Kora.lang('error.invalid_patient') end
+    if not isOnDutyEMS(medicSrc) then return false, Kora.lang('error.on_duty_paramedic') end
+    if not nearby(medicSrc, patientSrc) then return false, Kora.lang('error.patient_too_far') end
     return true, nil
 end
 
@@ -84,8 +84,8 @@ local function selectSupply(medicSrc, patientSrc)
         if bodyPart then return 'ifak', Wounds.MAX_TIER, bodyPart, tier end
     end
 
-    if not Wounds.isBleeding(ledger) then return nil, nil, nil, nil, 'patient has no open wounds' end
-    return nil, nil, nil, nil, 'no suitable medical supplies'
+    if not Wounds.isBleeding(ledger) then return nil, nil, nil, nil, Kora.lang('error.no_bleeding_wounds') end
+    return nil, nil, nil, nil, Kora.lang('error.no_suitable_supplies')
 end
 
 ---@param medicSrc integer
@@ -107,8 +107,8 @@ function Treatment.begin(medicSrc, patientSrc)
         clearAction(patientMedic)
     end
 
-    if actionsByMedic[medicSrc] then return nil, 'treatment already in progress' end
-    if medicByPatient[patientSrc] then return nil, 'another medic is treating this patient' end
+    if actionsByMedic[medicSrc] then return nil, Kora.lang('error.treatment_progress') end
+    if medicByPatient[patientSrc] then return nil, Kora.lang('error.another_treating') end
 
     local item, maxTier, bodyPart, tier, supplyErr = selectSupply(medicSrc, patientSrc)
     if not item then return nil, supplyErr end
@@ -138,34 +138,34 @@ function Treatment.complete(medicSrc, patientSrc, token, completed)
     patientSrc = tonumber(patientSrc)
     local action = actionsByMedic[medicSrc]
     if not action or action.patient ~= patientSrc or action.token ~= token then
-        return false, 'invalid treatment action'
+        return false, Kora.lang('error.invalid_treatment')
     end
 
     clearAction(medicSrc)
-    if not completed then return false, 'treatment cancelled' end
+    if not completed then return false, Kora.lang('error.treatment_cancelled') end
 
     local now = GetGameTimer()
     -- Allow a small scheduling tolerance: the kora_lib progress bar may return
     -- a frame before the nominal duration while server/client clocks settle.
-    if now < action.readyAt - 250 then return false, 'treatment completed too quickly' end
-    if now > action.expiresAt then return false, 'treatment action expired' end
+    if now < action.readyAt - 250 then return false, Kora.lang('error.treatment_fast') end
+    if now > action.expiresAt then return false, Kora.lang('error.treatment_expired') end
 
     local allowed, reason = Treatment.canAccess(medicSrc, patientSrc)
     if not allowed then return false, reason end
 
     local currentTier = Death.getWoundData(patientSrc)[action.bodyPart]
-    if not currentTier then return false, 'wound is already treated' end
+    if not currentTier then return false, Kora.lang('error.wound_treated') end
     if not Wounds.canTreatWithTier(currentTier, action.maxTier) then
-        return false, 'wound now needs stronger treatment'
+        return false, Kora.lang('error.stronger_treatment')
     end
-    if not QBCore:hasItem(medicSrc, action.item) then return false, 'medical supply is missing' end
+    if not QBCore:hasItem(medicSrc, action.item) then return false, Kora.lang('error.medical_supply_missing') end
 
     local removed, removeErr = QBCore:removeItem(medicSrc, action.item, 1, nil, 'ems-patient-treatment')
-    if not removed then return false, removeErr or 'could not consume medical supply' end
+    if not removed then return false, removeErr or Kora.lang('error.medical_supply_missing') end
 
     Death.clearWound(patientSrc, action.bodyPart)
     local part = Wounds.bodyPartDef(action.bodyPart)
-    Kora.notify.send(patientSrc, { title = 'Patient Treatment', message = ('A medic treated your wound (%s).'):format(part and part.label or action.bodyPart), type = 'success' })
+    Kora.notify.send(patientSrc, { title = Kora.lang('title.treatment'), message = Kora.lang('success.medic_treated_wound', part and part.label or action.bodyPart), type = 'success' })
     local heal = Config.treatment.ifakHealthAmount or 0
     if action.item == 'ifak' and heal > 0 and Death.isAlive(patientSrc) then
         TriggerClientEvent('kora_ambulance:client:painkillerBenefit', patientSrc, heal)

@@ -21,14 +21,14 @@ local QBCore = exports.kora_core
 KoraAmbulance.items = {
     {
         name = 'bandage',
-        label = 'Bandage',
+        label = Kora.lang('items.bandage'),
         weight = 200,
         type = 'item',
         image = 'bandage.png',
         unique = false,
         useable = true,
         shouldClose = true,
-        description = 'Stops light bleeding and closes minor wounds.',
+        description = Kora.lang('items.bandage_description'),
         effect = {
             duration = 2500,
             stacking = 'replace',
@@ -38,14 +38,14 @@ KoraAmbulance.items = {
     },
     {
         name = 'ifak',
-        label = 'IFAK',
+        label = Kora.lang('items.ifak'),
         weight = 350,
         type = 'item',
         image = 'ifak.png',
         unique = false,
         useable = true,
         shouldClose = true,
-        description = 'Individual First Aid Kit -- treats severe wounds and restores meaningful health.',
+        description = Kora.lang('items.ifak_description'),
         effect = {
             duration = 4000,
             stacking = 'replace',
@@ -57,14 +57,14 @@ KoraAmbulance.items = {
     },
     {
         name = 'painkillers',
-        label = 'Painkillers',
+        label = Kora.lang('items.painkillers'),
         weight = 60,
         type = 'item',
         image = 'painkillers.png',
         unique = false,
         useable = true,
         shouldClose = true,
-        description = 'Dulls pain and steadies the nerves for a while. Not a substitute for real treatment.',
+        description = Kora.lang('items.painkillers_description'),
         -- Deliberately no `effect` table: kora_core's usingItem hook applies an
         -- item's effect (anim included) the moment Use is clicked, before the
         -- progress bar and even if it is cancelled, and a looping status anim
@@ -73,7 +73,7 @@ KoraAmbulance.items = {
     },
     {
         name = 'defibrillator',
-        label = 'Defibrillator',
+        label = Kora.lang('items.defibrillator'),
         weight = 1200,
         type = 'item',
         image = 'defibrillator.png',
@@ -84,7 +84,7 @@ KoraAmbulance.items = {
         -- option in client/revive.lua).
         useable = true,
         shouldClose = true,
-        description = 'Delivers a controlled shock to restart a patient\'s heart. EMS use only.',
+        description = Kora.lang('items.defibrillator_description'),
     },
 }
 

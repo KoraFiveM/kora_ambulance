@@ -106,14 +106,14 @@ end
 ---@return boolean, string|nil
 function Duty.setDuty(src, onDuty)
     local job = QBCore:getJob(src)
-    if not job or job.name ~= Config.job.name then return false, 'You are not employed as EMS.' end
-    if not isNearDutyPoint(src) then return false, 'Use a hospital duty point to change duty status.' end
+    if not job or job.name ~= Config.job.name then return false, Kora.lang('error.not_ems') end
+    if not isNearDutyPoint(src) then return false, Kora.lang('error.duty_point') end
     onDuty = onDuty == true
     if job.onduty == onDuty then return true end
 
     local current = GetGameTimer()
     if lastDutyChange[src] and current - lastDutyChange[src] < 1000 then
-        return false, 'Wait before changing duty status again.'
+        return false, Kora.lang('error.duty_wait')
     end
     local changed, err = QBCore:setJobDuty(src, onDuty)
     if changed then lastDutyChange[src] = current end
@@ -150,19 +150,19 @@ local function clearDutyVehicle(src)
 end
 
 Kora.callback.register('kora_ambulance:server:spawnDutyVehicle', function(src, hospitalName, vehicleIndex)
-    if not isOnDutyEMS(src) then return false, 'not on duty' end
-    if currentVehicle[src] then return false, 'you already have a duty vehicle checked out' end
-    if not actionAllowed(src) then return false, 'please wait before trying again' end
+    if not isOnDutyEMS(src) then return false, Kora.lang('error.not_on_duty') end
+    if currentVehicle[src] then return false, Kora.lang('error.vehicle_checked_out') end
+    if not actionAllowed(src) then return false, Kora.lang('error.action_wait') end
 
     local hospital
     for _, h in ipairs(Config.hospitals) do
         if h.name == hospitalName then hospital = h; break end
     end
-    if not hospital then return false, 'unknown hospital' end
-    if not isNearGarage(src, hospital.garage) then return false, 'not at this garage' end
+    if not hospital then return false, Kora.lang('error.unknown_hospital') end
+    if not isNearGarage(src, hospital.garage) then return false, Kora.lang('error.not_at_garage') end
 
     local vehicleDef = Config.dutyVehicles[tonumber(vehicleIndex) or 0]
-    if not vehicleDef then return false, 'unknown vehicle' end
+    if not vehicleDef then return false, Kora.lang('error.unknown_vehicle') end
 
     local plate = Duty.generatePlate()
     local vehicle = CreateVehicle(
@@ -172,7 +172,7 @@ Kora.callback.register('kora_ambulance:server:spawnDutyVehicle', function(src, h
         true,
         false
     )
-    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return false, 'failed to create vehicle' end
+    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return false, Kora.lang('error.vehicle_create') end
 
     SetEntityRoutingBucket(vehicle, GetPlayerRoutingBucket(src))
     SetVehicleNumberPlateText(vehicle, plate)
@@ -180,7 +180,7 @@ Kora.callback.register('kora_ambulance:server:spawnDutyVehicle', function(src, h
     local networkId = NetworkGetNetworkIdFromEntity(vehicle)
     if not networkId or networkId == 0 then
         DeleteEntity(vehicle)
-        return false, 'failed to network vehicle'
+        return false, Kora.lang('error.vehicle_network')
     end
 
     currentVehicle[src] = {
@@ -203,7 +203,7 @@ Kora.events.register('kora_ambulance:server:storeDutyVehicle', function(src)
     if not nearGarage then return end
 
     clearDutyVehicle(src)
-    Kora.notify.send(src, { title = 'EMS Garage', message = 'Vehicle returned to the fleet.', type = 'success' })
+    Kora.notify.send(src, { title = Kora.lang('title.ems_garage'), message = Kora.lang('success.vehicle_returned'), type = 'success' })
 end)
 
 ---@param src integer
@@ -235,8 +235,9 @@ Kora.commands.add('ems-duty', 'Toggle EMS duty at a hospital', {}, false, functi
     local newDuty = job ~= nil and not job.onduty
     local changed, err = Duty.setDuty(source, newDuty)
     Kora.notify.send(source, {
-        message = changed and (newDuty and 'You are now on duty.' or 'You are now off duty.')
-            or (err or 'Duty status could not be changed.'),
+        title = Kora.lang('title.ems'),
+        message = changed and (newDuty and Kora.lang('success.on_duty') or Kora.lang('success.off_duty'))
+            or (err or Kora.lang('error.duty_status_failed')),
         type = changed and 'success' or 'error',
     })
 end)

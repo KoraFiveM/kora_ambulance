@@ -301,10 +301,10 @@ end
 RegisterNetEvent('kora_ambulance:client:stretcherBegin', function(otherSrc, iAmDragger)
     if iAmDragger then
         startCarryDragger(otherSrc)
-        Kora.notify.send({ title = 'EMS', message = 'Emergency carry started.', type = 'info' })
+        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.emergency_carry_started'), type = 'info' })
     else
         startCarryPatient(otherSrc)
-        Kora.notify.send({ title = 'EMS', message = 'You are being carried.', type = 'info' })
+        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.being_carried'), type = 'info' })
     end
 end)
 
@@ -338,8 +338,8 @@ local function deployStretcher(vehicle)
     local stretcherNetworkId, reason = Kora.callback.trigger(
         'kora_ambulance:server:stretcherDeployRequested', vehicleNetworkId)
     Kora.notify.send({
-        title = 'Patient Transport',
-        message = stretcherNetworkId and 'Stretcher deployed.' or (reason or 'Unable to deploy stretcher.'),
+        title = Kora.lang('title.transport'),
+        message = stretcherNetworkId and Kora.lang('ui.stretcher_deployed') or (reason or Kora.lang('ui.stretcher_failed')),
         type = stretcherNetworkId and 'success' or 'error',
     })
 end
@@ -347,7 +347,7 @@ end
 local function registerTargets()
     exports.kora_target:addGlobalType('player', {
         {
-            label = 'Emergency Carry',
+            label = Kora.lang('ui.emergency_carry'),
             icon = 'move',
             canInteract = function(entity)
                 return isOnDutyEMS() and isDowned(entity) and not Stretcher.isDragging()
@@ -359,7 +359,7 @@ local function registerTargets()
             end,
         },
         {
-            label = 'Release Carried Patient',
+            label = Kora.lang('ui.release_patient'),
             icon = 'x',
             canInteract = function(entity)
                 return carryDragging ~= nil and targetServerId(entity) == carryDragging.targetSrc
@@ -367,7 +367,7 @@ local function registerTargets()
             onSelect = function() Kora.events.trigger('kora_ambulance:server:stretcherRelease') end,
         },
         {
-            label = 'Load onto Stretcher',
+            label = Kora.lang('ui.load_stretcher'),
             icon = 'bed',
             canInteract = function(entity)
                 if not isOnDutyEMS() or not isDowned(entity) or Stretcher.isDragging() then return false end
@@ -386,7 +386,7 @@ local function registerTargets()
 
     exports.kora_target:addModel(Config.transport.model, {
         {
-            label = 'Push Stretcher',
+            label = Kora.lang('ui.push_stretcher'),
             icon = 'hand',
             canInteract = function(entity)
                 local state = stretcherStates[entityNetworkId(entity)]
@@ -397,7 +397,7 @@ local function registerTargets()
             end,
         },
         {
-            label = 'Stop Pushing',
+            label = Kora.lang('ui.stop_pushing'),
             icon = 'hand',
             canInteract = function(entity)
                 local state = stretcherStates[entityNetworkId(entity)]
@@ -408,7 +408,7 @@ local function registerTargets()
             end,
         },
         {
-            label = 'Unload Patient',
+            label = Kora.lang('ui.unload_patient'),
             icon = 'person-walking',
             canInteract = function(entity)
                 local state = stretcherStates[entityNetworkId(entity)]
@@ -422,7 +422,7 @@ local function registerTargets()
 
     exports.kora_target:addGlobalType('vehicle', {
         {
-            label = 'Deploy Stretcher',
+            label = Kora.lang('ui.deploy_stretcher'),
             icon = 'bed',
             canInteract = function(entity)
                 if not isOnDutyEMS() or not vehicleStretcherDef(entity) then return false end
@@ -431,7 +431,7 @@ local function registerTargets()
             onSelect = deployStretcher,
         },
         {
-            label = 'Stow Stretcher',
+            label = Kora.lang('ui.stow_stretcher'),
             icon = 'truck-medical',
             canInteract = function(entity)
                 if not isOnDutyEMS() or not vehicleStretcherDef(entity) then return false end
@@ -448,7 +448,7 @@ local function registerTargets()
             end,
         },
         {
-            label = 'Unstow Stretcher',
+            label = Kora.lang('ui.unstow_stretcher'),
             icon = 'truck-medical',
             canInteract = function(entity)
                 local id = entityNetworkId(entity)

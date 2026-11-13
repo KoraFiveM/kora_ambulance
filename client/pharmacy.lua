@@ -10,7 +10,7 @@
 
 Kora.callback.register('kora_ambulance:client:pharmacyProgress', function(payload)
     return Kora.progressbar.start({
-        label = ('Using %s'):format(payload.label or 'item'),
+        label = Kora.lang('ui.using_item', payload.label or Kora.lang('ui.item')),
         duration = payload.duration or 2500,
         canCancel = true,
         disable = { move = true, combat = true, car = true },

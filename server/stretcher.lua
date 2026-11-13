@@ -96,7 +96,7 @@ end
 ---@param src integer
 ---@param reason string
 local function notifyFailure(src, reason)
-    Kora.notify.send(src, { title = 'Patient Transport', message = reason, type = 'error' })
+    Kora.notify.send(src, { title = Kora.lang('title.transport'), message = reason, type = 'error' })
 end
 
 ---@param record table
@@ -149,18 +149,18 @@ end
 local function validateStretcher(src, stretcherNetworkId)
     stretcherNetworkId = networkId(stretcherNetworkId)
     local record = stretcherNetworkId and stretchers[stretcherNetworkId]
-    if not record then return nil, 'Unknown stretcher.' end
-    if not isOnDutyEMS(src) then return nil, 'You must be on duty.' end
+    if not record then return nil, Kora.lang('error.stretcher_unknown') end
+    if not isOnDutyEMS(src) then return nil, Kora.lang('error.not_on_duty') end
 
     local entity = resolveNetworkEntity(record.networkId, 3)
     if not entity or entity ~= record.entity or GetEntityModel(entity) ~= joaat(Config.transport.model) then
         removePhysical(record, 'stretcher entity lost')
-        return nil, 'That stretcher is no longer available.'
+        return nil, Kora.lang('error.stretcher_unavailable')
     end
 
     local anchor = actionEntity(record)
     if not anchor or not isNearEntity(src, anchor, Config.transport.interactionRange) then
-        return nil, 'Move closer to the stretcher.'
+        return nil, Kora.lang('error.stretcher_near')
     end
     return record, nil
 end
@@ -185,9 +185,9 @@ end
 ---@return boolean eligible
 ---@return string|nil reason
 function Stretcher.canPickup(targetState, targetAlreadyMoved, medicAlreadyMoving)
-    if targetState == 'alive' then return false, 'patient is not down' end
-    if targetAlreadyMoved then return false, 'someone is already moving this patient' end
-    if medicAlreadyMoving then return false, 'you are already moving a patient' end
+    if targetState == 'alive' then return false, Kora.lang('error.not_down') end
+    if targetAlreadyMoved then return false, Kora.lang('error.someone_moving_patient') end
+    if medicAlreadyMoving then return false, Kora.lang('error.moving_patient') end
     return true, nil
 end
 
@@ -242,13 +242,13 @@ end
 ---@return string|nil reason
 function Stretcher.deploy(src, vehicleNetworkId)
     vehicleNetworkId = networkId(vehicleNetworkId)
-    if not vehicleNetworkId then return nil, 'Invalid duty vehicle.' end
-    if not isOnDutyEMS(src) then return nil, 'You must be on duty.' end
-    if stretcherByVehicle[vehicleNetworkId] then return nil, 'This vehicle already has a stretcher deployed.' end
+    if not vehicleNetworkId then return nil, Kora.lang('error.invalid_vehicle') end
+    if not isOnDutyEMS(src) then return nil, Kora.lang('error.not_on_duty') end
+    if stretcherByVehicle[vehicleNetworkId] then return nil, Kora.lang('error.stretcher_deployed_already') end
 
     local _, vehicleDef, vehicle = resolveDutyVehicle(vehicleNetworkId)
-    if not vehicle then return nil, 'This is not a stretcher-equipped duty vehicle.' end
-    if not isNearEntity(src, vehicle, Config.transport.interactionRange) then return nil, 'Move closer to the duty vehicle.' end
+    if not vehicle then return nil, Kora.lang('error.not_stretcher_vehicle') end
+    if not isNearEntity(src, vehicle, Config.transport.interactionRange) then return nil, Kora.lang('error.vehicle_near') end
 
     local offset = vehicleDef.stretcher.offset
     local origin, rotation = GetEntityCoords(vehicle), GetEntityRotation(vehicle)
@@ -262,7 +262,7 @@ function Stretcher.deploy(src, vehicleNetworkId)
         origin.z - offset.x * cx * sy + offset.y * sx + offset.z * cx * cy
     )
     local entity = CreateObjectNoOffset(joaat(Config.transport.model), coords.x, coords.y, coords.z, true, true, false)
-    if not entity or entity == 0 or not DoesEntityExist(entity) then return nil, 'Could not deploy the stretcher.' end
+    if not entity or entity == 0 or not DoesEntityExist(entity) then return nil, Kora.lang('error.stretcher_deploy') end
 
     SetEntityRoutingBucket(entity, GetPlayerRoutingBucket(src))
     if GetEntityHeading and SetEntityHeading then SetEntityHeading(entity, GetEntityHeading(vehicle)) end
@@ -271,7 +271,7 @@ function Stretcher.deploy(src, vehicleNetworkId)
     local stretcherNetworkId = NetworkGetNetworkIdFromEntity(entity)
     if not stretcherNetworkId or stretcherNetworkId == 0 then
         DeleteEntity(entity)
-        return nil, 'Could not network the stretcher.'
+        return nil, Kora.lang('error.stretcher_network')
     end
 
     local record = {
@@ -291,13 +291,13 @@ end
 ---@return boolean
 ---@return string|nil
 function Stretcher.beginPush(src, stretcherNetworkId)
-    if stretcherByOperator[src] or targetOf[src] then return false, 'You are already moving a patient.' end
+    if stretcherByOperator[src] or targetOf[src] then return false, Kora.lang('error.moving_patient') end
     local record, reason = validateStretcher(src, stretcherNetworkId)
     if not record then return false, reason end
-    if record.operator then return false, 'Another medic is already moving this stretcher.' end
+    if record.operator then return false, Kora.lang('error.another_medic') end
 
     local nextMode = Stretcher.transition(record.mode, 'push')
-    if not nextMode then return false, 'Unstow the stretcher before moving it.' end
+    if not nextMode then return false, Kora.lang('error.unstow_before_move') end
 
     FreezeEntityPosition(record.entity, false)
     record.mode = nextMode
@@ -315,10 +315,10 @@ end
 function Stretcher.stopPush(src, stretcherNetworkId)
     stretcherNetworkId = networkId(stretcherNetworkId)
     local record = stretcherNetworkId and stretchers[stretcherNetworkId]
-    if not record or record.operator ~= src then return false, 'You are not moving that stretcher.' end
+    if not record or record.operator ~= src then return false, Kora.lang('error.not_moving') end
 
     local nextMode = Stretcher.transition(record.mode, 'release')
-    if not nextMode then return false, 'The stretcher cannot be released right now.' end
+    if not nextMode then return false, Kora.lang('error.release_stretcher') end
 
     clearOperator(record)
     record.mode = nextMode
@@ -334,21 +334,21 @@ end
 ---@return string|nil
 function Stretcher.loadPatient(src, stretcherNetworkId, targetSrc)
     targetSrc = tonumber(targetSrc)
-    if not targetSrc or targetSrc % 1 ~= 0 or targetSrc == src then return false, 'Invalid patient.' end
+    if not targetSrc or targetSrc % 1 ~= 0 or targetSrc == src then return false, Kora.lang('error.invalid_patient') end
 
     local record, reason = validateStretcher(src, stretcherNetworkId)
     if not record then return false, reason end
-    if record.mode == 'vehicle' then return false, 'Unstow the stretcher before loading a patient.' end
-    if record.operator and record.operator ~= src then return false, 'Another medic is moving that stretcher.' end
-    if record.patient then return false, 'The stretcher is already occupied.' end
-    if not QBCore:getPlayerData(targetSrc) then return false, 'Patient is unavailable.' end
-    if GetPlayerRoutingBucket(src) ~= GetPlayerRoutingBucket(targetSrc) then return false, 'Patient is unavailable.' end
+    if record.mode == 'vehicle' then return false, Kora.lang('error.unstow_before_load') end
+    if record.operator and record.operator ~= src then return false, Kora.lang('error.stretcher_other_medic') end
+    if record.patient then return false, Kora.lang('error.stretcher_occupied') end
+    if not QBCore:getPlayerData(targetSrc) then return false, Kora.lang('error.patient_unavailable') end
+    if GetPlayerRoutingBucket(src) ~= GetPlayerRoutingBucket(targetSrc) then return false, Kora.lang('error.patient_unavailable') end
 
     local targetPed = GetPlayerPed(targetSrc)
     if not targetPed or targetPed == 0
         or not isNearEntity(src, targetPed, Config.transport.interactionRange)
         or #(GetEntityCoords(targetPed) - GetEntityCoords(actionEntity(record))) > Config.transport.interactionRange then
-        return false, 'Move the patient closer to the stretcher.'
+        return false, Kora.lang('error.patient_closer')
     end
 
     local eligible, eligibilityReason = Stretcher.canPickup(
@@ -372,9 +372,9 @@ end
 function Stretcher.unloadPatient(src, stretcherNetworkId)
     local record, reason = validateStretcher(src, stretcherNetworkId)
     if not record then return false, reason end
-    if record.mode == 'vehicle' then return false, 'Unstow the stretcher before unloading the patient.' end
-    if record.operator and record.operator ~= src then return false, 'Another medic is moving that stretcher.' end
-    if not record.patient then return false, 'The stretcher is empty.' end
+    if record.mode == 'vehicle' then return false, Kora.lang('error.unstow_before_unload') end
+    if record.operator and record.operator ~= src then return false, Kora.lang('error.stretcher_other_medic') end
+    if not record.patient then return false, Kora.lang('error.stretcher_empty') end
 
     clearPatient(record, 'unloaded')
     publish(record)
@@ -390,15 +390,15 @@ function Stretcher.stow(src, stretcherNetworkId, vehicleNetworkId)
     vehicleNetworkId = networkId(vehicleNetworkId)
     local record, reason = validateStretcher(src, stretcherNetworkId)
     if not record then return false, reason end
-    if record.vehicleNetworkId ~= vehicleNetworkId then return false, 'This stretcher belongs to another duty vehicle.' end
-    if record.operator and record.operator ~= src then return false, 'Another medic is moving that stretcher.' end
+    if record.vehicleNetworkId ~= vehicleNetworkId then return false, Kora.lang('error.stretcher_other_vehicle') end
+    if record.operator and record.operator ~= src then return false, Kora.lang('error.stretcher_other_medic') end
 
     local _, _, vehicle = resolveDutyVehicle(vehicleNetworkId)
-    if not vehicle then return false, 'The duty vehicle is no longer available.' end
-    if not isNearEntity(src, vehicle, Config.transport.interactionRange) then return false, 'Move closer to the duty vehicle.' end
+    if not vehicle then return false, Kora.lang('error.duty_vehicle_unavailable') end
+    if not isNearEntity(src, vehicle, Config.transport.interactionRange) then return false, Kora.lang('error.vehicle_near') end
 
     local nextMode = Stretcher.transition(record.mode, 'stow')
-    if not nextMode then return false, 'The stretcher is already stowed.' end
+    if not nextMode then return false, Kora.lang('error.stretcher_stowed') end
 
     clearOperator(record)
     record.mode = nextMode
@@ -413,20 +413,20 @@ end
 ---@return string|nil
 function Stretcher.unstow(src, vehicleNetworkId)
     vehicleNetworkId = networkId(vehicleNetworkId)
-    if not vehicleNetworkId then return false, 'Invalid duty vehicle.' end
-    if not isOnDutyEMS(src) then return false, 'You must be on duty.' end
+    if not vehicleNetworkId then return false, Kora.lang('error.invalid_vehicle') end
+    if not isOnDutyEMS(src) then return false, Kora.lang('error.not_on_duty') end
 
     local stretcherNetworkId = stretcherByVehicle[vehicleNetworkId]
     local record = stretcherNetworkId and stretchers[stretcherNetworkId]
-    if not record then return false, 'This vehicle has no deployed stretcher.' end
+    if not record then return false, Kora.lang('error.no_stretcher') end
 
     local _, _, vehicle = resolveDutyVehicle(vehicleNetworkId)
     if not vehicle or not isNearEntity(src, vehicle, Config.transport.interactionRange) then
-        return false, 'Move closer to the duty vehicle.'
+        return false, Kora.lang('error.vehicle_near')
     end
 
     local nextMode = Stretcher.transition(record.mode, 'unstow')
-    if not nextMode then return false, 'The stretcher is already outside the vehicle.' end
+    if not nextMode then return false, Kora.lang('error.stretcher_out') end
 
     record.mode = nextMode
     FreezeEntityPosition(record.entity, true)

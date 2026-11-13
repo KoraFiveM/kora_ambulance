@@ -56,13 +56,13 @@ end)
 
 local playerAlerts = {
     ['kora_ambulance:emergency'] = {
-        jobTypes = { Config.job.type }, code = '10-52', title = 'Medical Emergency',
-        message = 'A patient requires medical assistance.', priority = 1, icon = 'heart-pulse',
+        jobTypes = { Config.job.type }, code = '10-52', title = Kora.lang('dispatch.medical_emergency'),
+        message = Kora.lang('dispatch.patient_assistance'), priority = 1, icon = 'heart-pulse',
         cooldown = Config.dispatch.autoCallCooldown,
     },
     ['kora_ambulance:doctor'] = {
-        jobTypes = { Config.job.type }, code = '10-51', title = 'Doctor Requested',
-        message = 'A doctor is needed at the hospital.', priority = 3, icon = 'stethoscope',
+        jobTypes = { Config.job.type }, code = '10-51', title = Kora.lang('dispatch.doctor_requested'),
+        message = Kora.lang('dispatch.doctor_needed'), priority = 3, icon = 'stethoscope',
         cooldown = Config.dispatch.autoCallCooldown,
     },
 }
@@ -90,7 +90,7 @@ RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospital)
         hospital = entry and entry.name or nil
     end
     local ok, reason = Death.respawnAtHospital(source, hospital)
-    if not ok and reason then Kora.notify.send(source, { title = 'EMS', message = reason, type = 'error' }) end
+    if not ok and reason then Kora.notify.send(source, { title = Kora.lang('title.ems'), message = reason, type = 'error' }) end
 end)
 
 -- A legacy bed index is never trusted. The closest configured check-in picks
@@ -99,11 +99,11 @@ RegisterNetEvent('hospital:server:SendToBed', function(_bedIndex)
     local src = source
     local hospital = nearbyHospital(src, true)
     if not hospital then
-        Kora.notify.send(src, { title = 'Hospital', message = 'Use a hospital check-in desk.', type = 'error' })
+        Kora.notify.send(src, { title = Kora.lang('title.hospital'), message = Kora.lang('ui.use_desk'), type = 'error' })
         return
     end
     local _, reason = Hospital.requestCheckIn(src, hospital.name)
-    if reason then Kora.notify.send(src, { title = 'Hospital', message = reason, type = 'error' }) end
+    if reason then Kora.notify.send(src, { title = Kora.lang('title.hospital'), message = reason, type = 'error' }) end
 end)
 
 RegisterNetEvent('hospital:server:LeaveBed', function()
@@ -208,7 +208,7 @@ end)
 
 Kora.callback.register('hospital:GetPlayerStatus', function(src, targetSrc)
     local who = tonumber(targetSrc) or src
-    if not mayReadPatient(src, who) then return nil, 'not authorized' end
+    if not mayReadPatient(src, who) then return nil, Kora.lang('error.access') end
     return {
         isdead = Death.isDead(who),
         inlaststand = Death.isLaststand(who),
@@ -218,7 +218,7 @@ end)
 
 Kora.callback.register('hospital:GetPlayerBleeding', function(src, targetSrc)
     local who = tonumber(targetSrc) or src
-    if not mayReadPatient(src, who) then return nil, 'not authorized' end
+    if not mayReadPatient(src, who) then return nil, Kora.lang('error.access') end
     return Death.isBleeding(who)
 end)
 

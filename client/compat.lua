@@ -21,7 +21,7 @@ RegisterNetEvent('hospital:client:ambulanceAlert', function() end)
 -- so the CPR hint is opt-in (Config.compat.reviveNotice).
 local function reviveNotice()
     if not Config.compat.reviveNotice then return end
-    Kora.notify.send({ title = 'EMS', message = 'A server-authorized medic must perform CPR.', type = 'info' })
+    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.cpr_required'), type = 'info' })
 end
 
 RegisterNetEvent('hospital:client:Revive', reviveNotice)
@@ -53,11 +53,11 @@ RegisterNetEvent('hospital:client:KillPlayer', function()
 end)
 
 RegisterNetEvent('hospital:client:HealInjuries', function(_percent)
-    Kora.notify.send({ title = 'Hospital', message = 'Use patient treatment or hospital check-in.', type = 'info' })
+    Kora.notify.send({ title = Kora.lang('title.hospital'), message = Kora.lang('ui.use_treatment'), type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:SendToBed', function(_bedIndex)
-    Kora.notify.send({ title = 'Hospital', message = 'Use a check-in desk for a server-assigned bed.', type = 'info' })
+    Kora.notify.send({ title = Kora.lang('title.hospital'), message = Kora.lang('ui.use_desk'), type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:leaveBed', function()
@@ -65,11 +65,11 @@ RegisterNetEvent('hospital:client:leaveBed', function()
 end)
 
 RegisterNetEvent('hospital:client:SetBed', function(bedIndex)
-    Kora.notify.send({ title = 'Hospital', message = ('Assigned to bed %s.'):format(tostring(bedIndex)), type = 'info' })
+    Kora.notify.send({ title = Kora.lang('title.hospital'), message = Kora.lang('ui.assigned_bed', bedIndex), type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:SetBed2', function(bedIndex)
-    Kora.notify.send({ title = 'Hospital', message = ('Assigned to bed %s.'):format(tostring(bedIndex)), type = 'info' })
+    Kora.notify.send({ title = Kora.lang('title.hospital'), message = Kora.lang('ui.assigned_bed', bedIndex), type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:RespawnAtHospital', function()
@@ -77,7 +77,7 @@ RegisterNetEvent('hospital:client:RespawnAtHospital', function()
 end)
 
 RegisterNetEvent('hospital:client:SendBillEmail', function(amount)
-    Kora.notify.send({ title = 'Hospital Bill', message = ('You were billed $%d.'):format(tonumber(amount) or 0), type = 'warning' })
+    Kora.notify.send({ title = Kora.lang('title.hospital_bill'), message = Kora.lang('ui.billed', tonumber(amount) or 0), type = 'warning' })
 end)
 
 RegisterNetEvent('hospital:client:SetDoctorCount', function(count)
@@ -85,7 +85,7 @@ RegisterNetEvent('hospital:client:SetDoctorCount', function(count)
 end)
 
 RegisterNetEvent('hospital:client:adminHeal', function()
-    Kora.notify.send({ title = 'Hospital', message = 'Client-side admin healing is disabled.', type = 'error' })
+    Kora.notify.send({ title = Kora.lang('title.hospital'), message = Kora.lang('ui.admin_heal_disabled'), type = 'error' })
 end)
 
 RegisterNetEvent('hospital:client:CheckStatus', function()
@@ -96,14 +96,14 @@ RegisterNetEvent('hospital:client:CheckStatus', function()
     for _ in pairs(status.woundData or {}) do woundCount = woundCount + 1 end
 
     Kora.notify.send({
-        title = 'status',
-        message = ('Dead: %s | Laststand: %s | Open wounds: %d'):format(tostring(status.isdead), tostring(status.inlaststand), woundCount),
+        title = Kora.lang('title.status'),
+        message = Kora.lang('ui.status_detail', tostring(status.isdead), tostring(status.inlaststand), woundCount),
         type = 'info',
     })
 end)
 
 RegisterNetEvent('hospital:client:TreatWounds', function()
-    Kora.notify.send({ title = 'EMS', message = 'Target a patient to start validated treatment.', type = 'info' })
+    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.target_patient'), type = 'info' })
 end)
 
 -- SetEscortingState/isEscorted map onto our own stretcher system rather than
@@ -126,7 +126,7 @@ exports('CanHelp', function()
 end)
 
 RegisterNetEvent('hospital:client:HelpPerson', function()
-    Kora.notify.send({ title = 'EMS', message = 'Target a downed player to perform CPR or apply first aid.', type = 'info' })
+    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.target_downed'), type = 'info' })
 end)
 
 RegisterNetEvent('hospital:client:UseFirstAid', function()

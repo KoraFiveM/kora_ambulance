@@ -54,16 +54,16 @@ function HospitalMenu.build(hospital, handlers)
 
     add("checkIn", isPoint(hospital.checkIn) and hospital.checkIn or hospital.coords,
         Config.hospitalCare.interactionRange, {
-            { label = "Check In for Care", icon = "bed", onSelect = run("checkIn") },
+            { label = Kora.lang('ui.check_in_care'), icon = "bed", onSelect = run("checkIn") },
         })
 
     add("pharmacy", hospital.pharmacy, 3.0, {
-        { label = "Browse Pharmacy", icon = "pill", onSelect = run("pharmacy") },
+        { label = Kora.lang('ui.browse_pharmacy'), icon = "pill", onSelect = run("pharmacy") },
     })
 
     add("stash", type(hospital.stash) == "table" and hospital.stash.coords or nil, 3.0, {
         {
-            label = "EMS Stash", icon = "box",
+            label = Kora.lang('ui.ems_stash'), icon = "box",
             canInteract = handlers.isEMS,
             onSelect = run("stash"),
         },
@@ -71,7 +71,7 @@ function HospitalMenu.build(hospital, handlers)
 
     add("duty", hospital.duty, 2.0, {
         {
-            label = "Toggle Duty", icon = "briefcase",
+            label = Kora.lang('ui.toggle_duty'), icon = "briefcase",
             canInteract = handlers.isEMS,
             onSelect = run("duty"),
         },

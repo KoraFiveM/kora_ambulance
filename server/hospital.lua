@@ -67,24 +67,24 @@ end
 ---@param hospitalName string
 ---@return table|false, string|nil
 function Hospital.requestCheckIn(src, hospitalName)
-    if not QBCore:getPlayerData(src) then return false, 'patient unavailable' end
-    if type(hospitalName) ~= 'string' then return false, 'unknown hospital' end
+    if not QBCore:getPlayerData(src) then return false, Kora.lang('error.patient_unavailable') end
+    if type(hospitalName) ~= 'string' then return false, Kora.lang('error.unknown_hospital') end
 
     local hospital = getHospital(hospitalName)
-    if not hospital then return false, 'unknown hospital' end
-    if sessions[src] then return false, 'you already have a bed reserved' end
+    if not hospital then return false, Kora.lang('error.unknown_hospital') end
+    if sessions[src] then return false, Kora.lang('error.bed_reserved') end
     if not hospital.beds or #hospital.beds == 0 then
         if Config.Debug then print(('[kora_ambulance] check-in refused: hospital %s has no beds'):format(hospital.name)) end
-        return false, 'this hospital has no beds available'
+        return false, Kora.lang('error.no_beds')
     end
-    if Death.isDead(src) then return false, 'dead patients must use hospital respawn' end
+    if Death.isDead(src) then return false, Kora.lang('error.dead_respawn') end
     if not isNear(src, hospital.checkIn or hospital.coords, Config.hospitalCare.interactionRange) then
-        return false, 'use this hospital check-in desk'
+        return false, Kora.lang('error.use_checkin')
     end
-    if Config.hospitalCare.requireInjury and not hasInjury(src) then return false, 'you do not need hospital care' end
+    if Config.hospitalCare.requireInjury and not hasInjury(src) then return false, Kora.lang('error.no_care_needed') end
 
     local bedIndex = reserveLowestBed(src, hospital)
-    if not bedIndex then return false, 'no beds are currently available' end
+    if not bedIndex then return false, Kora.lang('error.no_beds_available') end
 
     local now = GetGameTimer()
     local session = {
@@ -117,28 +117,28 @@ end
 ---@return boolean, string|nil
 function Hospital.completeBedCare(src, token)
     local session = sessions[src]
-    if not session or type(token) ~= 'string' or session.token ~= token then return false, 'invalid care session' end
+    if not session or type(token) ~= 'string' or session.token ~= token then return false, Kora.lang('error.invalid_care_session') end
 
     local now = GetGameTimer()
-    if now < session.readyAt then return false, 'care is not complete yet' end
+    if now < session.readyAt then return false, Kora.lang('error.care_not_complete') end
     if now > session.expiresAt then
         releaseSession(src, 'expired')
-        return false, 'care session expired'
+        return false, Kora.lang('error.care_session_expired')
     end
     if reservedBeds[getBedKey(session.hospital, session.bedIndex)] ~= src then
         releaseSession(src, 'released')
-        return false, 'bed is no longer reserved'
+        return false, Kora.lang('error.bed_unreserved')
     end
     if Death.isDead(src) then
         releaseSession(src, 'dead')
-        return false, 'dead patients must use hospital respawn'
+        return false, Kora.lang('error.dead_respawn')
     end
 
     local hospital = getHospital(session.hospital)
     local bed = hospital and hospital.beds[session.bedIndex]
     if not bed or not isNear(src, bed, Config.hospitalCare.bedRange) then
         releaseSession(src, 'left-bed')
-        return false, 'remain at your assigned bed'
+        return false, Kora.lang('error.remain_bed')
     end
 
     if Death.isLaststand(src) then Death.reviveInField(src, 100, true) end

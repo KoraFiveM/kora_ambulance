@@ -34,7 +34,7 @@ local function performCPRForTarget(targetSrc)
 
     local token, beginErr, authorization = Kora.callback.trigger('kora_ambulance:server:beginRevive', targetSrc)
     if not token then
-        Kora.notify.send({ title = 'EMS', message = beginErr or 'Unable to begin CPR.', type = 'error' })
+        Kora.notify.send({ title = Kora.lang('title.ems'), message = beginErr or Kora.lang('ui.unable_cpr'), type = 'error' })
         return
     end
 
@@ -61,7 +61,7 @@ RegisterNetEvent('kora_ambulance:client:reviveRequested', performCPRForTarget)
 local function registerTargets()
     exports.kora_target:addGlobalType('player', {
         {
-            label = 'Perform CPR',
+            label = Kora.lang('ui.perform_cpr'),
             icon = 'heart-pulse',
             canInteract = isDowned,
             onSelect = performCPR,

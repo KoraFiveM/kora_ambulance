@@ -60,7 +60,7 @@ function Doctors.trySelfHeal(src)
 
     lastSelfHealAt[src] = now
     Death.reviveInField(src, Config.death.minimumRevive)
-    Kora.notify.send(src, { title = 'EMS', message = 'No paramedics were available -- you stabilised on your own.', type = 'info' })
+    Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.no_medics_self_stabilise'), type = 'info' })
 
     return true
 end
