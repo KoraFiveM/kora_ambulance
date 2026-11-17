@@ -25,8 +25,9 @@ local function assessPatientById(patientSrc)
         return
     end
 
+    local state = Kora.lang('ui.state_' .. tostring(report.state))
     if #report.wounds == 0 then
-        Kora.notify.send({ title = Kora.lang('title.assessment'), message = Kora.lang('ui.woundless_assessment', report.state), type = 'success' })
+        Kora.notify.send({ title = Kora.lang('title.assessment'), message = Kora.lang('ui.woundless_assessment', state), type = 'success' })
         return
     end
 
@@ -35,7 +36,7 @@ local function assessPatientById(patientSrc)
         findings[#findings + 1] = Kora.lang('ui.finding', wound.bodyPartLabel, wound.severityLabel)
     end
     Kora.notify.send({
-        title = Kora.lang('ui.assessment_title', report.state),
+        title = Kora.lang('ui.assessment_title', state),
         message = table.concat(findings, Kora.lang('ui.finding_separator')),
         type = 'warning',
     })

@@ -97,7 +97,8 @@ RegisterNetEvent('hospital:client:CheckStatus', function()
 
     Kora.notify.send({
         title = Kora.lang('title.status'),
-        message = Kora.lang('ui.status_detail', tostring(status.isdead), tostring(status.inlaststand), woundCount),
+        message = Kora.lang('ui.status_detail', Kora.lang(status.isdead and 'ui.yes' or 'ui.no'),
+            Kora.lang(status.inlaststand and 'ui.yes' or 'ui.no'), woundCount),
         type = 'info',
     })
 end)
