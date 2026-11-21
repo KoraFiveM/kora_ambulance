@@ -5,7 +5,7 @@ lua54 'yes'
 name 'kora_ambulance'
 provide 'qb-ambulancejob'
 author 'Kora'
-version '0.2.1'
+version '0.2.2'
 description 'Authoritative EMS care, anatomical injuries, hospital admissions, transport, dispatch and billing'
 
 dependency 'kora_lib'
