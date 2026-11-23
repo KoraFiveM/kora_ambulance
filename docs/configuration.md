@@ -120,6 +120,7 @@ Controls what a field revive does to injuries. Field revives are CPR, the self-h
 | `requireInjury` | boolean | `true` | Only injured players can check in: laststand, an open wound, or health below max minus `Config.injuries.healthTolerance`. |
 | `allowBedless` | boolean | `true` | `true` allows hospitals with no beds. They still get their other zones, and check-in shows a notice. `false` makes validation fail. |
 | `leaveKey` | string | `'E'` | Default key of the `kora_ambulance_leave_bed` mapping. It is only enabled while a bed is reserved. `''` registers no mapping. |
+| `bedAnim` | table or nil | `dict = 'anim@gangops@morgue@table@'`, `clip = 'body_search'`, `flag = 1` | Animation to play while the patient rests. Set to `nil` to disable the animation. The optional `flag` defaults to `1` (loop). |
 
 ## `Config.hospitalMenu`
 

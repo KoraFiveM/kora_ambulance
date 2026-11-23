@@ -47,7 +47,7 @@ Check-in lets an injured player who is **not dead** get treated without a medic.
    - `requireInjury` is on and the player is not injured. Injured means laststand, an open wound, or health below max minus `healthTolerance`,
    - every bed is taken (`no beds are currently available`).
 2. The server reserves the **lowest free bed index** for this player. Clients can never choose a bed. The server sends `kora_ambulance:client:checkInAccepted` and fires `kora_ambulance:server:onPatientCheckedIn(src, hospitalName, bedIndex)`.
-3. The client moves the ped onto the bed and plays a resting scenario. It also turns on the `kora_ambulance_leave_bed` key mapping (default `E`).
+3. The client moves the patient onto the bed, aligns them to the bed's heading, and plays a looping lying-down animation by default. It also turns on the `kora_ambulance_leave_bed` key mapping (default `E`).
 4. After `Config.hospitalCare.duration` ms the client calls `kora_ambulance:server:bedCareCompleted(token)`. The server checks the token, that the duration has passed and `actionTtl` has not, that the bed is still reserved, that the player is not dead and is within `bedRange` of the bed. If all checks pass, it revives a laststand patient with a full revive, clears all wounds and charges `Config.billing.checkInCost`. It then releases the bed with reason `completed` and fires `kora_ambulance:server:onBedCareCompleted(src, hospitalName, bedIndex, cost)`. The client restores full health.
 
 A bed is released (`kora_ambulance:client:bedReleased` and `kora_ambulance:server:onBedReleased(src, hospitalName, bedIndex, reason)`) for these reasons:
