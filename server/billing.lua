@@ -53,7 +53,7 @@ function Billing.charge(src, cost, reason)
     if bankDebit > 0 and GetResourceState('kora_banking') == 'started' then
         local called, recorded = pcall(function()
             local label = Kora.lang('title.hospital_treatment')
-            return exports.kora_banking:CreateBankStatement(src, 'checking', bankDebit, label, 'withdraw')
+            return Kora.bridge.createSocietyBankStatement(src, 'checking', bankDebit, label, 'withdraw')
         end)
         if not called or recorded ~= true then
             Kora.logging.warn('billing.statement_failed', 'Hospital bank statement write failed', {
