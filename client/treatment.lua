@@ -21,13 +21,13 @@ local function assessPatientById(patientSrc)
 
     local report, reason = Kora.callback.trigger('kora_ambulance:server:assessPatient', patientSrc)
     if not report then
-        Kora.notify.send({ title = Kora.lang('title.assessment'), message = reason or Kora.lang('ui.unable_assess'), type = 'error' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.assessment'), message = reason or Kora.lang('ui.unable_assess'), type = 'error' })
         return
     end
 
     local state = Kora.lang('ui.state_' .. tostring(report.state))
     if #report.wounds == 0 then
-        Kora.notify.send({ title = Kora.lang('title.assessment'), message = Kora.lang('ui.woundless_assessment', state), type = 'success' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.assessment'), message = Kora.lang('ui.woundless_assessment', state), type = 'success' })
         return
     end
 
@@ -35,7 +35,7 @@ local function assessPatientById(patientSrc)
     for _, wound in ipairs(report.wounds) do
         findings[#findings + 1] = Kora.lang('ui.finding', wound.bodyPartLabel, wound.severityLabel)
     end
-    Kora.notify.send({
+    Kora.bridge.sendNotify({
         title = Kora.lang('ui.assessment_title', state),
         message = table.concat(findings, Kora.lang('ui.finding_separator')),
         type = 'warning',
@@ -64,14 +64,14 @@ local function treatPatientById(patientSrc)
     }, patientSrc)
 
     if not started then
-        Kora.notify.send({ title = Kora.lang('title.treatment'), message = outcome or Kora.lang('ui.unable_treat'), type = 'error' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.treatment'), message = outcome or Kora.lang('ui.unable_treat'), type = 'error' })
         return
     end
 
     if outcome and outcome.treated then
-        Kora.notify.send({ title = Kora.lang('title.treatment'), message = Kora.lang('ui.one_wound_treated'), type = 'success' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.treatment'), message = Kora.lang('ui.one_wound_treated'), type = 'success' })
     else
-        Kora.notify.send({
+        Kora.bridge.sendNotify({
             title = Kora.lang('title.treatment'),
             message = (outcome and outcome.reason) or Kora.lang('ui.treatment_incomplete'),
             type = 'warning',

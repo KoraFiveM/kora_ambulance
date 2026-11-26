@@ -69,7 +69,7 @@ function Revive.complete(src, targetSrc, success)
     lastAttemptAt[targetSrc] = os.time()
 
     if not success then
-        Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.cpr_failed'), type = 'error' })
+        Kora.bridge.sendNotify(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.cpr_failed'), type = 'error' })
         return false, Kora.lang('error.cpr_minigame')
     end
 
@@ -77,7 +77,7 @@ function Revive.complete(src, targetSrc, success)
     if not removed then return false, removeErr or Kora.lang('error.no_defibrillator') end
     Death.reviveInField(targetSrc, Config.death.minimumRevive)
 
-    Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.stabilised'), type = 'success' })
+    Kora.bridge.sendNotify(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.stabilised'), type = 'success' })
     TriggerEvent('kora_ambulance:server:onPlayerRevivedBy', targetSrc, src)
 
     return true, nil
@@ -138,12 +138,12 @@ Kora.events.register('kora_ambulance:server:completeRevive', function(src, targe
     if action.expiresAt < GetGameTimer() then return end
     if not Kora.minigames.consumeProof(src, proof, 'mash', action.authorization) then
         lastAttemptAt[targetSrc] = os.time()
-        Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.cpr_failed'), type = 'error' })
+        Kora.bridge.sendNotify(src, { title = Kora.lang('title.ems'), message = Kora.lang('ui.cpr_failed'), type = 'error' })
         return
     end
     local revived, reason = Revive.complete(src, targetSrc, true)
     if not revived and reason then
-        Kora.notify.send(src, { title = Kora.lang('title.ems'), message = reason, type = 'error' })
+        Kora.bridge.sendNotify(src, { title = Kora.lang('title.ems'), message = reason, type = 'error' })
     end
 end)
 
@@ -162,7 +162,7 @@ end)
 if Config.defibrillator and Config.defibrillator.useable then
     QBCore:createUseable('defibrillator', function(src)
         if not isOnDutyEMS(src) then
-            Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('error.only_on_duty_defib'), type = 'error' })
+            Kora.bridge.sendNotify(src, { title = Kora.lang('title.ems'), message = Kora.lang('error.only_on_duty_defib'), type = 'error' })
             return false
         end
 
@@ -177,7 +177,7 @@ if Config.defibrillator and Config.defibrillator.useable then
         end
 
         if not best then
-            Kora.notify.send(src, { title = Kora.lang('title.ems'), message = Kora.lang('error.no_patient_defib'), type = 'warning' })
+            Kora.bridge.sendNotify(src, { title = Kora.lang('title.ems'), message = Kora.lang('error.no_patient_defib'), type = 'warning' })
             return false
         end
 

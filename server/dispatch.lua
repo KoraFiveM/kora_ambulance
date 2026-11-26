@@ -193,7 +193,7 @@ RegisterNetEvent('kora_ambulance:server:alertEms', function(street)
     local last = lastKeyAlertAt[src]
     local cooldown = math.floor(alert.cooldown / 1000)
     if last and now - last < cooldown then
-        Kora.notify.send(src, {
+        Kora.bridge.sendNotify(src, {
             title = Kora.lang('title.ems'),
             message = Kora.lang('error.house_call_cooldown', cooldown - (now - last)),
             type = 'error',
@@ -217,7 +217,7 @@ RegisterNetEvent('kora_ambulance:server:alertEms', function(street)
         data = { patient = patient, source = src, street = street },
     })
     count = tonumber(count) or 0
-    Kora.notify.send(src, {
+    Kora.bridge.sendNotify(src, {
         title = Kora.lang('title.ems'),
         message = count > 0 and Kora.lang('dispatch.location_sent') or Kora.lang('error.no_paramedics'),
         type = count > 0 and 'success' or 'error',

@@ -11,7 +11,7 @@ RegisterNetEvent('kora_ambulance:client:housecallList', function(list)
         lines[#lines + 1] = Kora.lang('ui.housecall_line', entry.id, entry.note or Kora.lang('ui.no_housecall_details'))
     end
 
-    Kora.notify.send({ title = Kora.lang('title.house_calls'), message = table.concat(lines, '\n'), type = 'info', duration = 8000 })
+    Kora.bridge.sendNotify({ title = Kora.lang('title.house_calls'), message = table.concat(lines, '\n'), type = 'info', duration = 8000 })
 end)
 
 -- server/housecall.lua reads the requester's coords server-side
@@ -19,7 +19,7 @@ end)
 -- needed -- set a waypoint straight to them.
 RegisterNetEvent('kora_ambulance:client:housecallAccepted', function(request)
     if type(request) ~= 'table' then return end
-    Kora.notify.send({ title = Kora.lang('title.house_call'), message = Kora.lang('ui.request_accepted', request.id), type = 'success' })
+    Kora.bridge.sendNotify({ title = Kora.lang('title.house_call'), message = Kora.lang('ui.request_accepted', request.id), type = 'success' })
 
     if request.coords then
         SetNewWaypoint(request.coords.x, request.coords.y)

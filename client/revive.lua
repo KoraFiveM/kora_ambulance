@@ -34,7 +34,7 @@ local function performCPRForTarget(targetSrc)
 
     local token, beginErr, authorization = Kora.callback.trigger('kora_ambulance:server:beginRevive', targetSrc)
     if not token then
-        Kora.notify.send({ title = Kora.lang('title.ems'), message = beginErr or Kora.lang('ui.unable_cpr'), type = 'error' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = beginErr or Kora.lang('ui.unable_cpr'), type = 'error' })
         return
     end
 

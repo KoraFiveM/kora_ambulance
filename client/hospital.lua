@@ -40,7 +40,8 @@ local function startCare(care)
     local ped = PlayerPedId()
     SetEntityCoords(ped, bed.x, bed.y, bed.z, false, false, false, false)
     SetEntityHeading(ped, bed.w or 0.0)
-    Kora.notify.send({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.resting_bed'), type = 'info' })
+    TaskStartScenarioAtPosition(ped, 'PROP_HUMAN_BUM_BIN', bed.x, bed.y, bed.z, bed.w or 0.0, 0, true, false)
+    Kora.bridge.sendNotify({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.resting_bed'), type = 'info' })
     if leaveBinding then leaveBinding.disable(false) end
 
     local anim = Config.hospitalCare.bedAnim
@@ -76,23 +77,23 @@ local function startCare(care)
         if leaveBinding then leaveBinding.disable(true) end
         local completed, reason = Kora.callback.trigger('kora_ambulance:server:bedCareCompleted', token)
         if not completed then
-            Kora.notify.send({ title = Kora.lang('title.hospital_checkin'), message = reason or Kora.lang('ui.care_incomplete'), type = 'warning' })
+            Kora.bridge.sendNotify({ title = Kora.lang('title.hospital_checkin'), message = reason or Kora.lang('ui.care_incomplete'), type = 'warning' })
         end
     end)
 end
 
 local function requestCheckIn(hospital)
     if not hospital.beds or #hospital.beds == 0 then
-        Kora.notify.send({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.no_beds'), type = 'warning' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.no_beds'), type = 'warning' })
         return
     end
     if activeCare then
-        Kora.notify.send({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.bed_reserved'), type = 'warning' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.bed_reserved'), type = 'warning' })
         return
     end
     local care, reason = Kora.callback.trigger('kora_ambulance:server:checkInRequested', hospital.name)
     if not care then
-        Kora.notify.send({ title = Kora.lang('title.hospital_checkin'), message = reason or Kora.lang('ui.checkin_unavailable'), type = 'error' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.hospital_checkin'), message = reason or Kora.lang('ui.checkin_unavailable'), type = 'error' })
         return
     end
     startCare(care)
@@ -108,9 +109,9 @@ RegisterNetEvent('kora_ambulance:client:bedReleased', function(reason)
     if reason == 'completed' then
         local ped = PlayerPedId()
         SetEntityHealth(ped, GetEntityMaxHealth(ped))
-        Kora.notify.send({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.care_complete'), type = 'success' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.care_complete'), type = 'success' })
     elseif reason ~= 'left-bed' then
-        Kora.notify.send({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.bed_released'), type = 'warning' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.hospital_checkin'), message = Kora.lang('ui.bed_released'), type = 'warning' })
     end
 end)
 

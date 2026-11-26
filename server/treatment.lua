@@ -165,7 +165,7 @@ function Treatment.complete(medicSrc, patientSrc, token, completed)
 
     Death.clearWound(patientSrc, action.bodyPart)
     local part = Wounds.bodyPartDef(action.bodyPart)
-    Kora.notify.send(patientSrc, { title = Kora.lang('title.treatment'), message = Kora.lang('success.medic_treated_wound', part and part.label or action.bodyPart), type = 'success' })
+    Kora.bridge.sendNotify(patientSrc, { title = Kora.lang('title.treatment'), message = Kora.lang('success.medic_treated_wound', part and part.label or action.bodyPart), type = 'success' })
     local heal = Config.treatment.ifakHealthAmount or 0
     if action.item == 'ifak' and heal > 0 and Death.isAlive(patientSrc) then
         TriggerClientEvent('kora_ambulance:client:painkillerBenefit', patientSrc, heal)

@@ -203,7 +203,7 @@ Kora.events.register('kora_ambulance:server:storeDutyVehicle', function(src)
     if not nearGarage then return end
 
     clearDutyVehicle(src)
-    Kora.notify.send(src, { title = Kora.lang('title.ems_garage'), message = Kora.lang('success.vehicle_returned'), type = 'success' })
+    Kora.bridge.sendNotify(src, { title = Kora.lang('title.ems_garage'), message = Kora.lang('success.vehicle_returned'), type = 'success' })
 end)
 
 ---@param src integer
@@ -234,7 +234,7 @@ Kora.commands.add('ems-duty', 'Toggle EMS duty at a hospital', {}, false, functi
     local job = QBCore:getJob(source)
     local newDuty = job ~= nil and not job.onduty
     local changed, err = Duty.setDuty(source, newDuty)
-    Kora.notify.send(source, {
+    Kora.bridge.sendNotify(source, {
         title = Kora.lang('title.ems'),
         message = changed and (newDuty and Kora.lang('success.on_duty') or Kora.lang('success.off_duty'))
             or (err or Kora.lang('error.duty_status_failed')),

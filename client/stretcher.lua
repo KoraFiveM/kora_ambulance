@@ -221,7 +221,7 @@ local function startCarryDragger(targetSrc)
     if Config.carry.stopPrompt == false then return end
     local control = tonumber(Config.carry.stopControl) or 38
     CreateThread(function()
-        local promptId = Kora.textui.show('Stop Carrying', { key = 'E', icon = 'hand' })
+        local promptId = Kora.bridge.drawText('Stop Carrying', { key = 'E', icon = 'hand' })
         while carryDragging and carryDragging.targetSrc == targetSrc do
             -- kora_target confirms its menu with the same key: picking another
             -- option (CPR, assess) while carrying must not also drop the patient.
@@ -234,7 +234,7 @@ local function startCarryDragger(targetSrc)
             end
             Wait(0)
         end
-        Kora.textui.hide(promptId)
+        Kora.bridge.hideText(promptId)
     end)
 end
 
@@ -301,10 +301,10 @@ end
 RegisterNetEvent('kora_ambulance:client:stretcherBegin', function(otherSrc, iAmDragger)
     if iAmDragger then
         startCarryDragger(otherSrc)
-        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.emergency_carry_started'), type = 'info' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.emergency_carry_started'), type = 'info' })
     else
         startCarryPatient(otherSrc)
-        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.being_carried'), type = 'info' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.being_carried'), type = 'info' })
     end
 end)
 
@@ -337,7 +337,7 @@ local function deployStretcher(vehicle)
     if not vehicleNetworkId then return end
     local stretcherNetworkId, reason = Kora.callback.trigger(
         'kora_ambulance:server:stretcherDeployRequested', vehicleNetworkId)
-    Kora.notify.send({
+    Kora.bridge.sendNotify({
         title = Kora.lang('title.transport'),
         message = stretcherNetworkId and Kora.lang('ui.stretcher_deployed') or (reason or Kora.lang('ui.stretcher_failed')),
         type = stretcherNetworkId and 'success' or 'error',

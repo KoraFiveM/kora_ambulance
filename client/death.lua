@@ -186,7 +186,7 @@ local countdown
 
 local function stopCountdown()
     if not countdown then return end
-    Kora.textui.hide(countdown)
+    Kora.bridge.hideText(countdown)
     countdown = nil
 end
 
@@ -240,11 +240,11 @@ end
 ---@param final? boolean
 local function showCountdown(state, text, icon, final)
     local shown, options = promptFor(state, text, icon, final)
-    if countdown and Kora.textui.isVisible(countdown) and Kora.textui.update(countdown, shown, options) then return end
+    if countdown and Kora.textui.isVisible(countdown) and Kora.bridge.updateText(countdown, shown, options) then return end
     -- Gone, or buried under a prompt another resource stacked on top (textui
     -- renders only the newest entry): put a fresh one on top.
-    if countdown then Kora.textui.hide(countdown) end
-    countdown = Kora.textui.show(shown, options)
+    if countdown then Kora.bridge.hideText(countdown) end
+    countdown = Kora.bridge.drawText(shown, options)
 end
 
 ---@param ms number
@@ -357,7 +357,7 @@ RegisterNetEvent('kora_ambulance:client:enterLaststand', function(deathTimeMs)
     downGeneration = downGeneration + 1
     local myGeneration = downGeneration
 
-    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.critically_injured'), type = 'error' })
+    Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.critically_injured'), type = 'error' })
     suppressVanillaWasted()
     playDownedAnimation('laststand')
 
@@ -373,7 +373,7 @@ RegisterNetEvent('kora_ambulance:client:markDead', function(respawnTimeMs)
     downGeneration = downGeneration + 1
 
     if not deathScreenHandle then deathScreenHandle = Kora.fx.screenEffect('DeathFailOut', 0, true) end
-    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.died'), type = 'error' })
+    Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.died'), type = 'error' })
     suppressVanillaWasted()
     playDownedAnimation('dead')
 
@@ -404,7 +404,7 @@ RegisterNetEvent('kora_ambulance:client:revived', function(healthPct)
 
     if wasDead then stopDeathScreen() end
 
-    Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.stabilised'), type = 'success' })
+    Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.stabilised'), type = 'success' })
 end)
 
 RegisterNetEvent('kora_ambulance:client:respawnedAtHospital', function(coords)
@@ -471,12 +471,12 @@ RegisterCommand('respawn', function()
 
     local remaining = respawnAvailableAt - GetGameTimer()
     if remaining > 0 then
-        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.respawn_after', clockText(remaining)), type = 'error' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.respawn_after', clockText(remaining)), type = 'error' })
         return
     end
 
     if respawnBlockedBy then
-        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.respawn_medics', respawnBlockedBy), type = 'error' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.respawn_medics', respawnBlockedBy), type = 'error' })
         return
     end
 

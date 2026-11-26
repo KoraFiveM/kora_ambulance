@@ -90,7 +90,7 @@ RegisterNetEvent('hospital:server:RespawnAtHospital', function(hospital)
         hospital = entry and entry.name or nil
     end
     local ok, reason = Death.respawnAtHospital(source, hospital)
-    if not ok and reason then Kora.notify.send(source, { title = Kora.lang('title.ems'), message = reason, type = 'error' }) end
+    if not ok and reason then Kora.bridge.sendNotify(source, { title = Kora.lang('title.ems'), message = reason, type = 'error' }) end
 end)
 
 -- A legacy bed index is never trusted. The closest configured check-in picks
@@ -99,11 +99,11 @@ RegisterNetEvent('hospital:server:SendToBed', function(_bedIndex)
     local src = source
     local hospital = nearbyHospital(src, true)
     if not hospital then
-        Kora.notify.send(src, { title = Kora.lang('title.hospital'), message = Kora.lang('ui.use_desk'), type = 'error' })
+        Kora.bridge.sendNotify(src, { title = Kora.lang('title.hospital'), message = Kora.lang('ui.use_desk'), type = 'error' })
         return
     end
     local _, reason = Hospital.requestCheckIn(src, hospital.name)
-    if reason then Kora.notify.send(src, { title = Kora.lang('title.hospital'), message = reason, type = 'error' }) end
+    if reason then Kora.bridge.sendNotify(src, { title = Kora.lang('title.hospital'), message = reason, type = 'error' }) end
 end)
 
 RegisterNetEvent('hospital:server:LeaveBed', function()
