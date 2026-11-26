@@ -16,6 +16,7 @@
       "client/treatment.lua"
     ],
     "server": [
+      "kora_versioncheck.lua",
       "server/billing.lua",
       "server/compat/hospital.lua",
       "server/death.lua",
