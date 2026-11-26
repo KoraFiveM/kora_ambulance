@@ -2,8 +2,14 @@
 -- even when a deployment omits optional pharmacy/stash fields.
 local h = dofile('test/harness.lua')
 local mocks = dofile('test/mocks.lua'); local handle = mocks.install()
-dofile('config.lua')
-dofile("shared/hospital_menu.lua")
+dofile('shared/config.lua')
+dofile('shared/hospital_menu.lua')
+
+local locale = dofile('locales/en.lua')
+Kora.lang = function(key)
+    local section, name = key:match('^([^.]+)%.(.+)$')
+    return locale[section][name]
+end
 
 Config.hospitals[1].pharmacy = nil
 Config.hospitals[1].stash = nil
@@ -57,19 +63,41 @@ h.test('completed server care heals locally; cancelled and inactive care do not'
     SetEntityHealth = function(ped, value) handle.setHealth(ped, value) end -- client-only native
     SetEntityCoords = function() end
     ClearPedTasks = function() end
-    local scenarios = 0
-    TaskStartScenarioAtPosition = function() scenarios = scenarios + 1 end
-    TaskStartScenarioAtCoords = nil
-    local care = { token = 'care-test', bed = { x = 1, y = 2, z = 3 }, duration = 5000 }
+    local heading
+    SetEntityHeading = function(_, value) heading = value end
+    local animations = {}
+    local dictLoaded = true
+    RequestAnimDict = function() end
+    HasAnimDictLoaded = function() return dictLoaded end
+    RemoveAnimDict = function() end
+    TaskPlayAnim = function(_, dict, clip, _, _, _, flag)
+        animations[#animations + 1] = { dict = dict, clip = clip, flag = flag }
+    end
+    TaskStartScenarioAtPosition = function() error('check-in must play the bed animation') end
+    local care = { token = 'care-test', bed = { x = 1, y = 2, z = 3, w = 90.0 }, duration = 5000 }
     handle.fireEvent('kora_ambulance:client:checkInAccepted', 65535, care)
-    h.assertEqual(scenarios, 1)
+    h.assertEqual(heading, 90.0)
+    local realWait = Wait
+    Wait = coroutine.yield
+    handle.step()
+    h.assertEqual(#animations, 1)
+    h.assertEqual(animations[1].dict, 'anim@gangops@morgue@table@')
+    h.assertEqual(animations[1].clip, 'body_search')
+    h.assertEqual(animations[1].flag, 1, 'animation loops on the bed')
     handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'left-bed')
     h.assertEqual(handle.players[1].health, 40)
     handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'completed')
     h.assertEqual(handle.players[1].health, 40)
+    dictLoaded = false
+    care = { token = 'care-delayed', bed = care.bed, duration = care.duration }
     handle.fireEvent('kora_ambulance:client:checkInAccepted', 65535, care)
+    handle.step()
     handle.fireEvent('kora_ambulance:client:bedReleased', 65535, 'completed')
     h.assertEqual(handle.players[1].health, 200)
+    dictLoaded = true
+    handle.step()
+    h.assertEqual(#animations, 1, 'a released patient stays off the bed when the dictionary finishes loading')
+    Wait = realWait
 end)
 
 h.test('leaving the bed is a keybind enabled only while a bed is reserved, with no per-frame loop', function()
@@ -81,7 +109,6 @@ h.test('leaving the bed is a keybind enabled only while a bed is reserved, with 
     PlayerPedId = function() return 1 end
     SetEntityCoords = function() end
     ClearPedTasks = function() end
-    TaskStartScenarioAtPosition = function() end
     local care = { token = 'care-key', bed = { x = 1, y = 2, z = 3 }, duration = 5000 }
     local waits = {}
     local realWait = Wait
