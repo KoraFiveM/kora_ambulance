@@ -348,13 +348,13 @@ h.test('a prompt another resource stacks on top cannot hide the timer for good',
     _G.Wait = frameWait
     handle.fireEvent('kora_ambulance:client:enterLaststand', 0, 60000)
     handle.step()
-    local other = handle.Kora.textui.show('Leave property', { key = 'E' })
+    local other = handle.Kora.bridge.drawText('Leave property', { key = 'E' })
     h.assertEqual(visiblePrompt().text, 'Leave property')
 
     -- the clock re-asserts itself on its next tick
     for _ = 1, 100 do handle.step() end
     h.assertTrue(visiblePrompt().text:find('Bleeding out in', 1, true) ~= nil)
-    handle.Kora.textui.hide(other)
+    handle.Kora.bridge.hideText(other)
     handle.fireEvent('kora_ambulance:client:revived', 0, 20)
     h.assertEqual(visiblePrompt(), nil)
     _G.Wait = realWait

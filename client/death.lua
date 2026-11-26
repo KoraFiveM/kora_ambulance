@@ -186,7 +186,7 @@ local countdown
 
 local function stopCountdown()
     if not countdown then return end
-    Kora.textui.hide(countdown)
+    Kora.bridge.hideText(countdown)
     countdown = nil
 end
 
@@ -240,11 +240,11 @@ end
 ---@param final? boolean
 local function showCountdown(state, text, icon, final)
     local shown, options = promptFor(state, text, icon, final)
-    if countdown and Kora.textui.isVisible(countdown) and Kora.textui.update(countdown, shown, options) then return end
+    if countdown and Kora.textui.isVisible(countdown) and Kora.bridge.updateText(countdown, shown, options) then return end
     -- Gone, or buried under a prompt another resource stacked on top (textui
     -- renders only the newest entry): put a fresh one on top.
-    if countdown then Kora.textui.hide(countdown) end
-    countdown = Kora.textui.show(shown, options)
+    if countdown then Kora.bridge.hideText(countdown) end
+    countdown = Kora.bridge.drawText(shown, options)
 end
 
 ---@param ms number

@@ -221,7 +221,7 @@ local function startCarryDragger(targetSrc)
     if Config.carry.stopPrompt == false then return end
     local control = tonumber(Config.carry.stopControl) or 38
     CreateThread(function()
-        local promptId = Kora.textui.show('Stop Carrying', { key = 'E', icon = 'hand' })
+        local promptId = Kora.bridge.drawText('Stop Carrying', { key = 'E', icon = 'hand' })
         while carryDragging and carryDragging.targetSrc == targetSrc do
             -- kora_target confirms its menu with the same key: picking another
             -- option (CPR, assess) while carrying must not also drop the patient.
@@ -234,7 +234,7 @@ local function startCarryDragger(targetSrc)
             end
             Wait(0)
         end
-        Kora.textui.hide(promptId)
+        Kora.bridge.hideText(promptId)
     end)
 end
 
