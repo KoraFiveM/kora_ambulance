@@ -141,6 +141,7 @@ function M.install()
         end,
     }
 
+    Kora.bridge = {}
     Kora.notify = { sent = {}, send = function(...) end }
     function Kora.bridge.sendNotify(...)
         table.insert(Kora.notify.sent, { ... })
