@@ -11,7 +11,7 @@ RegisterNetEvent('kora_ambulance:client:housecallList', function(list)
         lines[#lines + 1] = Kora.lang('ui.housecall_line', entry.id, entry.note or Kora.lang('ui.no_housecall_details'))
     end
 
-    Kora.bridge.sendNotify({ title = Kora.lang('title.house_calls'), message = table.concat(lines, '\n'), type = 'info', duration = 8000 })
+    Kora.bridge.sendNotify({ title = Kora.lang('title.house_calls'), message = table.concat(lines, '\n'), type = 'info', time = 8000 })
 end)
 
 -- server/housecall.lua reads the requester's coords server-side
