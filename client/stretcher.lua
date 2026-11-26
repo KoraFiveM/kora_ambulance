@@ -301,10 +301,10 @@ end
 RegisterNetEvent('kora_ambulance:client:stretcherBegin', function(otherSrc, iAmDragger)
     if iAmDragger then
         startCarryDragger(otherSrc)
-        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.emergency_carry_started'), type = 'info' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.emergency_carry_started'), type = 'info' })
     else
         startCarryPatient(otherSrc)
-        Kora.notify.send({ title = Kora.lang('title.ems'), message = Kora.lang('ui.being_carried'), type = 'info' })
+        Kora.bridge.sendNotify({ title = Kora.lang('title.ems'), message = Kora.lang('ui.being_carried'), type = 'info' })
     end
 end)
 
@@ -337,7 +337,7 @@ local function deployStretcher(vehicle)
     if not vehicleNetworkId then return end
     local stretcherNetworkId, reason = Kora.callback.trigger(
         'kora_ambulance:server:stretcherDeployRequested', vehicleNetworkId)
-    Kora.notify.send({
+    Kora.bridge.sendNotify({
         title = Kora.lang('title.transport'),
         message = stretcherNetworkId and Kora.lang('ui.stretcher_deployed') or (reason or Kora.lang('ui.stretcher_failed')),
         type = stretcherNetworkId and 'success' or 'error',

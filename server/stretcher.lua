@@ -96,7 +96,7 @@ end
 ---@param src integer
 ---@param reason string
 local function notifyFailure(src, reason)
-    Kora.notify.send(src, { title = Kora.lang('title.transport'), message = reason, type = 'error' })
+    Kora.bridge.sendNotify(src, { title = Kora.lang('title.transport'), message = reason, type = 'error' })
 end
 
 ---@param record table
