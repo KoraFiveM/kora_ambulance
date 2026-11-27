@@ -54,7 +54,7 @@ end
 ---@param entity integer
 ---@return integer|nil
 local function entityNetworkId(entity)
-    if not entity or entity == 0 or not DoesEntityExist(entity) then return nil end
+    if not entity or entity == 0 or not DoesEntityExist(entity) or not NetworkGetEntityIsNetworked(entity) then return nil end
     local id = NetworkGetNetworkIdFromEntity(entity)
     return id and id ~= 0 and id or nil
 end
